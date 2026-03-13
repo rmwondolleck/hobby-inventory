@@ -237,7 +237,6 @@ After each run, update the Work Queue issue body with current state.
 ```markdown
 ## 🤖 Orchestrator Run #${{ github.run_number }}
 
-**Trigger:** ${{ github.event_name }}
 **Time:** [timestamp]
 
 ### Actions Taken
