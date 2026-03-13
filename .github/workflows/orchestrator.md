@@ -322,14 +322,59 @@ AGENT_REPORT: {
    This is the ONLY PR you need to review for this epic.
    ```
 
-### Task 8: Handle Stuck Work
+### Task 8: Verify Dispatches & Handle Stuck Work
 
-If an item has been in `coding`/`testing`/`building` for >24 hours:
+**This is a CRITICAL task. Run it EVERY cycle, BEFORE dispatching new work.**
 
-1. Add comment to the Work Queue noting the delay
-2. Check GitHub Actions for failed runs
-3. If workflow failed, update stage to `needs-work`
-4. Re-dispatch with retry flag
+Agents can fail silently — lock drift, config errors, or crashes cause workflow runs to fail in seconds without ever posting an AGENT_REPORT. The orchestrator MUST actively verify that dispatched work is actually running.
+
+#### Step 1: Reconcile Work Queue with Reality
+
+For EVERY item in the Active Work table that is in `coding`, `testing`, or `building` stage:
+
+1. **Check for workflow runs**: Use the GitHub API to list recent workflow runs for the relevant agent workflow (e.g., `coding-agent.lock.yml`). Look for runs triggered around the time shown in the "Started" column.
+2. **Check the run conclusion**: 
+   - If the run **failed** or **was cancelled** → the agent never did any work
+   - If no matching run exists → the dispatch may have failed entirely
+   - If the run is still **in_progress** → agent is working, leave it alone
+   - If the run **succeeded** but no AGENT_REPORT comment exists → agent completed but failed to report
+
+3. **Check for tangible output**: Look for PRs, branches, or comments that prove the agent did work. If an issue is in `coding` stage, check whether any PR exists targeting the epic branch for that issue.
+
+4. **Check for label/state mismatch**: If an issue in Active Work no longer has the `in-progress` label (e.g., human removed it), treat that as a manual reset — remove the item from Active Work and re-evaluate its readiness.
+
+#### Step 2: Handle Failed or Missing Runs
+
+If a dispatched agent's workflow run **failed**, **was cancelled**, or **does not exist**:
+
+1. **Update the Work Queue**: Change the item's stage back to `ready` (not `needs-work`, since the agent never started)
+2. **Remove the `in-progress` label** from the issue
+3. **Add a comment** to the Work Queue explaining what happened:
+   ```markdown
+   ⚠️ **Dispatch failure detected** for #9 (CRUD API for parts)
+   - Agent: coding-agent
+   - Run: [#12345](link) — conclusion: `failure`
+   - Cause: Agent workflow failed before starting work (likely config/lock error)
+   - Action: Resetting to `ready` for re-dispatch
+   ```
+4. **Re-dispatch immediately** if the failure was transient (lock drift, infrastructure error). Do NOT re-dispatch if the same issue has failed 3+ times — flag it as `blocked` with a note instead.
+
+#### Step 3: Time-Based Stuck Detection
+
+| Duration without output | Action |
+|------------------------|--------|
+| **> 2 hours** (one poll cycle) | **Investigate**: Check workflow run status. If run failed, reset and re-dispatch. If run succeeded with no report, flag as anomaly. |
+| **> 4 hours** | **Escalate**: If run is still in_progress, it may be hung. Add a warning comment. If no run found at all, reset to `ready` and re-dispatch. |
+| **> 8 hours** | **Force reset**: Reset to `ready`, remove `in-progress` label, re-dispatch with a note about prior failure. |
+
+"Output" means: an AGENT_REPORT comment, a PR creation, a branch push, or test commits.
+
+#### Step 4: Verify Before New Dispatches  
+
+Before dispatching a NEW coding-agent for an issue:
+- Confirm no other coding-agent run is currently `in_progress` for that same issue
+- Confirm the issue does not already have a PR open on the epic branch
+- This prevents duplicate work from multiple dispatches
 
 ## Output Requirements
 
