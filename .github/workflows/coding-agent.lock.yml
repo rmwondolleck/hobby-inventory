@@ -23,7 +23,7 @@
 #
 # Implements features from GitHub issues, creates PRs, and reports completion to orchestrator
 #
-# gh-aw-metadata: {"schema_version":"v2","frontmatter_hash":"d1961c5f22b50efba3d3f32eb7df7d5f390078aa8ec99df228243440e6a96312","compiler_version":"v0.57.2","strict":true}
+# gh-aw-metadata: {"schema_version":"v2","frontmatter_hash":"536d0c4fff3decd69e02bb3f32825b3aaf938b0732830edd5f6e9d6a06e61c2a","compiler_version":"v0.57.2","strict":true}
 
 name: "Coding Agent"
 "on":
@@ -36,6 +36,15 @@ name: "Coding Agent"
       issue_number:
         description: Issue number to implement
         required: true
+        type: number
+      remediation_mode:
+        default: false
+        description: Set to true when fixing Copilot review comments
+        required: false
+        type: boolean
+      remediation_pr:
+        description: PR number to remediate (fixes review comments on existing PR)
+        required: false
         type: number
       state_issue_number:
         description: Work Queue issue number for reporting
@@ -116,11 +125,14 @@ jobs:
         env:
           GH_AW_PROMPT: /tmp/gh-aw/aw-prompts/prompt.txt
           GH_AW_SAFE_OUTPUTS: ${{ env.GH_AW_SAFE_OUTPUTS }}
+          GH_AW_EXPR_BEEA3E86: ${{ github.event.inputs.remediation_mode == 'true' && 'REMEDIATION' || 'IMPLEMENTATION' }}
           GH_AW_GITHUB_ACTOR: ${{ github.actor }}
           GH_AW_GITHUB_EVENT_COMMENT_ID: ${{ github.event.comment.id }}
           GH_AW_GITHUB_EVENT_DISCUSSION_NUMBER: ${{ github.event.discussion.number }}
           GH_AW_GITHUB_EVENT_INPUTS_EPIC_BRANCH: ${{ github.event.inputs.epic_branch }}
           GH_AW_GITHUB_EVENT_INPUTS_ISSUE_NUMBER: ${{ github.event.inputs.issue_number }}
+          GH_AW_GITHUB_EVENT_INPUTS_REMEDIATION_MODE: ${{ github.event.inputs.remediation_mode }}
+          GH_AW_GITHUB_EVENT_INPUTS_REMEDIATION_PR: ${{ github.event.inputs.remediation_pr }}
           GH_AW_GITHUB_EVENT_INPUTS_STATE_ISSUE_NUMBER: ${{ github.event.inputs.state_issue_number }}
           GH_AW_GITHUB_EVENT_ISSUE_NUMBER: ${{ github.event.issue.number }}
           GH_AW_GITHUB_EVENT_PULL_REQUEST_NUMBER: ${{ github.event.pull_request.number }}
@@ -186,6 +198,9 @@ jobs:
           GH_AW_PROMPT: /tmp/gh-aw/aw-prompts/prompt.txt
           GH_AW_GITHUB_EVENT_INPUTS_EPIC_BRANCH: ${{ github.event.inputs.epic_branch }}
           GH_AW_GITHUB_EVENT_INPUTS_ISSUE_NUMBER: ${{ github.event.inputs.issue_number }}
+          GH_AW_EXPR_BEEA3E86: ${{ github.event.inputs.remediation_mode == 'true' && 'REMEDIATION' || 'IMPLEMENTATION' }}
+          GH_AW_GITHUB_EVENT_INPUTS_REMEDIATION_MODE: ${{ github.event.inputs.remediation_mode }}
+          GH_AW_GITHUB_EVENT_INPUTS_REMEDIATION_PR: ${{ github.event.inputs.remediation_pr }}
           GH_AW_GITHUB_EVENT_INPUTS_STATE_ISSUE_NUMBER: ${{ github.event.inputs.state_issue_number }}
         with:
           script: |
@@ -197,11 +212,14 @@ jobs:
         uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
         env:
           GH_AW_PROMPT: /tmp/gh-aw/aw-prompts/prompt.txt
+          GH_AW_EXPR_BEEA3E86: ${{ github.event.inputs.remediation_mode == 'true' && 'REMEDIATION' || 'IMPLEMENTATION' }}
           GH_AW_GITHUB_ACTOR: ${{ github.actor }}
           GH_AW_GITHUB_EVENT_COMMENT_ID: ${{ github.event.comment.id }}
           GH_AW_GITHUB_EVENT_DISCUSSION_NUMBER: ${{ github.event.discussion.number }}
           GH_AW_GITHUB_EVENT_INPUTS_EPIC_BRANCH: ${{ github.event.inputs.epic_branch }}
           GH_AW_GITHUB_EVENT_INPUTS_ISSUE_NUMBER: ${{ github.event.inputs.issue_number }}
+          GH_AW_GITHUB_EVENT_INPUTS_REMEDIATION_MODE: ${{ github.event.inputs.remediation_mode }}
+          GH_AW_GITHUB_EVENT_INPUTS_REMEDIATION_PR: ${{ github.event.inputs.remediation_pr }}
           GH_AW_GITHUB_EVENT_INPUTS_STATE_ISSUE_NUMBER: ${{ github.event.inputs.state_issue_number }}
           GH_AW_GITHUB_EVENT_ISSUE_NUMBER: ${{ github.event.issue.number }}
           GH_AW_GITHUB_EVENT_PULL_REQUEST_NUMBER: ${{ github.event.pull_request.number }}
@@ -219,11 +237,14 @@ jobs:
             return await substitutePlaceholders({
               file: process.env.GH_AW_PROMPT,
               substitutions: {
+                GH_AW_EXPR_BEEA3E86: process.env.GH_AW_EXPR_BEEA3E86,
                 GH_AW_GITHUB_ACTOR: process.env.GH_AW_GITHUB_ACTOR,
                 GH_AW_GITHUB_EVENT_COMMENT_ID: process.env.GH_AW_GITHUB_EVENT_COMMENT_ID,
                 GH_AW_GITHUB_EVENT_DISCUSSION_NUMBER: process.env.GH_AW_GITHUB_EVENT_DISCUSSION_NUMBER,
                 GH_AW_GITHUB_EVENT_INPUTS_EPIC_BRANCH: process.env.GH_AW_GITHUB_EVENT_INPUTS_EPIC_BRANCH,
                 GH_AW_GITHUB_EVENT_INPUTS_ISSUE_NUMBER: process.env.GH_AW_GITHUB_EVENT_INPUTS_ISSUE_NUMBER,
+                GH_AW_GITHUB_EVENT_INPUTS_REMEDIATION_MODE: process.env.GH_AW_GITHUB_EVENT_INPUTS_REMEDIATION_MODE,
+                GH_AW_GITHUB_EVENT_INPUTS_REMEDIATION_PR: process.env.GH_AW_GITHUB_EVENT_INPUTS_REMEDIATION_PR,
                 GH_AW_GITHUB_EVENT_INPUTS_STATE_ISSUE_NUMBER: process.env.GH_AW_GITHUB_EVENT_INPUTS_STATE_ISSUE_NUMBER,
                 GH_AW_GITHUB_EVENT_ISSUE_NUMBER: process.env.GH_AW_GITHUB_EVENT_ISSUE_NUMBER,
                 GH_AW_GITHUB_EVENT_PULL_REQUEST_NUMBER: process.env.GH_AW_GITHUB_EVENT_PULL_REQUEST_NUMBER,

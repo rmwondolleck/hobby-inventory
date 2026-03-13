@@ -186,13 +186,56 @@ For each `ready` issue not in `Active Work`:
 
 When an agent reports completion:
 
-| Current Stage | Agent Report | New Stage | Next Dispatch |
-|---------------|--------------|-----------|---------------|
-| `coding` | PR created | `testing` | test-agent |
-| `testing` | Tests added | `building` | build-agent |
-| `building` | Build passed | `review` | None (human) |
-| `building` | Build failed | `needs-work` | coding-agent |
-| `review` | PR merged | `merged` | Check epic completion |
+| Current Stage | Agent Report | New Stage | Next Action |
+|---------------|--------------|-----------|-------------|
+| `coding` | PR created | `review` | Request Copilot review |
+| `review` | Review requested | `review` | Wait for review completion |
+| `review` | Review has comments | `needs-work` | Dispatch coding-agent to fix |
+| `needs-work` | Fixes pushed | `review` | Request Copilot review again |
+| `review` | Review approved / no comments | `merging` | Auto-merge PR |
+| `merging` | PR merged | `merged` | Check epic completion |
+
+**Experimental Auto-Review Flow:**
+
+1. **When PR is created** (coding → review):
+   - Request GitHub Copilot review:
+     ```
+     Use GitHub tool: request_copilot_review(owner, repo, pr_number)
+     ```
+   - Update Work Queue: Stage = `review`
+   - Add comment: "🤖 Copilot review requested for PR #X"
+
+2. **Check review status on next run**:
+   - Read PR review comments using GitHub tools
+   - If review has no comments OR is approved:
+     - Stage = `merging`
+     - Merge the PR automatically
+     - Stage = `merged`
+   - If review has change requests or comments:
+     - Stage = `needs-work`
+     - Dispatch coding-agent with remediation instructions:
+       ```json
+       {
+         "workflow_name": "coding-agent",
+         "inputs": {
+           "issue_number": "<original-issue>",
+           "epic_branch": "<epic-branch>",
+           "state_issue_number": "<work-queue-issue>",
+           "remediation_pr": "<pr-number>",
+           "remediation_mode": true
+         }
+       }
+       ```
+
+3. **After remediation**:
+   - Coding-agent pushes fixes to existing PR branch
+   - Stage = `review` (request Copilot review again)
+   - Repeat until approved
+
+**Legacy Flow (if auto-review disabled):**
+```
+coding → testing → building → review (human) → merged
+```
 
 **Dispatch next agent:**
 ```json
