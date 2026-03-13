@@ -1,0 +1,138 @@
+// Prisma Schema for Hobby Inventory System
+// This is a placeholder schema that will be fully defined in Issue #8
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================================
+// Models - To be fully defined in Issue #8 based on Issue #5 domain model
+// ============================================================================
+
+// Placeholder model to validate Prisma setup
+model Part {
+  id           String   @id @default(cuid())
+  name         String
+  category     String?
+  manufacturer String?
+  mpn          String?  // Manufacturer part number
+  tags         String   @default("[]") // JSON array stored as string
+  notes        String?
+  parameters   String   @default("{}") // JSON object stored as string
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  archivedAt   DateTime?
+
+  lots         Lot[]
+
+  @@index([category])
+  @@index([mpn])
+}
+
+model Location {
+  id        String   @id @default(cuid())
+  name      String
+  parentId  String?
+  path      String   // Computed path like "Office/Shelf A/Drawer 2"
+  notes     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  parent    Location?  @relation("LocationHierarchy", fields: [parentId], references: [id])
+  children  Location[] @relation("LocationHierarchy")
+  lots      Lot[]
+
+  @@index([parentId])
+  @@index([path])
+}
+
+model Lot {
+  id                 String   @id @default(cuid())
+  partId             String
+  quantity           Int?     // null for qualitative mode
+  quantityMode       String   @default("exact") // "exact" or "qualitative"
+  qualitativeStatus  String?  // "plenty", "low", "out"
+  unit               String?
+  status             String   @default("in_stock")
+  locationId         String?
+  source             String   @default("{}") // JSON object for source metadata
+  receivedAt         DateTime?
+  notes              String?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  part               Part     @relation(fields: [partId], references: [id])
+  location           Location? @relation(fields: [locationId], references: [id])
+  allocations        Allocation[]
+  events             Event[]
+
+  @@index([partId])
+  @@index([locationId])
+  @@index([status])
+}
+
+model Project {
+  id            String   @id @default(cuid())
+  name          String
+  status        String   @default("idea")
+  notes         String?
+  tags          String   @default("[]") // JSON array
+  wishlistNotes String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  archivedAt    DateTime?
+
+  allocations   Allocation[]
+
+  @@index([status])
+}
+
+model Allocation {
+  id        String   @id @default(cuid())
+  lotId     String
+  projectId String
+  quantity  Int?
+  status    String   @default("reserved")
+  notes     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  lot       Lot      @relation(fields: [lotId], references: [id])
+  project   Project  @relation(fields: [projectId], references: [id])
+
+  @@index([lotId])
+  @@index([projectId])
+  @@index([status])
+}
+
+model Event {
+  id             String   @id @default(cuid())
+  lotId          String
+  type           String   // EventType: created, received, moved, etc.
+  delta          Int?
+  fromLocationId String?
+  toLocationId   String?
+  projectId      String?
+  notes          String?
+  createdAt      DateTime @default(now())
+
+  lot            Lot      @relation(fields: [lotId], references: [id])
+
+  @@index([lotId])
+  @@index([type])
+  @@index([createdAt])
+}
+
+model Category {
+  id               String   @id @default(cuid())
+  name             String   @unique
+  parameterSchema  String   @default("{}") // JSON schema for category parameters
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+}
+
