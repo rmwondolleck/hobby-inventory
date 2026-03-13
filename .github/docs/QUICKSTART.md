@@ -47,9 +47,17 @@ This issue is your **dashboard**. It shows:
 
 ### Manual Control
 
+**📖 See [MANUAL-DISPATCH.md](./MANUAL-DISPATCH.md) for detailed agent dispatch commands**
+
 ```powershell
 # Kick off the orchestrator now
 gh workflow run orchestrator.lock.yml --repo rmwondolleck/hobby-inventory
+
+# Manually dispatch coding-agent for a specific issue
+gh workflow run coding-agent.lock.yml --repo rmwondolleck/hobby-inventory \
+  -f issue_number=6 \
+  -f epic_branch=epic/1-foundation \
+  -f state_issue_number=28
 
 # Check what's running
 gh run list --repo rmwondolleck/hobby-inventory --limit 10
