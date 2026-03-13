@@ -1,7 +1,8 @@
 # 🌙 Good Night - Your Autonomous Agents Are Working!
 
-**Deployment Time**: March 13, 2026 02:50 UTC  
-**Status**: ✅ **FULLY AUTONOMOUS - GO TO SLEEP!**
+**Deployment Time**: March 13, 2026 03:00 UTC  
+**Status**: ✅ **FULLY AUTONOMOUS - GO TO SLEEP!**  
+**Orchestrator Run**: [#23033983813](https://github.com/rmwondolleck/hobby-inventory/actions/runs/23033983813)
 
 ---
 
@@ -18,11 +19,11 @@ Every issue progresses through ALL stages automatically:
 - **coding-agent** creates the feature
 - **test-agent** adds comprehensive tests
 - **build-agent** validates everything works
-- **Copilot** reviews the code
-- **orchestrator** auto-merges when approved
+- **Copilot** reviews the code (via GitHub tools)
+- **orchestrator** auto-merges when approved (via GitHub tools)
 
 ### ✅ Auto-Merge Enabled
-- Review approved → PR merges automatically
+- Review approved → PR merges automatically (using GitHub merge API)
 - No manual merge needed
 - Squash commits for clean history
 
@@ -40,7 +41,7 @@ Every issue progresses through ALL stages automatically:
 
 ## 🚀 What's Happening Right Now
 
-**Orchestrator just started!** (dispatched at 02:50 UTC)
+**Orchestrator just started!** (dispatched at 03:00 UTC - Run #23033983813)
 
 It will:
 1. Check if coding-agent for issue #6 completed
@@ -237,6 +238,7 @@ Wake up to progress. 🌅
 
 ---
 
-*Deployment timestamp: 2026-03-13T02:50:00Z*
-*Next orchestrator run: 2026-03-13T04:00:00Z (scheduled)*
+*Deployment timestamp: 2026-03-13T03:00:00Z*
+*Orchestrator run: https://github.com/rmwondolleck/hobby-inventory/actions/runs/23033983813*
+*Next orchestrator run: 2026-03-13T05:00:00Z (scheduled)*
 
