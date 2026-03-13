@@ -33,6 +33,11 @@ safe-outputs:
   dispatch-workflow:
     workflows: [coding-agent, test-agent, build-agent, integration-agent]
     max: 5
+  merge-pull-request:
+    method: squash
+    max: 5
+  request-copilot-review:
+    max: 5
 network:
   allowed:
     - defaults
