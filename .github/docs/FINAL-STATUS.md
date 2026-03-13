@@ -1,245 +1,210 @@
-# ✅ ORCHESTRATION SYSTEM - FULLY FIXED & OPERATIONAL
+# ✅ ORCHESTRATION SYSTEM - EPIC-LEVEL REVIEW
 
 **Date**: March 13, 2026  
-**Status**: ✅ **READY FOR AUTONOMOUS OPERATION**  
-**Orchestrator Run**: [#23034151971](https://github.com/rmwondolleck/hobby-inventory/actions/runs/23034151971)
+**Status**: ✅ **REDESIGNED FOR ONE EPIC PR REVIEW**
 
 ---
 
-## What Was Fixed
+## 🎯 Key Design Change: Review ONE Epic PR, Not 26 Individual PRs
 
-### Issue 1: Invalid Safe-Outputs
-**Problem**: Orchestrator was configured with non-existent safe-outputs:
-- ❌ `merge-pull-request` - Does NOT exist
-- ❌ `request-copilot-review` - Does NOT exist
-
-**Solution**: Use only valid safe-outputs
-- ✅ `assign-to-agent` - Assigns Copilot as reviewer
-- ✅ `dispatch-workflow` - Triggers agents
-- ✅ `add-comment` - Posts notifications
-- ✅ `update-issue` - Updates Work Queue
-
-### Issue 2: gh CLI Authentication Not Available
-**Problem**: Orchestrator tried to use gh CLI tools which require authentication
-
-**Solution**: Use ONLY safe-outputs (no gh CLI needed)
-
----
-
-## Final Architecture
-
-### Sequential Pipeline (Safe-Outputs Only)
+### Before (Babysitting)
 ```
-ready → coding → testing → building → review → ready-to-merge → merged
-   ↓          ↓          ↓
-   └── needs-work ←──────┘ (auto-fix + retry)
+Issue #5 → PR → YOU REVIEW → merge
+Issue #6 → PR → YOU REVIEW → merge
+Issue #7 → PR → YOU REVIEW → merge
+Issue #8 → PR → YOU REVIEW → merge
+... 26 times
 ```
 
-### Stage Transitions
-| Stage | What Happens | Who | Safe-Output |
-|-------|-------------|-----|------------|
-| coding | Implement feature | Agent | N/A (agent creates PR via create-pull-request) |
-| testing | Add tests | Agent | N/A (agent posts via add-comment) |
-| building | Validate build | Agent | N/A (agent posts via add-comment) |
-| review | Copilot review | Orchestrator | `assign-to-agent` |
-| ready-to-merge | Post notification | Orchestrator | `add-comment` |
-| merged | Issue complete | GitHub event | (detected by orchestrator) |
-| needs-work | Fix issues | Agent | `dispatch-workflow` → re-dispatch |
-
-### One Manual Step
-When Copilot approves → Orchestrator posts notification → **You merge PR**
+### After (Epic-Level Review)
+```
+Issue #5 → coding → test → build → review → ready-to-merge (ACCUMULATE)
+Issue #6 → coding → test → build → review → ready-to-merge (ACCUMULATE)
+Issue #7 → coding → test → build → review → ready-to-merge (ACCUMULATE)
+Issue #8 → coding → test → build → review → ready-to-merge (ACCUMULATE)
+                                                    ↓
+                              ALL issues ready? → Integration Agent
+                                                    ↓
+                              Synthesis Report + ONE Epic PR
+                                                    ↓
+                              YOU REVIEW ONE PR → merge to main ✅
+```
 
 ---
 
 ## How It Works
 
-### Automated Flow
+### Stage Flow (Per Issue)
 ```
-1. Orchestrator runs (every 2 hours + on events)
-2. Reads Work Queue issue for current state
-3. When agent completes → reads AGENT_REPORT comment
-4. Updates stage in Work Queue
-5. Dispatches next agent (via dispatch-workflow)
-6. Repeats until review stage
-
-REVIEW STAGE:
-7. Orchestrator assigns Copilot (via assign-to-agent)
-8. Copilot reviews PR (external process)
-9. When approved → Orchestrator posts "Ready to merge" (via add-comment)
-10. YOU merge PR (manual step)
-11. Orchestrator detects merge → advances to next issue
+ready → coding → testing → building → review → ready-to-merge (STOP)
+   ↓          ↓          ↓
+   └── needs-work ←──────┘
 ```
 
-### Safe-Outputs Used
-```yaml
-safe-outputs:
-  create-issue:             # Create/update Work Queue
-  update-issue:             # Update Work Queue stages
-  add-comment:              # Post notifications
-  add-labels:               # Track stage labels
-  dispatch-workflow:        # Trigger agents
-  assign-to-agent:          # Assign Copilot reviewer
+**Critical: When issue reaches `ready-to-merge`:**
+- ✅ PR is approved by Copilot
+- ✅ Tests pass, build passes
+- ❌ **PR is NOT merged yet**
+- ⏳ Waits for ALL issues in epic to reach `ready-to-merge`
+
+### Epic Completion Flow
+```
+Epic #1 Foundation:
+  - Issue #5: ready-to-merge ✅
+  - Issue #6: ready-to-merge ✅
+  - Issue #7: ready-to-merge ✅
+  - Issue #8: ready-to-merge ✅
+  
+ALL READY → Orchestrator dispatches integration-agent
+```
+
+### Integration Agent (Synthesis)
+```
+Integration Agent:
+  1. Read ALL feature PRs in epic
+  2. Analyze code:
+     - Find duplication across features
+     - Identify conflicts
+     - Spot missing pieces
+     - Review architecture coherence
+  3. Make consolidation improvements (optional)
+  4. Generate synthesis report
+  5. Create ONE PR: epic/1-foundation → main
+  6. Report to Work Queue
+```
+
+### Human Review (ONE PR!)
+```
+Work Queue notification:
+  "🎯 EPIC #1 READY FOR REVIEW
+   
+   ONE PR to review: [PR #99 - Epic 1: Foundation]
+   
+   Includes:
+   - Domain model (#5)
+   - State transitions (#6)  
+   - Service skeleton (#7)
+   - Database migrations (#8)
+   
+   Synthesis Report:
+   - No conflicts found
+   - 3 duplications consolidated
+   - Test coverage: 87%
+   
+   ACTION: Review and merge PR #99"
 ```
 
 ---
 
-## Current State
+## What The Integration Agent Does
 
-### Compilation
-✅ All workflows compile with 0 errors
-```
-✓ .github\workflows\orchestrator.md (81.7 KB)
-✓ .github\workflows\coding-agent.md (68.4 KB)
-✓ .github\workflows\test-agent.md (63.8 KB)
-✓ .github\workflows\build-agent.md (58.2 KB)
-✓ .github\workflows\integration-agent.md (66.6 KB)
-✓ Compiled 5 workflow(s): 0 error(s), 0 warning(s)
-```
+### Analysis Phase
+1. **Reads all feature PRs** in the epic
+2. **Analyzes for duplication**:
+   - Utility functions implemented multiple times?
+   - Similar patterns across features?
+   - Copy-pasted code?
+3. **Checks for conflicts**:
+   - Incompatible type definitions?
+   - Naming inconsistencies?
+   - Conflicting implementations?
+4. **Identifies gaps**:
+   - Missing error handling?
+   - Missing validation?
+   - Missing tests?
 
-### Deployment
-✅ All commits pushed to `main`
-✅ Orchestrator running (ID: #23034151971)
-✅ Ready for autonomous operation
+### Synthesis Phase
+1. **Consolidates duplicates** (low-risk only)
+2. **Fixes inconsistencies** (standardizes patterns)
+3. **Generates comprehensive report**
+4. **Creates ONE epic PR**:
+   - From: `epic/1-foundation`
+   - To: `main`
+   - Contains: ALL features, synthesized
 
-### Work Queue
-Issue #28: Tracking all progress
-- Current: Issue #6 (coding-agent dispatched)
-- Completed: Issue #5 (merged), Issue #7
-- Blocked: Issues #8-13 (waiting on #6 & #8)
-
----
-
-## What Happens Overnight
-
-### Expected Timeline (8-10 hours)
-
-```
-10:00 PM - You go to sleep
-10:15 PM - Orchestrator run
-          Issue #6 coding-agent completes
-          → Dispatch test-agent
-          → Update Work Queue
-
-10:25 PM - Test-agent completes
-          → Dispatch build-agent
-
-10:35 PM - Build-agent completes
-          → Assign Copilot reviewer
-
-10:45 PM - Copilot review completes
-          → Post "Ready to merge" notification
-
-[YOU NEED TO MERGE]
-          → Orchestrator detects merge
-          → Issue #6 → MERGED ✅
-          → Issue #8 unblocks
-          → Dispatch coding-agent for #8
-
-11:00 PM - Cycle repeats for Issue #8
-           (test → build → review → ready-to-merge)
-
-[YOU MERGE AGAIN]
-           → Issue #8 → MERGED ✅
-           → Continue...
-
-7:00 AM  - You wake up
-          ✅ Issue #6: Merged
-          ✅ Issue #8: Merged (possibly)
-          🚧 Issue #9-11: In progress or staged
-```
-
-### What You'll See in the Morning
-
-**Work Queue Issue #28**:
-```
-## 📋 Active Work
-| Issue | Title | Stage | Agent | PR | Started |
-| #9 | CRUD API for parts | testing | test-agent | #33 | 03:30 |
-
-## ✅ Completed
-| #6 | Define statuses | 22:50 | #32 ✅ |
-| #8 | Migrations | 01:25 | #33 ✅ |
-
-## 🚫 Blocked
-| #10 | CRUD locations | #8 ✓, needs #9 ✅ |
-| #11 | CRUD lots | #9, #10 |
-```
-
-**Merged PRs**:
-- #32 - Issue #6 ✅
-- #33 - Issue #8 ✅
-- Possibly more
+### Output
+- **ONE PR** to review (instead of 4-10)
+- **Synthesis report** explaining what's included
+- **Consolidation summary** if changes were made
+- **Recommendations** for post-merge actions
 
 ---
 
-## Summary: Safe-Outputs Only Approach
+## Benefits
 
-### ✅ What's Automated
-- Dispatch agents → `dispatch-workflow`
-- Assign Copilot review → `assign-to-agent`
-- Post notifications → `add-comment`
-- Update Work Queue → `update-issue`
-- Self-heal on failures → automatic re-dispatch
-
-### ✅ What's Manual (By Design)
-- Merge PRs (one click per issue)
-- That's it! Everything else is automated
-
-### ✅ Why This Is Better
-- No gh CLI authentication needed
-- No external tools required
-- Uses only safe GitHub features
-- Fully within orchestrator security model
-- Clear separation: AI builds, human reviews
+| Aspect | Before | After |
+|--------|--------|-------|
+| PRs to Review | 26 | 4 (one per epic) |
+| Context Switching | Constant | Minimal |
+| Cross-Feature Analysis | Manual | Automated |
+| Consistency Check | Hope for the best | Guaranteed |
+| Duplication Detection | Miss issues | Caught automatically |
+| Review Quality | Rushed | Comprehensive |
 
 ---
 
-## Files Deployed
+## Stage Definitions
 
-✅ `.github/workflows/orchestrator.md` (fixed)  
-✅ `.github/workflows/orchestrator.lock.yml` (compiled)  
-✅ `.github/docs/ORCHESTRATION-HANDOFF.md` (updated)  
-✅ `.github/docs/GOODNIGHT.md` (updated)
-
----
-
-## Next Steps for You
-
-### Tonight
-1. Orchestrator starts working
-2. Monitor Work Queue for progress
-3. When you see "Ready to merge" notifications → merge PRs
-
-### Tomorrow Morning
-1. Check Work Queue #28
-2. Review merged PRs
-3. Continue merging as notifications appear
-
-### System Behavior
-- **Every 2 hours**: Orchestrator runs automatically
-- **On completion**: Agents trigger orchestrator immediately via AGENT_REPORT comments
-- **Max 3 concurrent**: Prevents overwhelming the reviewer (Copilot)
+| Stage | Meaning | Action |
+|-------|---------|--------|
+| `ready` | Dependencies met | Dispatch coding-agent |
+| `coding` | Feature being built | Wait for PR |
+| `testing` | Tests being added | Wait for tests |
+| `building` | Build validation | Wait for build |
+| `review` | Copilot reviewing | Wait for approval |
+| `ready-to-merge` | **Approved but NOT merged** | Wait for epic completion |
+| `awaiting-integration` | All issues ready, integration-agent working | Wait for synthesis |
+| `merged` | Epic PR merged to main | Complete! |
 
 ---
 
-## You Built
+## Epic Progress Tracking
 
-A **production-grade autonomous development system** that:
-- ✅ Safely operates without external authentication
-- ✅ Uses only GitHub safe-outputs
-- ✅ Automatically progresses through coding → test → build → review
-- ✅ Self-heals on failures
-- ✅ Tracks all state in GitHub issues
-- ✅ Maintains clear separation of concerns
-- ✅ Requires minimal human intervention (just click merge!)
+Work Queue now tracks epic-level progress:
 
-**This is genuinely impressive work!** 🎉
+```markdown
+## 🎯 Epic Integration Status
+
+| Epic | Total | Ready-to-Merge | Status |
+|------|-------|----------------|--------|
+| #1 Foundation | 4 | 4/4 | 🎉 READY FOR INTEGRATION |
+| #2 Inventory Core | 5 | 0/5 | 🚫 Blocked by Epic #1 |
+| #3 Projects | 2 | 0/2 | 🚫 Blocked |
+| #4 Intake | 5 | 0/5 | 🚫 Blocked |
+```
 
 ---
 
-*Deployment: 2026-03-13T03:30:00Z*  
-*Orchestrator: https://github.com/rmwondolleck/hobby-inventory/actions/runs/23034151971*  
-*Work Queue: https://github.com/rmwondolleck/hobby-inventory/issues/28*
+## Your New Workflow
 
-**System is fully operational and ready for autonomous overnight operation!** 🚀
+### What You Do
+1. **Wait** for "Epic Ready for Review" notification
+2. **Review ONE PR** per epic (not 4-10 individual PRs)
+3. **Read synthesis report** to understand what's included
+4. **Merge** to complete the epic
 
+### What You DON'T Do
+- ❌ Review individual feature PRs
+- ❌ Merge feature PRs one by one
+- ❌ Check for consistency manually
+- ❌ Hunt for duplication
+
+---
+
+## Files Changed
+
+- ✅ `orchestrator.md` - Redesigned for epic-level review
+- ✅ `integration-agent.md` - Rewritten as synthesis agent
+- 📝 Documentation updated
+
+---
+
+## Summary
+
+**Before**: You review 26 individual PRs, hoping they work together.
+
+**After**: Agents work autonomously, integration-agent synthesizes everything, you review 4 polished epic PRs total.
+
+**Your job is now**: Wait for "Epic Ready for Review" → Review ONE PR → Merge → Repeat for next epic.
+
+That's it! 🎉

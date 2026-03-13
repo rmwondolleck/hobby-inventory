@@ -23,7 +23,7 @@
 #
 # Central coordinator that manages work queue, dispatches agents, and tracks state via a dedicated tracking issue
 #
-# gh-aw-metadata: {"schema_version":"v2","frontmatter_hash":"4daac1d60eb80283d30b31bfe7d13d5cb1a124139ab2a8810667ad105055f383","compiler_version":"v0.57.2","strict":true}
+# gh-aw-metadata: {"schema_version":"v2","frontmatter_hash":"838b850ea5dbcdfc72b2593cab5db547846ad208f78a33d6ac39df5dfb0a83f0","compiler_version":"v0.57.2","strict":true}
 
 name: "Development Orchestrator"
 "on":
@@ -340,7 +340,7 @@ jobs:
           mkdir -p /tmp/gh-aw/safeoutputs
           mkdir -p /tmp/gh-aw/mcp-logs/safeoutputs
           cat > /opt/gh-aw/safeoutputs/config.json << 'GH_AW_SAFE_OUTPUTS_CONFIG_EOF'
-          {"add_comment":{"max":10,"target":"*"},"add_labels":{"allowed":["ready","in-progress","blocked","needs-work"],"max":20},"assign_to_agent":{"allowed":["copilot"],"default_agent":"copilot","max":10,"target":"*"},"create_issue":{"max":1},"dispatch_workflow":{"max":5,"workflow_files":{"build-agent":".lock.yml","coding-agent":".lock.yml","integration-agent":".lock.yml","test-agent":".lock.yml"},"workflows":["coding-agent","test-agent","build-agent","integration-agent"]},"missing_data":{},"missing_tool":{},"noop":{"max":1},"update_issue":{"max":1}}
+          {"add_comment":{"max":10,"target":"*"},"add_labels":{"allowed":["ready","in-progress","blocked","needs-work","ready-to-merge","awaiting-integration"],"max":20},"assign_to_agent":{"allowed":["copilot"],"default_agent":"copilot","max":10,"target":"*"},"create_issue":{"max":1},"dispatch_workflow":{"max":5,"workflow_files":{"build-agent":".lock.yml","coding-agent":".lock.yml","integration-agent":".lock.yml","test-agent":".lock.yml"},"workflows":["coding-agent","test-agent","build-agent","integration-agent"]},"missing_data":{},"missing_tool":{},"noop":{"max":1},"update_issue":{"max":1}}
           GH_AW_SAFE_OUTPUTS_CONFIG_EOF
           cat > /opt/gh-aw/safeoutputs/tools.json << 'GH_AW_SAFE_OUTPUTS_TOOLS_EOF'
           [
@@ -431,7 +431,7 @@ jobs:
               "name": "add_comment"
             },
             {
-              "description": "Add labels to an existing GitHub issue or pull request for categorization and filtering. Labels must already exist in the repository. For creating new issues with labels, use create_issue with the labels property instead. CONSTRAINTS: Maximum 20 label(s) can be added. Only these labels are allowed: [\"ready\" \"in-progress\" \"blocked\" \"needs-work\"].",
+              "description": "Add labels to an existing GitHub issue or pull request for categorization and filtering. Labels must already exist in the repository. For creating new issues with labels, use create_issue with the labels property instead. CONSTRAINTS: Maximum 20 label(s) can be added. Only these labels are allowed: [\"ready\" \"in-progress\" \"blocked\" \"needs-work\" \"ready-to-merge\" \"awaiting-integration\"].",
               "inputSchema": {
                 "additionalProperties": false,
                 "properties": {
@@ -1577,7 +1577,7 @@ jobs:
           GH_AW_ALLOWED_DOMAINS: "api.business.githubcopilot.com,api.enterprise.githubcopilot.com,api.github.com,api.githubcopilot.com,api.individual.githubcopilot.com,api.snapcraft.io,archive.ubuntu.com,azure.archive.ubuntu.com,crl.geotrust.com,crl.globalsign.com,crl.identrust.com,crl.sectigo.com,crl.thawte.com,crl.usertrust.com,crl.verisign.com,crl3.digicert.com,crl4.digicert.com,crls.ssl.com,github.com,host.docker.internal,json-schema.org,json.schemastore.org,keyserver.ubuntu.com,ocsp.digicert.com,ocsp.geotrust.com,ocsp.globalsign.com,ocsp.identrust.com,ocsp.sectigo.com,ocsp.ssl.com,ocsp.thawte.com,ocsp.usertrust.com,ocsp.verisign.com,packagecloud.io,packages.cloud.google.com,packages.microsoft.com,ppa.launchpad.net,raw.githubusercontent.com,registry.npmjs.org,s.symcb.com,s.symcd.com,security.ubuntu.com,telemetry.enterprise.githubcopilot.com,ts-crl.ws.symantec.com,ts-ocsp.ws.symantec.com"
           GITHUB_SERVER_URL: ${{ github.server_url }}
           GITHUB_API_URL: ${{ github.api_url }}
-          GH_AW_SAFE_OUTPUTS_HANDLER_CONFIG: "{\"add_comment\":{\"max\":10,\"target\":\"*\"},\"add_labels\":{\"allowed\":[\"ready\",\"in-progress\",\"blocked\",\"needs-work\"],\"max\":20},\"create_issue\":{\"labels\":[\"orchestrator\",\"tracking\"],\"max\":1,\"title_prefix\":\"[Orchestrator] \"},\"dispatch_workflow\":{\"max\":5,\"workflow_files\":{\"build-agent\":\".lock.yml\",\"coding-agent\":\".lock.yml\",\"integration-agent\":\".lock.yml\",\"test-agent\":\".lock.yml\"},\"workflows\":[\"coding-agent\",\"test-agent\",\"build-agent\",\"integration-agent\"]},\"missing_data\":{},\"missing_tool\":{},\"update_issue\":{\"allow_body\":true,\"max\":1,\"target\":\"*\"}}"
+          GH_AW_SAFE_OUTPUTS_HANDLER_CONFIG: "{\"add_comment\":{\"max\":10,\"target\":\"*\"},\"add_labels\":{\"allowed\":[\"ready\",\"in-progress\",\"blocked\",\"needs-work\",\"ready-to-merge\",\"awaiting-integration\"],\"max\":20},\"create_issue\":{\"labels\":[\"orchestrator\",\"tracking\"],\"max\":1,\"title_prefix\":\"[Orchestrator] \"},\"dispatch_workflow\":{\"max\":5,\"workflow_files\":{\"build-agent\":\".lock.yml\",\"coding-agent\":\".lock.yml\",\"integration-agent\":\".lock.yml\",\"test-agent\":\".lock.yml\"},\"workflows\":[\"coding-agent\",\"test-agent\",\"build-agent\",\"integration-agent\"]},\"missing_data\":{},\"missing_tool\":{},\"update_issue\":{\"allow_body\":true,\"max\":1,\"target\":\"*\"}}"
         with:
           github-token: ${{ secrets.GH_AW_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
           script: |

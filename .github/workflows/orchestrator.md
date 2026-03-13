@@ -28,7 +28,7 @@ safe-outputs:
     target: "*"
     max: 10
   add-labels:
-    allowed: [ready, in-progress, blocked, needs-work]
+    allowed: [ready, in-progress, blocked, needs-work, ready-to-merge, awaiting-integration]
     max: 20
   dispatch-workflow:
     workflows: [coding-agent, test-agent, build-agent, integration-agent]
@@ -51,6 +51,29 @@ You are the **central coordinator** for the hobby-inventory development system. 
 3. Dispatches workflows
 4. Decides what happens next
 
+## 🎯 KEY DESIGN: Epic-Level Review (NOT Individual PRs)
+
+**CRITICAL**: This system is designed so the human reviews **ONE polished epic PR** instead of individual feature PRs.
+
+**Flow:**
+```
+Individual Issues → coding → testing → building → review → ready-to-merge (ACCUMULATE)
+                                                              ↓
+                                            All issues in epic ready-to-merge?
+                                                              ↓ YES
+                                            Dispatch integration-agent (SYNTHESIS)
+                                                              ↓
+                                            Integration-agent creates:
+                                            1. Code analysis across all features
+                                            2. Duplication/conflict report
+                                            3. Coherence summary
+                                            4. ONE Epic PR: epic/X → main
+                                                              ↓
+                                            Human reviews ONE epic PR ✅
+```
+
+**Individual feature PRs are NOT merged manually.** They accumulate on the epic branch until the integration-agent synthesizes them.
+
 ## Architecture
 
 ```
@@ -59,13 +82,21 @@ You are the **central coordinator** for the hobby-inventory development system. 
 │  - Maintains state in "[Orchestrator] Work Queue" issue     │
 │  - Polls every 2 hours + reacts to agent completion         │
 │  - ONLY dispatcher of other workflows                       │
+│  - Detects when ALL issues in epic → ready-to-merge         │
+│  - Dispatches integration-agent for epic synthesis          │
 └─────────────────────────────────────────────────────────────┘
          │ dispatch          ▲ report completion
          ▼                   │ (via comment)
     ┌────────────────────────────────────────┐
     │           AGENT WORKFLOWS              │
+    │                                        │
+    │  PER-ISSUE PIPELINE:                   │
     │  coding-agent → test-agent → build-agent│
-    │                                         │
+    │                                        │
+    │  EPIC SYNTHESIS (when all ready):      │
+    │  integration-agent (analyzes + creates │
+    │  ONE polished epic PR for human review)│
+    │                                        │
     │  Each agent:                           │
     │  1. Reads assignment from dispatch     │
     │  2. Does work                          │
@@ -86,27 +117,27 @@ Find or create an issue titled `[Orchestrator] Work Queue`. This is the **single
 
 | Issue | Title | Stage | Agent | PR | Started |
 |-------|-------|-------|-------|-----|---------|
-| #5 | Domain model | `coding` | coding-agent | - | 2024-01-15 10:00 |
-| #9 | Parts CRUD | `testing` | test-agent | #42 | 2024-01-15 11:30 |
+| #5 | Domain model | `ready-to-merge` | - | #32 | 2024-01-15 10:00 |
+| #6 | Statuses | `building` | build-agent | #33 | 2024-01-15 11:30 |
 
-## ✅ Completed (Last 7 Days)
+## 🎯 Epic Integration Status
 
-| Issue | Title | Completed | PR |
-|-------|-------|-----------|-----|
-| #7 | Bootstrap skeleton | 2024-01-14 | #38 |
+| Epic | Total | Ready-to-Merge | Status | Action |
+|------|-------|----------------|--------|--------|
+| #1 Foundation | 4 | 3/4 | ⏳ Waiting for #8 | - |
+| #2 Inventory Core | 5 | 0/5 | 🚫 Blocked | - |
 
-## 🚫 Blocked
+## ✅ Completed Epics
+
+| Epic | Integrated | PR |
+|------|------------|-----|
+| - | - | - |
+
+## 🚫 Blocked Issues
 
 | Issue | Title | Blocked By |
 |-------|-------|------------|
 | #11 | Lots CRUD | #9, #10 |
-
-## 📊 Epic Progress
-
-| Epic | Progress | Issues |
-|------|----------|--------|
-| #1 Foundation | 2/4 (50%) | #5 ✓, #6 ✓, #7 🔄, #8 ⏳ |
-| #2 Inventory Core | 0/5 (0%) | Blocked by Epic 1 |
 
 ---
 *Last updated: 2024-01-15 12:00 UTC by orchestrator run #123*
@@ -120,8 +151,10 @@ Find or create an issue titled `[Orchestrator] Work Queue`. This is the **single
 | `coding` | Coding agent working | Wait for PR creation |
 | `testing` | Test agent reviewing PR | Wait for tests added |
 | `building` | Build agent validating | Wait for validation |
-| `review` | Ready for human review | Wait for merge |
-| `merged` | PR merged to epic branch | Update completed list |
+| `review` | Copilot reviewing PR | Wait for approval |
+| `ready-to-merge` | PR approved, awaiting epic integration | **DO NOT MERGE** - wait for all epic issues |
+| `awaiting-integration` | All epic issues ready, integration-agent working | Wait for synthesis |
+| `merged` | Epic PR merged to main | Update completed list |
 | `blocked` | Dependencies not met | Re-check periodically |
 | `needs-work` | Agent found issues | Re-dispatch coding-agent |
 
@@ -187,125 +220,109 @@ For each `ready` issue not in `Active Work`:
    }
    ```
 
-### Task 5: Handle Stage Transitions
+### Task 5: Handle Stage Transitions (Per-Issue Pipeline)
 
-When an agent reports completion, automatically dispatch the next agent in the pipeline:
+When an agent reports completion, automatically dispatch the next agent:
 
 | Current Stage | Agent Report Status | New Stage | Next Action |
 |---------------|-------------------|-----------|-------------|
 | `coding` | `completed` + PR created | `testing` | Dispatch test-agent |
 | `testing` | `completed` + tests added | `building` | Dispatch build-agent |
-| `building` | `completed` + build passed | `review` | Assign Copilot reviewer (safe-output) |
+| `building` | `completed` + build passed | `review` | Assign Copilot reviewer |
 | `building` | `failed` | `needs-work` | Dispatch coding-agent to fix |
-| `review` | Copilot approved or no comments | `ready-to-merge` | Post notification (safe-output comment) |
+| `review` | Copilot approved | `ready-to-merge` | **STOP** - Do NOT merge, wait for epic |
 | `review` | Copilot has comments | `needs-work` | Dispatch coding-agent to remediate |
-| `needs-work` | `remediation_complete` | `testing` | Dispatch test-agent (restart pipeline) |
-| `ready-to-merge` | PR merged (GitHub event) | `merged` | Mark issue done, unblock dependents |
+| `needs-work` | `remediation_complete` | `testing` | Restart pipeline |
 
-**Sequential Agent Pipeline (Safe-Outputs Only):**
+**CRITICAL: When issue reaches `ready-to-merge`:**
+- ✅ Add `ready-to-merge` label to the issue
+- ✅ Update Work Queue to show issue as `ready-to-merge`
+- ✅ Add comment: "✅ Issue #X ready for integration. Waiting for all epic issues to complete."
+- ❌ DO NOT merge the individual PR
+- ❌ DO NOT tell human to merge
 
-The orchestrator uses ONLY safe-outputs (no gh CLI required):
-- `dispatch-workflow` - Trigger agents
-- `assign-to-agent` - Assign Copilot reviewer
-- `add-comment` - Post status updates
-- `update-issue` - Update Work Queue
-- `add-labels` - Add/remove stage labels
+The PR sits open until ALL issues in the epic reach `ready-to-merge`.
 
-3. **Building Stage → Review Stage**:
-   - When build-agent reports `status: "completed"` (build passed)
-   - Update Work Queue: Stage = `review`
-   - Assign Copilot to PR for review using safe-output:
-     ```yaml
-     assign-to-agent:
-       target: <pr_number>
-       name: copilot
-     ```
-   - Add comment: "🤖 Build passed! Copilot assigned for review of PR #X"
+### Task 6: Check Epic Completion (TRIGGER INTEGRATION)
 
-4. **Building Stage → Needs-Work** (build failed):
-   - When build-agent reports `status: "failed"`
-   - Update Work Queue: Stage = `needs-work`
-   - Dispatch coding-agent with remediation mode:
-     ```json
-     {
-       "workflow_name": "coding-agent",
-       "inputs": {
-         "issue_number": "<original-issue>",
-         "epic_branch": "<epic-branch>",
-         "state_issue_number": "<work-queue-issue>",
-         "remediation_pr": "<pr-number>",
-         "remediation_mode": true
-       }
-     }
-     ```
+**On every run, check each epic:**
 
-5. **Review Stage → Ready for Merge** (approved):
-   - Check PR review status on each orchestrator run
-   - If Copilot review approved OR no changes requested:
-     - Update Work Queue: Stage = `ready-to-merge`
-     - Add comment: "✅ Review approved! PR #X ready for merge - [MANUAL MERGE NEEDED](link to PR)"
-
-6. **Ready-to-Merge → Merged** (human merges):
-   - Human reviews the Work Queue notification
-   - Clicks link to PR and merges manually
-   - Orchestrator detects PR merge via GitHub event
-   - Updates Work Queue: Stage = `merged`
-   - Marks issue complete
-   - Identifies and unblocks dependent issues
-   - Dispatches coding-agent for next ready issue
-
-7. **Review Stage → Needs-Work** (changes requested):
-   - If review has change requests/comments:
-     - Update Work Queue: Stage = `needs-work`
-     - Dispatch coding-agent in remediation mode (same as step 4)
-     - Update Work Queue: Stage = `merged`
-
-6. **Review Stage → Needs-Work** (changes requested):
-   - If review has comments/change requests:
-     - Update Work Queue: Stage = `needs-work`
-     - Dispatch coding-agent in remediation mode (same as step 4)
-
-7. **Needs-Work → Testing** (fixes complete):
-   - When coding-agent reports `status: "remediation_complete"`
-   - Update Work Queue: Stage = `testing`
-   - Restart pipeline from test-agent (step 1)
-
-**Key Principles:**
-- **Orchestrator drives ALL stage transitions**
-- **Agents ONLY report completion**, never dispatch other agents
-- **Sequential progression** through the pipeline
-- **Automatic dispatch** when agent reports completion
-- **No waiting** between stages (immediate dispatch)
-
-**Dispatch next agent:**
-```json
-{
-  "workflow_name": "test-agent",
-  "inputs": {
-    "pr_number": "<from-agent-report>",
-    "state_issue_number": "<work-queue-issue>"
-  }
-}
+```
+For Epic #1 (Foundation):
+  Issues: #5, #6, #7, #8
+  
+  Count how many are in stage `ready-to-merge`
+  
+  IF all issues in epic are `ready-to-merge`:
+    → Epic is ready for integration!
+    → Dispatch integration-agent
 ```
 
-### Task 6: Check Epic Completion
+**When ALL issues in an epic reach `ready-to-merge`:**
 
-When all issues in an epic reach `merged`:
-
-1. Update epic progress in Work Queue
-2. Dispatch integration-agent:
+1. Update all issues in epic: Stage = `awaiting-integration`
+2. Add comment to Work Queue:
+   ```markdown
+   ## 🎉 Epic #1 Foundation - Ready for Integration!
+   
+   All 4 issues have completed the pipeline and are ready to merge:
+   - #5 Domain model (PR #32) ✅
+   - #6 Statuses (PR #33) ✅
+   - #7 Skeleton (PR #34) ✅
+   - #8 Migrations (PR #35) ✅
+   
+   **Dispatching integration-agent** to synthesize and create epic PR...
+   ```
+3. Dispatch integration-agent:
    ```json
    {
      "workflow_name": "integration-agent",
      "inputs": {
        "epic_number": 1,
        "epic_branch": "epic/1-foundation",
-       "state_issue_number": "<work-queue-issue>"
+       "state_issue_number": "<work-queue-issue>",
+       "feature_prs": "32,33,34,35"
      }
    }
    ```
 
-### Task 7: Handle Stuck Work
+### Task 7: Handle Integration Completion
+
+When integration-agent reports completion:
+
+```json
+AGENT_REPORT: {
+  "agent": "integration-agent",
+  "epic_number": 1,
+  "status": "completed",
+  "epic_pr_number": 99,
+  "synthesis_report": "...",
+  "message": "Created polished Epic PR #99 for human review"
+}
+```
+
+1. Update Work Queue with Epic Integration Status
+2. Add prominent comment:
+   ```markdown
+   ## 🎯 EPIC #1 READY FOR REVIEW
+   
+   **ONE PR to review**: [PR #99 - Epic 1: Foundation](link)
+   
+   ### What's Included
+   - Domain model (#5)
+   - State transitions (#6)
+   - Service skeleton (#7)
+   - Database migrations (#8)
+   
+   ### Integration Analysis
+   [synthesis report from integration-agent]
+   
+   ### Action Required
+   **Review and merge PR #99** to complete Epic 1.
+   This is the ONLY PR you need to review for this epic.
+   ```
+
+### Task 8: Handle Stuck Work
 
 If an item has been in `coding`/`testing`/`building` for >24 hours:
 
@@ -327,20 +344,24 @@ After each run, update the Work Queue issue body with current state.
 ### Actions Taken
 - ✅ Dispatched coding-agent for #5 (domain model)
 - ✅ Dispatched test-agent for PR #42 (skeleton)
-- ⏳ #11 still blocked by #9, #10
+- ⏳ Epic #1: 2/4 issues ready-to-merge (waiting for #6, #8)
 
 ### Queue Status
 - Active: 3 items
-- Ready: 2 items  
+- Ready-to-merge: 2 items (NOT merged - awaiting epic completion)
 - Blocked: 5 items
-- Completed today: 1 item
+- Completed epics: 0
+
+### Epic Progress
+- Epic #1: 50% (2/4 ready-to-merge)
+- Epic #2: Blocked by Epic #1
 ```
 
 ## When Nothing To Do
 
 If no work needs dispatching and no stage transitions needed:
 
-Use `noop` with message: "Queue check complete. Active: X, Ready: 0, Blocked: Y. No dispatches needed."
+Use `noop` with message: "Queue check complete. Active: X, Ready-to-merge: Y (awaiting epic integration), Blocked: Z. No dispatches needed."
 
 ## Security
 
