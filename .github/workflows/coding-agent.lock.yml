@@ -125,7 +125,6 @@ jobs:
         env:
           GH_AW_PROMPT: /tmp/gh-aw/aw-prompts/prompt.txt
           GH_AW_SAFE_OUTPUTS: ${{ env.GH_AW_SAFE_OUTPUTS }}
-          GH_AW_EXPR_BEEA3E86: ${{ github.event.inputs.remediation_mode == 'true' && 'REMEDIATION' || 'IMPLEMENTATION' }}
           GH_AW_GITHUB_ACTOR: ${{ github.actor }}
           GH_AW_GITHUB_EVENT_COMMENT_ID: ${{ github.event.comment.id }}
           GH_AW_GITHUB_EVENT_DISCUSSION_NUMBER: ${{ github.event.discussion.number }}
@@ -198,7 +197,6 @@ jobs:
           GH_AW_PROMPT: /tmp/gh-aw/aw-prompts/prompt.txt
           GH_AW_GITHUB_EVENT_INPUTS_EPIC_BRANCH: ${{ github.event.inputs.epic_branch }}
           GH_AW_GITHUB_EVENT_INPUTS_ISSUE_NUMBER: ${{ github.event.inputs.issue_number }}
-          GH_AW_EXPR_BEEA3E86: ${{ github.event.inputs.remediation_mode == 'true' && 'REMEDIATION' || 'IMPLEMENTATION' }}
           GH_AW_GITHUB_EVENT_INPUTS_REMEDIATION_MODE: ${{ github.event.inputs.remediation_mode }}
           GH_AW_GITHUB_EVENT_INPUTS_REMEDIATION_PR: ${{ github.event.inputs.remediation_pr }}
           GH_AW_GITHUB_EVENT_INPUTS_STATE_ISSUE_NUMBER: ${{ github.event.inputs.state_issue_number }}
@@ -212,7 +210,6 @@ jobs:
         uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
         env:
           GH_AW_PROMPT: /tmp/gh-aw/aw-prompts/prompt.txt
-          GH_AW_EXPR_BEEA3E86: ${{ github.event.inputs.remediation_mode == 'true' && 'REMEDIATION' || 'IMPLEMENTATION' }}
           GH_AW_GITHUB_ACTOR: ${{ github.actor }}
           GH_AW_GITHUB_EVENT_COMMENT_ID: ${{ github.event.comment.id }}
           GH_AW_GITHUB_EVENT_DISCUSSION_NUMBER: ${{ github.event.discussion.number }}
@@ -237,7 +234,6 @@ jobs:
             return await substitutePlaceholders({
               file: process.env.GH_AW_PROMPT,
               substitutions: {
-                GH_AW_EXPR_BEEA3E86: process.env.GH_AW_EXPR_BEEA3E86,
                 GH_AW_GITHUB_ACTOR: process.env.GH_AW_GITHUB_ACTOR,
                 GH_AW_GITHUB_EVENT_COMMENT_ID: process.env.GH_AW_GITHUB_EVENT_COMMENT_ID,
                 GH_AW_GITHUB_EVENT_DISCUSSION_NUMBER: process.env.GH_AW_GITHUB_EVENT_DISCUSSION_NUMBER,

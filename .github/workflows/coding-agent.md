@@ -70,7 +70,9 @@ The orchestrator handles all workflow coordination. Your only responsibilities:
 
 ## Operating Mode
 
-**Mode**: ${{ github.event.inputs.remediation_mode == 'true' && 'REMEDIATION' || 'IMPLEMENTATION' }}
+**Remediation mode**: `${{ github.event.inputs.remediation_mode }}`
+
+If remediation mode is `true`, follow the **Remediation Workflow** below. Otherwise, follow the **Implementation Workflow**.
 
 ### Implementation Mode (Default)
 **Issue to implement**: #${{ github.event.inputs.issue_number }}
