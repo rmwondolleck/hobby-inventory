@@ -11,8 +11,6 @@ on:
         description: "Work Queue issue number for reporting"
         required: true
         type: number
-features:
-  copilot-requests: true
 permissions:
   contents: read
   pull-requests: read

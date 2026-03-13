@@ -8,8 +8,6 @@ on:
     types: [created]
   # Manual trigger for immediate orchestration
   workflow_dispatch:
-features:
-  copilot-requests: true
 permissions:
   contents: read
   issues: read
