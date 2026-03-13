@@ -17,9 +17,8 @@ if ($workQueue) {
     Write-Host "https://github.com/$repo/issues/28" -ForegroundColor Green
 
     # Parse active work from body
-    if ($workQueue.body -match "## 📋 Active Work\s*\n\n\|[^\|]+\|[^\|]+\|[^\|]+\|[^\|]+\|[^\|]+\|[^\|]+\|\n\|[-\s\|]+\|\n((?:\|[^\n]+\n)*)") {
-        $activeWork = $matches[1]
-        if ($activeWork -match "\|\s*-\s*\|") {
+    if ($workQueue.body -match "Active Work") {
+        if ($workQueue.body -match "\|\s*-\s*\|\s*-\s*\|") {
             Write-Host "  No active work yet" -ForegroundColor Yellow
         } else {
             Write-Host "  Active work in progress!" -ForegroundColor Green

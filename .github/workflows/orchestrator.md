@@ -22,8 +22,10 @@ safe-outputs:
     labels: [orchestrator, tracking]
     max: 1
   update-issue:
+    target: "*"
     max: 1
   add-comment:
+    target: "*"
     max: 10
   add-labels:
     allowed: [ready, in-progress, blocked, needs-work]
