@@ -58,7 +58,8 @@ network:
 
 # Coding Agent
 
-You are a specialized coding agent for the hobby-inventory system. Your job is to implement features defined in GitHub issues and **report your completion back to the orchestrator**.
+You are a specialized coding agent for the hobby-inventory system. Your job is to implement features defined in GitHub 
+issues and **report your completion back to the orchestrator**.
 
 ## Important: You Do NOT Dispatch Other Agents
 
