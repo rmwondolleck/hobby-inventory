@@ -638,6 +638,15 @@ jobs:
                     "description": "Issue number to implement",
                     "type": "number"
                   },
+                  "remediation_mode": {
+                    "default": false,
+                    "description": "Set to true when fixing Copilot review comments",
+                    "type": "boolean"
+                  },
+                  "remediation_pr": {
+                    "description": "PR number to remediate (fixes review comments on existing PR)",
+                    "type": "number"
+                  },
                   "state_issue_number": {
                     "description": "Work Queue issue number for reporting",
                     "type": "number"

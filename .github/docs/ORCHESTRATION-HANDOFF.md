@@ -4,12 +4,54 @@
 **Status**: ✅ **RUNNING** - Orchestrator successfully deployed and operational  
 **Repository**: https://github.com/rmwondolleck/hobby-inventory
 
-## 🚂 Current Status (March 13, 2026 02:30 UTC)
+## 🚂 Current Status (March 13, 2026 03:00 UTC)
 
-**Orchestrator Status**: ✅ Authenticated and running  
+**Orchestrator Status**: ✅ Authenticated and running with **AUTO-PROGRESSION enabled**  
 **Work Queue**: [Issue #28](https://github.com/rmwondolleck/hobby-inventory/issues/28)  
-**Current Work**: Issue #6 (Define statuses) - coding-agent dispatched at 02:13 UTC  
+**Current Work**: Issue #6 (Define statuses) - coding-agent dispatched  
 **Completed**: Issue #5 (Domain model) - PR #30 merged ✅, Issue #7 (Skeleton) - completed manually ✅
+
+### 🔄 Sequential Agent Pipeline (Automatic Progression)
+
+**Feature**: Orchestrator automatically progresses work through the full pipeline - **NO manual intervention required!**
+
+**How it works**:
+1. ✅ **Coding-agent completes** → Creates PR, reports back
+2. 🔄 **Orchestrator detects completion** → Immediately dispatches test-agent
+3. ✅ **Test-agent completes** → Adds tests, reports back
+4. 🔄 **Orchestrator detects completion** → Immediately dispatches build-agent
+5. ✅ **Build-agent completes** → Validates build, reports back
+6. 🤖 **Orchestrator requests Copilot review** → Automated code review
+7. 🔧 **If review has comments** → Orchestrator dispatches coding-agent in remediation mode
+8. 🔁 **Fixes pushed, pipeline restarts** → Goes through test → build → review again
+9. ✅ **Review approved** → Orchestrator auto-merges the PR
+10. 🎉 **Epic advances** → Next issue unblocks automatically
+
+**Benefits**:
+- Fully automated pipeline from issue → merge
+- No waiting between stages (immediate dispatch)
+- Orchestrator drives all transitions
+- Agents only report completion
+- Copilot review ensures quality before merge
+
+**Complete Stage Flow**:
+```
+ready → coding → testing → building → review → merging → merged
+           ↓                    ↓                  ↓
+           └──── needs-work ←───┴──────────────────┘
+                    ↓
+                 testing (restart pipeline)
+```
+
+**Stage Descriptions**:
+- `ready` - Issue dependencies met, waiting for orchestrator dispatch
+- `coding` - Coding-agent implementing feature
+- `testing` - Test-agent adding tests to PR
+- `building` - Build-agent validating build and tests pass
+- `review` - Awaiting Copilot review
+- `needs-work` - Build failed or review has comments, coding-agent fixing
+- `merging` - Review approved, auto-merge in progress
+- `merged` - PR merged, issue complete
 
 ### Recent Fix (March 13, 2026)
 
@@ -139,10 +181,14 @@ All pushed to origin:
 
 ### Stage Transitions (Orchestrator's responsibility)
 ```
-ready → coding → testing → building → review → merged
-                                 ↓
-                           needs-work (loops back to coding)
+ready → coding → testing → building → review → merging → merged
+           ↓                    ↓           ↓
+           └──── needs-work ←───┴───────────┘
+                    ↓
+                 testing (restart pipeline)
 ```
+
+**Automatic Progression**: When an agent reports completion, the orchestrator immediately dispatches the next agent in the pipeline. No waiting between stages.
 
 ---
 
