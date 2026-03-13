@@ -21,6 +21,8 @@ permissions:
   pull-requests: read
   actions: read
 tools:
+  edit:
+  bash:
   github:
     toolsets: [default]
 safe-outputs:
@@ -109,49 +111,70 @@ export async function GET(request: Request) {
 
 ### Step 3: Create Pull Request
 
-Use `create-pull-request` safe output:
+After making all code changes, create a PR using the `create-pull-request` safe output.
 
-**Title**: `feat(#${{ github.event.inputs.issue_number }}): [Brief description]`
+**IMPORTANT**: The safe-outputs system will automatically:
+1. Create a new branch from `${{ github.event.inputs.epic_branch }}`
+2. Apply your changes to that branch
+3. Create a pull request with your title and description
 
-**Body**:
-```markdown
-## Summary
-[2-3 sentences explaining implementation]
+**Output the PR details in this exact format:**
 
-## Changes
-- [List files created/modified]
-
-## Testing
-- [ ] Manually tested endpoints
-- [ ] Types compile without errors
-
-Closes #${{ github.event.inputs.issue_number }}
+```
+---
+create-pull-request:
+  title: "feat(#${{ github.event.inputs.issue_number }}): [Brief description]"
+  body: |
+    ## Summary
+    [2-3 sentences explaining implementation]
+    
+    ## Changes
+    - [List files created/modified]
+    
+    ## Testing
+    - [ ] Manually tested endpoints
+    - [ ] Types compile without errors
+    
+    Closes #${{ github.event.inputs.issue_number }}
+---
 ```
 
 ### Step 4: Report to Orchestrator (CRITICAL)
 
-After creating the PR, add a comment to the **Work Queue issue** (#${{ github.event.inputs.state_issue_number }}):
+After outputting the PR creation request above, add a comment to the **Work Queue issue** (#${{ github.event.inputs.state_issue_number }}) using the `add-comment` safe output.
 
-```markdown
-AGENT_REPORT: {
-  "agent": "coding-agent",
-  "issue": ${{ github.event.inputs.issue_number }},
-  "status": "completed",
-  "pr_number": [THE PR NUMBER YOU CREATED],
-  "branch": "${{ github.event.inputs.epic_branch }}",
-  "message": "Created PR implementing [brief description]"
-}
+**Output the AGENT_REPORT in this format:**
+
+```
+---
+add-comment:
+  target: ${{ github.event.inputs.state_issue_number }}
+  body: |
+    AGENT_REPORT: {
+      "agent": "coding-agent",
+      "issue": ${{ github.event.inputs.issue_number }},
+      "status": "completed",
+      "branch": "${{ github.event.inputs.epic_branch }}",
+      "message": "Implementation complete, PR will be created automatically"
+    }
+---
 ```
 
 **If you encounter an error and cannot complete:**
-```markdown
-AGENT_REPORT: {
-  "agent": "coding-agent",
-  "issue": ${{ github.event.inputs.issue_number }},
-  "status": "failed",
-  "error": "[Description of what went wrong]",
-  "message": "Failed to implement due to [reason]"
-}
+
+```
+---
+add-comment:
+  target: ${{ github.event.inputs.state_issue_number }}
+  body: |
+    AGENT_REPORT: {
+      "agent": "coding-agent",
+      "issue": ${{ github.event.inputs.issue_number }},
+      "status": "failed",
+      "error": "[Description of what went wrong]",
+      "message": "Failed to implement due to [reason]"
+    }
+---
 ```
 
 ## Guidelines
