@@ -32,6 +32,12 @@ safe-outputs:
     draft: true
     base-branch: ${{ github.event.inputs.epic_branch }}
     expires: 14
+    allowed-files:
+      - "**/*"
+      - "package.json"
+      - "package-lock.json"
+      - "prisma/schema.prisma"
+      - "prisma/migrations/**"
   add-comment:
     max: 3
 network:
