@@ -33,11 +33,6 @@ safe-outputs:
   dispatch-workflow:
     workflows: [coding-agent, test-agent, build-agent, integration-agent]
     max: 5
-  merge-pull-request:
-    method: squash
-    max: 5
-  request-copilot-review:
-    max: 5
 network:
   allowed:
     - defaults
@@ -235,9 +230,12 @@ When an agent reports completion, automatically dispatch the next agent in the p
 3. **Building Stage → Review Stage**:
    - When build-agent reports `status: "completed"` (build passed)
    - Update Work Queue: Stage = `review`
-   - Request GitHub Copilot review:
+   - Request GitHub Copilot review using GitHub tools:
      ```
-     Use GitHub tool: request_copilot_review(owner, repo, pr_number)
+     Use mcp_io_github_git_request_copilot_review tool:
+       owner: "rmwondolleck"
+       repo: "hobby-inventory"
+       pullNumber: <pr-number>
      ```
    - Add comment: "🤖 Build passed! Copilot review requested for PR #X"
 
@@ -259,10 +257,18 @@ When an agent reports completion, automatically dispatch the next agent in the p
      ```
 
 5. **Review Stage → Merging** (approved):
-   - Check PR review status on each orchestrator run
-   - If review approved OR no comments after 1+ hour:
+   - Check PR review status on each orchestrator run using GitHub tools
+   - Read reviews using: mcp_io_github_git_pull_request_read with method: "get_reviews"
+   - If review approved OR no comments/reviews after completion:
      - Update Work Queue: Stage = `merging`
-     - Merge the PR automatically using GitHub tools
+     - Merge the PR using GitHub tools:
+       ```
+       Use mcp_io_github_git_merge_pull_request tool:
+         owner: "rmwondolleck"
+         repo: "hobby-inventory"
+         pullNumber: <pr-number>
+         merge_method: "squash"
+       ```
      - Update Work Queue: Stage = `merged`
 
 6. **Review Stage → Needs-Work** (changes requested):
