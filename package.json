@@ -18,6 +18,7 @@
     "seed": "ts-node --compiler-options {\"module\":\"CommonJS\"} prisma/seed.ts"
   },
   "dependencies": {
+    "@prisma/client": "^6.5.0",
     "@types/node": "25.5.0",
     "@types/react": "19.2.14",
     "@types/react-dom": "19.2.3",
@@ -32,5 +33,9 @@
     "tailwind-merge": "^3.5.0",
     "tailwindcss": "4.2.1",
     "typescript": "5.9.3"
+  },
+  "devDependencies": {
+    "prisma": "^6.5.0",
+    "ts-node": "^10.9.2"
   }
 }
