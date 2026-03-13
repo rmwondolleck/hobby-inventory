@@ -761,6 +761,10 @@ jobs:
                     "description": "Epic issue number (e.g., 1, 2, 3, 4)",
                     "type": "number"
                   },
+                  "feature_prs": {
+                    "description": "Comma-separated list of feature PR numbers to synthesize",
+                    "type": "string"
+                  },
                   "state_issue_number": {
                     "description": "Work Queue issue number for reporting",
                     "type": "number"
@@ -769,6 +773,7 @@ jobs:
                 "required": [
                   "epic_branch",
                   "epic_number",
+                  "feature_prs",
                   "state_issue_number"
                 ],
                 "type": "object"
