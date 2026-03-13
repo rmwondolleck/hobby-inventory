@@ -165,6 +165,21 @@ Change to 2 or 5 as needed, recompile, push.
 
 Check the Work Queue issue #28 - look for comments explaining why.
 
+### Coding-Agent Fails With "Protected Files" Error? (FIXED March 13, 2026)
+
+**Error**: `Cannot create pull request: patch modifies protected files (package-lock.json, package.json)`
+
+**Fix Applied**: Added `allowed-files` configuration to permit package file modifications. Includes:
+- `package.json` and `package-lock.json` (for npm dependencies)
+- `prisma/schema.prisma` and `prisma/migrations/**` (for database changes)
+
+**If it happens with other files**:
+1. Edit `.github/workflows/coding-agent.md`
+2. Add the file pattern to `safe-outputs.create-pull-request.allowed-files`
+3. Run `gh aw compile coding-agent`
+4. Commit and push both `.md` and `.lock.yml` files
+5. Manually trigger orchestrator to retry: `gh workflow run orchestrator.lock.yml`
+
 ### Agent Stuck?
 
 - Check GitHub Actions for failed runs
