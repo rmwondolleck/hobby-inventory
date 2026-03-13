@@ -53,6 +53,7 @@ network:
   allowed:
     - defaults
     - node
+    - "binaries.prisma.sh"
 ---
 
 # Coding Agent
