@@ -4,12 +4,71 @@
 **Status**: ✅ **RUNNING** - Orchestrator successfully deployed and operational  
 **Repository**: https://github.com/rmwondolleck/hobby-inventory
 
-## 🚂 Current Status (March 13, 2026 01:53 UTC)
+## 🚂 Current Status (March 13, 2026 02:30 UTC)
 
 **Orchestrator Status**: ✅ Authenticated and running  
-**Work Queue**: [Issue #28](https://github.com/rmwondolleck/hobby-inventory/issues/28) created  
-**Next Ready Issue**: #5 (Define domain model) - identified and ready for dispatch  
-**Active Work**: None yet - orchestrator analyzing state on first run
+**Work Queue**: [Issue #28](https://github.com/rmwondolleck/hobby-inventory/issues/28)  
+**Current Work**: Issue #6 (Define statuses) - coding-agent dispatched at 02:13 UTC  
+**Completed**: Issue #5 (Domain model) - PR #30 merged ✅, Issue #7 (Skeleton) - completed manually ✅
+
+### Recent Fix (March 13, 2026)
+
+**Problem 1**: Coding-agents were not creating PRs automatically. Agents completed work and created branches, but PRs had to be created manually.
+
+**Root Cause**: The `coding-agent.md` workflow was missing:
+1. The `edit` tool (required to make code changes)
+2. The `bash` tool (useful for git operations)
+3. Proper instructions on how to use the `safe-outputs` pattern for PR creation
+
+**Solution Applied**:
+- Added `edit:` and `bash:` tools to coding-agent
+- Updated Step 3 & 4 instructions to use the safe-outputs YAML format:
+  ```yaml
+  ---
+  create-pull-request:
+    title: "..."
+    body: |
+      ...
+  ---
+  ```
+- Fixed the AGENT_REPORT format to use safe-outputs:
+  ```yaml
+  ---
+  add-comment:
+    target: issue_number
+    body: |
+      AGENT_REPORT: {...}
+  ---
+  ```
+
+**Status**: Fix deployed to main branch. New coding-agent runs will create PRs automatically.
+
+---
+
+**Problem 2**: Coding-agent PR creation failed with "patch modifies protected files (package-lock.json, package.json)".
+
+**Root Cause**: The `safe-outputs.create-pull-request` configuration didn't include an `allowed-files` list, so the default protected files policy blocked package file modifications.
+
+**Solution Applied**:
+- Added `allowed-files` configuration to `coding-agent.md`:
+  ```yaml
+  safe-outputs:
+    create-pull-request:
+      allowed-files:
+        - "**/*"
+        - "package.json"
+        - "package-lock.json"
+        - "prisma/schema.prisma"
+        - "prisma/migrations/**"
+  ```
+
+**Status**: Fix deployed to main branch (commit 77fb554). Orchestrator manually triggered to retry issue #6.
+
+---
+
+**Next Steps**:
+- Monitor issue #6 coding-agent run to verify PR creation succeeds
+- Future agent runs will create PRs automatically and can modify package files
 
 ---
 

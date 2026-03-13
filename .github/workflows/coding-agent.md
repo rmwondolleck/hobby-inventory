@@ -22,7 +22,7 @@ permissions:
   actions: read
 tools:
   edit:
-  bash:
+  bash: true
   github:
     toolsets: [default]
 safe-outputs:
@@ -31,7 +31,7 @@ safe-outputs:
     labels: [automated]
     draft: true
     base-branch: ${{ github.event.inputs.epic_branch }}
-    expires: 14
+    expires: 14d
     allowed-files:
       - "**/*"
       - "package.json"

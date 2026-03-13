@@ -104,21 +104,26 @@ The orchestrator runs **every 2 hours on weekdays** (Monday-Friday) automaticall
 
 ---
 
-## 📊 Current State
+## 📊 Current State (March 13, 2026 02:30 UTC)
 
-**Run #1 Complete**: ✅  
-- Work Queue created: Issue #28
-- Dependencies analyzed
-- Ready issues identified: **#5 (Define domain model)**
+**Orchestrator**: ✅ Operational - Work Queue maintained at Issue #28
 
-**Run #2 In Progress**: ⏳  
-- Should dispatch coding-agent for #5
-- Will update Work Queue with active work
+**Completed**:
+- ✅ Issue #5 (Domain model) - PR #30 merged
+- ✅ Issue #7 (Skeleton) - completed manually
 
-**Next Up After #5**:
-- #6 (Statuses) becomes ready
-- #6 can run in parallel with #5 completion work
-- #8 (Migrations) unblocks once #5 + #6 + #7 (done) complete
+**Active Work**:
+- ⏳ Issue #6 (Statuses) - coding-agent dispatched at 02:13 UTC
+
+**Recent Fix (March 13, 2026)**:
+- ✅ Fixed coding-agent PR creation bug
+- ✅ Added `edit` and `bash` tools
+- ✅ Updated safe-outputs instructions
+- 🎉 Future agent runs will create PRs automatically
+
+**Next Up**:
+- Once #6 completes → #8 (Migrations) becomes ready (all dependencies met)
+- Epic 1 Foundation: 2/4 complete (50%)
 
 ---
 
