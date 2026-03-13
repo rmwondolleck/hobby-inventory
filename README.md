@@ -143,12 +143,47 @@ npx prisma migrate dev
 # Reset database (drops all data)
 npm run db:reset
 
+# Seed database with demo data
+npm run db:seed
+
 # Open Prisma Studio
 npx prisma studio
 
 # Generate Prisma Client
 npx prisma generate
 ```
+
+### Migration Rollback Strategy
+
+Prisma migrations are forward-only by design. To rollback a migration:
+
+**Option 1: Reset and replay (Development only)**
+```bash
+# Drop database and replay all migrations
+npm run db:reset
+```
+
+**Option 2: Create a new migration to undo changes**
+```bash
+# Modify schema.prisma to reflect desired state
+# Create new migration
+npx prisma migrate dev --name rollback_feature_xyz
+```
+
+**Option 3: Restore from backup (Production)**
+```bash
+# Stop application
+# Restore database from backup
+# Run prisma migrate resolve to mark migrations
+npx prisma migrate resolve --rolled-back 20260313140508_migration_name
+```
+
+**Best Practices:**
+- Test migrations in development before production
+- Back up production database before migrations
+- Use `npx prisma migrate deploy` in production (not `dev`)
+- Keep migrations small and reversible when possible
+- Document breaking changes in migration comments
 
 ## Development
 
