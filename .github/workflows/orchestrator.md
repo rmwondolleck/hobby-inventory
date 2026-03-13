@@ -33,6 +33,11 @@ safe-outputs:
   dispatch-workflow:
     workflows: [coding-agent, test-agent, build-agent, integration-agent]
     max: 5
+  assign-to-agent:
+    name: "copilot"
+    allowed: [copilot]
+    max: 10
+    target: "*"
 network:
   allowed:
     - defaults
@@ -190,54 +195,32 @@ When an agent reports completion, automatically dispatch the next agent in the p
 |---------------|-------------------|-----------|-------------|
 | `coding` | `completed` + PR created | `testing` | Dispatch test-agent |
 | `testing` | `completed` + tests added | `building` | Dispatch build-agent |
-| `building` | `completed` + build passed | `review` | Request Copilot review |
+| `building` | `completed` + build passed | `review` | Assign Copilot reviewer (safe-output) |
 | `building` | `failed` | `needs-work` | Dispatch coding-agent to fix |
-| `review` | Review has comments | `needs-work` | Dispatch coding-agent to remediate |
+| `review` | Copilot approved or no comments | `ready-to-merge` | Post notification (safe-output comment) |
+| `review` | Copilot has comments | `needs-work` | Dispatch coding-agent to remediate |
 | `needs-work` | `remediation_complete` | `testing` | Dispatch test-agent (restart pipeline) |
-| `review` | Review approved / no comments | `merging` | Auto-merge PR |
-| `merging` | PR merged | `merged` | Check epic completion |
+| `ready-to-merge` | PR merged (GitHub event) | `merged` | Mark issue done, unblock dependents |
 
-**Sequential Agent Pipeline:**
+**Sequential Agent Pipeline (Safe-Outputs Only):**
 
-1. **Coding Stage → Testing Stage**:
-   - When coding-agent reports `status: "completed"` with `pr_number`
-   - Update Work Queue: Stage = `testing`
-   - Dispatch test-agent immediately:
-     ```json
-     {
-       "workflow_name": "test-agent",
-       "inputs": {
-         "pr_number": "<from-agent-report>",
-         "state_issue_number": "<work-queue-issue>"
-       }
-     }
-     ```
-
-2. **Testing Stage → Building Stage**:
-   - When test-agent reports `status: "completed"`
-   - Update Work Queue: Stage = `building`
-   - Dispatch build-agent immediately:
-     ```json
-     {
-       "workflow_name": "build-agent",
-       "inputs": {
-         "pr_number": "<pr-number>",
-         "state_issue_number": "<work-queue-issue>"
-       }
-     }
-     ```
+The orchestrator uses ONLY safe-outputs (no gh CLI required):
+- `dispatch-workflow` - Trigger agents
+- `assign-to-agent` - Assign Copilot reviewer
+- `add-comment` - Post status updates
+- `update-issue` - Update Work Queue
+- `add-labels` - Add/remove stage labels
 
 3. **Building Stage → Review Stage**:
    - When build-agent reports `status: "completed"` (build passed)
    - Update Work Queue: Stage = `review`
-   - Request GitHub Copilot review using GitHub tools:
+   - Assign Copilot to PR for review using safe-output:
+     ```yaml
+     assign-to-agent:
+       target: <pr_number>
+       name: copilot
      ```
-     Use mcp_io_github_git_request_copilot_review tool:
-       owner: "rmwondolleck"
-       repo: "hobby-inventory"
-       pullNumber: <pr-number>
-     ```
-   - Add comment: "🤖 Build passed! Copilot review requested for PR #X"
+   - Add comment: "🤖 Build passed! Copilot assigned for review of PR #X"
 
 4. **Building Stage → Needs-Work** (build failed):
    - When build-agent reports `status: "failed"`
@@ -256,19 +239,25 @@ When an agent reports completion, automatically dispatch the next agent in the p
      }
      ```
 
-5. **Review Stage → Merging** (approved):
-   - Check PR review status on each orchestrator run using GitHub tools
-   - Read reviews using: mcp_io_github_git_pull_request_read with method: "get_reviews"
-   - If review approved OR no comments/reviews after completion:
-     - Update Work Queue: Stage = `merging`
-     - Merge the PR using GitHub tools:
-       ```
-       Use mcp_io_github_git_merge_pull_request tool:
-         owner: "rmwondolleck"
-         repo: "hobby-inventory"
-         pullNumber: <pr-number>
-         merge_method: "squash"
-       ```
+5. **Review Stage → Ready for Merge** (approved):
+   - Check PR review status on each orchestrator run
+   - If Copilot review approved OR no changes requested:
+     - Update Work Queue: Stage = `ready-to-merge`
+     - Add comment: "✅ Review approved! PR #X ready for merge - [MANUAL MERGE NEEDED](link to PR)"
+
+6. **Ready-to-Merge → Merged** (human merges):
+   - Human reviews the Work Queue notification
+   - Clicks link to PR and merges manually
+   - Orchestrator detects PR merge via GitHub event
+   - Updates Work Queue: Stage = `merged`
+   - Marks issue complete
+   - Identifies and unblocks dependent issues
+   - Dispatches coding-agent for next ready issue
+
+7. **Review Stage → Needs-Work** (changes requested):
+   - If review has change requests/comments:
+     - Update Work Queue: Stage = `needs-work`
+     - Dispatch coding-agent in remediation mode (same as step 4)
      - Update Work Queue: Stage = `merged`
 
 6. **Review Stage → Needs-Work** (changes requested):

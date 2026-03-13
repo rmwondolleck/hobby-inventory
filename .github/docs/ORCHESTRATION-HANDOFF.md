@@ -11,34 +11,35 @@
 **Current Work**: Issue #6 (Define statuses) - coding-agent dispatched  
 **Completed**: Issue #5 (Domain model) - PR #30 merged ✅, Issue #7 (Skeleton) - completed manually ✅
 
-### 🔄 Sequential Agent Pipeline (Automatic Progression)
+### 🔄 Sequential Agent Pipeline (Automatic Progression with Safe-Outputs Only)
 
-**Feature**: Orchestrator automatically progresses work through the full pipeline - **NO manual intervention required!**
+**Feature**: Orchestrator automatically progresses work through the full pipeline using ONLY safe-outputs (no gh CLI authentication needed)
 
 **How it works**:
-1. ✅ **Coding-agent completes** → Creates PR, reports back
-2. 🔄 **Orchestrator detects completion** → Immediately dispatches test-agent
-3. ✅ **Test-agent completes** → Adds tests, reports back
-4. 🔄 **Orchestrator detects completion** → Immediately dispatches build-agent
-5. ✅ **Build-agent completes** → Validates build, reports back
-6. 🤖 **Orchestrator requests Copilot review** → Automated code review
+1. ✅ **Coding-agent completes** → Creates PR via `create-pull-request` safe-output
+2. 🔄 **Orchestrator detects completion** → Immediately dispatches test-agent via `dispatch-workflow`
+3. ✅ **Test-agent completes** → Adds tests via `add-comment`
+4. 🔄 **Orchestrator detects completion** → Immediately dispatches build-agent via `dispatch-workflow`
+5. ✅ **Build-agent completes** → Validates build via `add-comment`
+6. 🤖 **Orchestrator assigns Copilot** → Uses `assign-to-agent` safe-output for review
 7. 🔧 **If review has comments** → Orchestrator dispatches coding-agent in remediation mode
 8. 🔁 **Fixes pushed, pipeline restarts** → Goes through test → build → review again
-9. ✅ **Review approved** → Orchestrator auto-merges the PR
-10. 🎉 **Epic advances** → Next issue unblocks automatically
+9. ✅ **Review approved** → Orchestrator posts "ready for merge" notification
+10. 👤 **Human merges PR** → Orchestrator detects merge event
+11. 🎉 **Epic advances** → Next issue unblocks automatically
 
 **Benefits**:
-- Fully automated pipeline from issue → merge
-- No waiting between stages (immediate dispatch)
-- Orchestrator drives all transitions
-- Agents only report completion
-- Copilot review ensures quality before merge
+- Fully automated pipeline from issue → ready-to-merge
+- Uses ONLY safe-outputs (no authentication needed)
+- No manual intervention until merge stage
+- Copilot ensures quality before merge
+- One human action: Click merge button
 
 **Complete Stage Flow**:
 ```
-ready → coding → testing → building → review → merging → merged
-           ↓                    ↓                  ↓
-           └──── needs-work ←───┴──────────────────┘
+ready → coding → testing → building → review → ready-to-merge → merged
+           ↓                    ↓           ↓
+           └──── needs-work ←───┴──────────┘
                     ↓
                  testing (restart pipeline)
 ```
@@ -48,9 +49,9 @@ ready → coding → testing → building → review → merging → merged
 - `coding` - Coding-agent implementing feature
 - `testing` - Test-agent adding tests to PR
 - `building` - Build-agent validating build and tests pass
-- `review` - Awaiting Copilot review
+- `review` - Copilot assigned, awaiting review
+- `ready-to-merge` - Copilot approved, awaiting human merge
 - `needs-work` - Build failed or review has comments, coding-agent fixing
-- `merging` - Review approved, auto-merge in progress
 - `merged` - PR merged, issue complete
 
 ### Recent Fix (March 13, 2026)

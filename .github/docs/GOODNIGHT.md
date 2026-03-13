@@ -8,9 +8,9 @@
 
 ## 🎯 What Just Got Deployed
 
-### ✅ Sequential Agent Pipeline
+### ✅ Sequential Agent Pipeline (Safe-Outputs Only)
 ```
-ready → coding → testing → building → review → merging → merged
+ready → coding → testing → building → review → ready-to-merge → merged
    ↓          ↓          ↓
    └── needs-work ←──────┘ (auto-fix + retry)
 ```
@@ -19,18 +19,21 @@ Every issue progresses through ALL stages automatically:
 - **coding-agent** creates the feature
 - **test-agent** adds comprehensive tests
 - **build-agent** validates everything works
-- **Copilot** reviews the code (via GitHub tools)
-- **orchestrator** auto-merges when approved (via GitHub tools)
+- **Copilot** reviews the code (via safe-output assign-to-agent)
+- **You merge** the PR when ready (one manual step!)
 
-### ✅ Auto-Merge Enabled
-- Review approved → PR merges automatically (using GitHub merge API)
-- No manual merge needed
-- Squash commits for clean history
+### ✅ Safe-Outputs Only
+- Uses GitHub safe-outputs (no gh CLI authentication needed)
+- Dispatch-workflow → trigger agents
+- assign-to-agent → assign Copilot reviewer
+- add-comment → post status updates
+- No external tools or permissions needed
 
-### ✅ Self-Healing
-- Build fails → auto-dispatch coding-agent to fix
-- Review has comments → auto-dispatch coding-agent to remediate
-- Pipeline restarts → full validation again
+### ✅ Ready-to-Merge Notification
+- Build passes → Copilot assigned for review
+- Review approved → Orchestrator posts notification
+- You click merge → Orchestrator detects and advances
+- Zero downtime between stages
 
 ### ✅ Scheduled Runs
 - Every 2 hours (12 AM, 2 AM, 4 AM, 6 AM...)
@@ -46,10 +49,13 @@ Every issue progresses through ALL stages automatically:
 It will:
 1. Check if coding-agent for issue #6 completed
 2. If yes → dispatch test-agent for the PR
-3. Progress through test → build → review → merge
-4. Identify next ready issue (#8 once #6 merges)
-5. Dispatch coding-agent for #8
-6. Repeat the cycle
+3. Progress through test → build → review
+4. Assign Copilot for review
+5. When Copilot approves → post "Ready to merge" notification
+6. **You merge the PR** (one manual action!)
+7. Orchestrator detects merge → Issue #8 unblocks automatically
+8. Dispatch coding-agent for #8
+9. Repeat the cycle
 
 ---
 
