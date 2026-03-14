@@ -23,7 +23,7 @@
 #
 # Central coordinator that manages work queue, dispatches agents, and tracks state via a dedicated tracking issue
 #
-# gh-aw-metadata: {"schema_version":"v2","frontmatter_hash":"6e0ce2031ddcac57522e3e59b402d231e2bdb17f44ef902ed197374d4364a223","compiler_version":"v0.57.2","strict":true}
+# gh-aw-metadata: {"schema_version":"v2","frontmatter_hash":"808cadafd85fde00b10e924ce0b38ecd85057f5631825de0371f6ba8366f0e73","compiler_version":"v0.57.2","strict":true}
 
 name: "Development Orchestrator"
 "on":
@@ -149,7 +149,7 @@ jobs:
           cat "/opt/gh-aw/prompts/safe_outputs_prompt.md"
           cat << 'GH_AW_PROMPT_EOF'
           <safe-output-tools>
-          Tools: add_comment, create_issue, update_issue, add_labels, assign_to_agent, dispatch_workflow, missing_tool, missing_data, noop
+          Tools: add_comment, create_issue, update_issue, add_labels, add_reviewer, assign_to_agent, dispatch_workflow, missing_tool, missing_data, noop
           </safe-output-tools>
           <github-context>
           The following GitHub context information is available for this workflow:
@@ -346,7 +346,7 @@ jobs:
           mkdir -p /tmp/gh-aw/safeoutputs
           mkdir -p /tmp/gh-aw/mcp-logs/safeoutputs
           cat > /opt/gh-aw/safeoutputs/config.json << 'GH_AW_SAFE_OUTPUTS_CONFIG_EOF'
-          {"add_comment":{"max":10,"target":"*"},"add_labels":{"allowed":["ready","in-progress","blocked","needs-work","ready-to-merge","awaiting-integration"],"max":20},"assign_to_agent":{"allowed":["copilot"],"default_agent":"copilot","max":10,"target":"*"},"create_issue":{"max":1},"dispatch_workflow":{"max":10,"workflow_files":{"build-agent":".lock.yml","coding-agent":".lock.yml","integration-agent":".lock.yml","test-agent":".lock.yml"},"workflows":["coding-agent","test-agent","build-agent","integration-agent"]},"missing_data":{},"missing_tool":{},"noop":{"max":1},"update_issue":{"max":1}}
+          {"add_comment":{"max":10,"target":"*"},"add_labels":{"allowed":["ready","in-progress","blocked","needs-work","ready-to-merge","awaiting-integration"],"max":20},"add_reviewer":{"max":10,"reviewers":["copilot"]},"assign_to_agent":{"allowed":["copilot"],"default_agent":"copilot","max":10,"target":"*"},"create_issue":{"max":1},"dispatch_workflow":{"max":10,"workflow_files":{"build-agent":".lock.yml","coding-agent":".lock.yml","integration-agent":".lock.yml","test-agent":".lock.yml"},"workflows":["coding-agent","test-agent","build-agent","integration-agent"]},"missing_data":{},"missing_tool":{},"noop":{"max":1},"update_issue":{"max":1}}
           GH_AW_SAFE_OUTPUTS_CONFIG_EOF
           cat > /opt/gh-aw/safeoutputs/tools.json << 'GH_AW_SAFE_OUTPUTS_TOOLS_EOF'
           [
@@ -464,6 +464,41 @@ jobs:
                 "type": "object"
               },
               "name": "add_labels"
+            },
+            {
+              "description": "Add reviewers to a GitHub pull request. Reviewers receive notifications and can approve or request changes. Use 'copilot' as a reviewer name to request the Copilot PR review bot. CONSTRAINTS: Maximum 10 reviewer(s) can be added.",
+              "inputSchema": {
+                "additionalProperties": false,
+                "properties": {
+                  "integrity": {
+                    "description": "Trustworthiness level of the message source (e.g., \"low\", \"medium\", \"high\").",
+                    "type": "string"
+                  },
+                  "pull_request_number": {
+                    "description": "Pull request number to add reviewers to. This is the numeric ID from the GitHub URL (e.g., 876 in github.com/owner/repo/pull/876). If omitted, adds reviewers to the PR that triggered this workflow. Only works for pull_request event triggers. For workflow_dispatch, schedule, or other triggers, pull_request_number is required — omitting it will silently skip the reviewer assignment.",
+                    "type": [
+                      "number",
+                      "string"
+                    ]
+                  },
+                  "reviewers": {
+                    "description": "GitHub usernames to add as reviewers (e.g., ['octocat', 'copilot']). Users must have access to the repository.",
+                    "items": {
+                      "type": "string"
+                    },
+                    "type": "array"
+                  },
+                  "secrecy": {
+                    "description": "Confidentiality level of the message content (e.g., \"public\", \"internal\", \"private\").",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "reviewers"
+                ],
+                "type": "object"
+              },
+              "name": "add_reviewer"
             },
             {
               "description": "Assign the GitHub Copilot coding agent to work on an issue or pull request. The agent will analyze the issue/PR and attempt to implement a solution, creating a pull request when complete. Use this to delegate coding tasks to Copilot. Example usage: assign_to_agent(issue_number=123, agent=\"copilot\") or assign_to_agent(pull_number=456, agent=\"copilot\", pull_request_repo=\"owner/repo\") CONSTRAINTS: Maximum 10 issue(s) can be assigned to agent.",
@@ -834,6 +869,25 @@ jobs:
                 "repo": {
                   "type": "string",
                   "maxLength": 256
+                }
+              }
+            },
+            "add_reviewer": {
+              "defaultMax": 3,
+              "fields": {
+                "pull_request_number": {
+                  "issueOrPRNumber": true
+                },
+                "repo": {
+                  "type": "string",
+                  "maxLength": 256
+                },
+                "reviewers": {
+                  "required": true,
+                  "type": "array",
+                  "itemType": "string",
+                  "itemSanitize": true,
+                  "itemMaxLength": 39
                 }
               }
             },
@@ -1559,6 +1613,7 @@ jobs:
       GH_AW_WORKFLOW_ID: "orchestrator"
       GH_AW_WORKFLOW_NAME: "Development Orchestrator"
     outputs:
+      add_reviewer_reviewers_added: ${{ steps.process_safe_outputs.outputs.reviewers_added }}
       assign_to_agent_assigned: ${{ steps.assign_to_agent.outputs.assigned }}
       assign_to_agent_assignment_error_count: ${{ steps.assign_to_agent.outputs.assignment_error_count }}
       assign_to_agent_assignment_errors: ${{ steps.assign_to_agent.outputs.assignment_errors }}
@@ -1598,7 +1653,7 @@ jobs:
           GH_AW_ALLOWED_DOMAINS: "api.business.githubcopilot.com,api.enterprise.githubcopilot.com,api.github.com,api.githubcopilot.com,api.individual.githubcopilot.com,api.snapcraft.io,archive.ubuntu.com,azure.archive.ubuntu.com,crl.geotrust.com,crl.globalsign.com,crl.identrust.com,crl.sectigo.com,crl.thawte.com,crl.usertrust.com,crl.verisign.com,crl3.digicert.com,crl4.digicert.com,crls.ssl.com,github.com,host.docker.internal,json-schema.org,json.schemastore.org,keyserver.ubuntu.com,ocsp.digicert.com,ocsp.geotrust.com,ocsp.globalsign.com,ocsp.identrust.com,ocsp.sectigo.com,ocsp.ssl.com,ocsp.thawte.com,ocsp.usertrust.com,ocsp.verisign.com,packagecloud.io,packages.cloud.google.com,packages.microsoft.com,ppa.launchpad.net,raw.githubusercontent.com,registry.npmjs.org,s.symcb.com,s.symcd.com,security.ubuntu.com,telemetry.enterprise.githubcopilot.com,ts-crl.ws.symantec.com,ts-ocsp.ws.symantec.com"
           GITHUB_SERVER_URL: ${{ github.server_url }}
           GITHUB_API_URL: ${{ github.api_url }}
-          GH_AW_SAFE_OUTPUTS_HANDLER_CONFIG: "{\"add_comment\":{\"max\":10,\"target\":\"*\"},\"add_labels\":{\"allowed\":[\"ready\",\"in-progress\",\"blocked\",\"needs-work\",\"ready-to-merge\",\"awaiting-integration\"],\"max\":20},\"create_issue\":{\"labels\":[\"orchestrator\",\"tracking\"],\"max\":1,\"title_prefix\":\"[Orchestrator] \"},\"dispatch_workflow\":{\"max\":10,\"workflow_files\":{\"build-agent\":\".lock.yml\",\"coding-agent\":\".lock.yml\",\"integration-agent\":\".lock.yml\",\"test-agent\":\".lock.yml\"},\"workflows\":[\"coding-agent\",\"test-agent\",\"build-agent\",\"integration-agent\"]},\"missing_data\":{},\"missing_tool\":{},\"update_issue\":{\"allow_body\":true,\"max\":1,\"target\":\"*\"}}"
+          GH_AW_SAFE_OUTPUTS_HANDLER_CONFIG: "{\"add_comment\":{\"max\":10,\"target\":\"*\"},\"add_labels\":{\"allowed\":[\"ready\",\"in-progress\",\"blocked\",\"needs-work\",\"ready-to-merge\",\"awaiting-integration\"],\"max\":20},\"add_reviewer\":{\"allowed\":[\"copilot\"],\"max\":10,\"target\":\"*\"},\"create_issue\":{\"labels\":[\"orchestrator\",\"tracking\"],\"max\":1,\"title_prefix\":\"[Orchestrator] \"},\"dispatch_workflow\":{\"max\":10,\"workflow_files\":{\"build-agent\":\".lock.yml\",\"coding-agent\":\".lock.yml\",\"integration-agent\":\".lock.yml\",\"test-agent\":\".lock.yml\"},\"workflows\":[\"coding-agent\",\"test-agent\",\"build-agent\",\"integration-agent\"]},\"missing_data\":{},\"missing_tool\":{},\"update_issue\":{\"allow_body\":true,\"max\":1,\"target\":\"*\"}}"
         with:
           github-token: ${{ secrets.GH_AW_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
           script: |
@@ -1616,6 +1671,7 @@ jobs:
           GH_AW_AGENT_DEFAULT: "copilot"
           GH_AW_AGENT_TARGET: "*"
           GH_AW_AGENT_ALLOWED: "copilot"
+          GH_AW_AGENT_IGNORE_IF_ERROR: "true"
           GH_AW_TEMPORARY_ID_MAP: ${{ steps.process_safe_outputs.outputs.temporary_id_map }}
         with:
           github-token: ${{ secrets.GH_AW_AGENT_TOKEN || secrets.GH_AW_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
