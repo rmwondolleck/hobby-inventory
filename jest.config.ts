@@ -2,11 +2,8 @@ import type { Config } from 'jest';
 
 const config: Config = {
   preset: 'ts-jest',
-  // API route tests run in Node; use @jest-environment jsdom at the top of
-  // component tests to switch to the browser environment.
   testEnvironment: 'node',
   moduleNameMapper: {
-    // Resolve Next.js path alias @/ → src/
     '^@/(.*)$': '<rootDir>/src/$1',
   },
   testMatch: [
@@ -15,7 +12,7 @@ const config: Config = {
     '**/*.test.ts',
     '**/*.test.tsx',
   ],
-  setupFilesAfterFramework: ['<rootDir>/jest.setup.ts'],
+  setupFilesAfterEnv: ['<rootDir>/jest.setup.ts'],
   transform: {
     '^.+\\.tsx?$': [
       'ts-jest',
@@ -37,4 +34,3 @@ const config: Config = {
 };
 
 export default config;
-
