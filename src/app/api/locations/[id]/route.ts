@@ -53,6 +53,13 @@ export async function PATCH(request: Request, { params }: RouteParams) {
     );
   }
 
+  if (typeof body !== 'object' || body === null || Array.isArray(body)) {
+    return NextResponse.json(
+      { error: 'BadRequest', message: 'Request body must be a JSON object' },
+      { status: 400 }
+    );
+  }
+
   const { name, parentId, notes } = body as {
     name?: unknown;
     parentId?: unknown;
@@ -73,6 +80,14 @@ export async function PATCH(request: Request, { params }: RouteParams) {
     );
   }
 
+  // Normalize empty/whitespace string parentId to null
+  const resolvedParentId: string | null | undefined =
+    parentId === undefined
+      ? undefined
+      : typeof parentId === 'string' && parentId.trim() !== ''
+        ? parentId
+        : null;
+
   if (notes !== undefined && notes !== null && typeof notes !== 'string') {
     return NextResponse.json(
       { error: 'BadRequest', message: 'notes must be a string or null' },
@@ -81,7 +96,7 @@ export async function PATCH(request: Request, { params }: RouteParams) {
   }
 
   // Prevent making a location its own parent or creating a cycle
-  if (parentId && parentId === id) {
+  if (resolvedParentId && resolvedParentId === id) {
     return NextResponse.json(
       { error: 'BadRequest', message: 'A location cannot be its own parent' },
       { status: 400 }
@@ -89,10 +104,11 @@ export async function PATCH(request: Request, { params }: RouteParams) {
   }
 
   // Check that the new parentId exists
-  const newParentId = parentId !== undefined ? (parentId as string | null) : existing.parentId;
+  const newParentId = resolvedParentId !== undefined ? resolvedParentId : existing.parentId;
+  let fetchedParent: { id: string; path: string } | null = null;
   if (newParentId) {
-    const parent = await prisma.location.findUnique({ where: { id: newParentId } });
-    if (!parent) {
+    fetchedParent = await prisma.location.findUnique({ where: { id: newParentId } });
+    if (!fetchedParent) {
       return NextResponse.json(
         { error: 'NotFound', message: 'Parent location not found' },
         { status: 404 }
@@ -110,25 +126,27 @@ export async function PATCH(request: Request, { params }: RouteParams) {
   }
 
   const newName = name !== undefined ? (name as string).trim() : existing.name;
-  const newParentPath = newParentId
-    ? (await prisma.location.findUnique({ where: { id: newParentId } }))!.path
-    : undefined;
+  const newParentPath = fetchedParent ? fetchedParent.path : undefined;
   const newPath = buildLocationPath(newName, newParentPath);
 
-  const updated = await prisma.location.update({
-    where: { id },
-    data: {
-      name: newName,
-      parentId: newParentId,
-      path: newPath,
-      ...(notes !== undefined && { notes: notes as string | null }),
-    },
-  });
+  const updated = await prisma.$transaction(async (tx) => {
+    const result = await tx.location.update({
+      where: { id },
+      data: {
+        name: newName,
+        parentId: newParentId,
+        path: newPath,
+        ...(notes !== undefined && { notes: notes as string | null }),
+      },
+    });
 
-  // Propagate path changes to all descendants
-  if (newPath !== existing.path) {
-    await propagatePathUpdate(id, existing.path, newPath);
-  }
+    // Propagate path changes to all descendants
+    if (newPath !== existing.path) {
+      await propagatePathUpdate(tx, id, existing.path, newPath);
+    }
+
+    return result;
+  });
 
   return NextResponse.json({ data: updated });
 }
@@ -191,22 +209,27 @@ async function checkIsDescendant(ancestorId: string, candidateId: string): Promi
   return false;
 }
 
+type TransactionClient = Parameters<Parameters<typeof prisma.$transaction>[0]>[0];
+
 /** Update path of all descendants when a location's path changes */
 async function propagatePathUpdate(
+  tx: TransactionClient,
   locationId: string,
   oldPath: string,
   newPath: string
 ): Promise<void> {
-  const children = await prisma.location.findMany({
+  const children = await tx.location.findMany({
     where: { parentId: locationId },
   });
 
   for (const child of children) {
-    const updatedChildPath = child.path.replace(oldPath, newPath);
-    await prisma.location.update({
+    const updatedChildPath = child.path.startsWith(oldPath)
+      ? newPath + child.path.slice(oldPath.length)
+      : child.path;
+    await tx.location.update({
       where: { id: child.id },
       data: { path: updatedChildPath },
     });
-    await propagatePathUpdate(child.id, child.path, updatedChildPath);
+    await propagatePathUpdate(tx, child.id, child.path, updatedChildPath);
   }
 }
