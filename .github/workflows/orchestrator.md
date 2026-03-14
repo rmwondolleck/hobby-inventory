@@ -41,6 +41,11 @@ safe-outputs:
     allowed: [copilot]
     max: 10
     target: "*"
+    ignore-if-error: true
+  add-reviewer:
+    reviewers: [copilot]
+    max: 10
+    target: "*"
 network:
   allowed:
     - defaults
@@ -284,7 +289,8 @@ The coding-agent's AGENT_REPORT may NOT contain `pr_number` because the PR is cr
 ```
 
 **Building → Review**: When build-agent reports `result: "passed"`:
-- Use `assign-to-agent` safe output to assign Copilot to review PR #<pr_number>
+- Use `add-reviewer` safe output to request Copilot review on PR #<pr_number>. The agent output must specify `item_number` (the PR number) and `reviewer: "copilot"`.
+- As a fallback, also use `assign-to-agent` with `item_number` set to the issue number (not the PR number).
 
 **Building → Needs-Work**: When build-agent reports `result: "failed"`:
 ```json
