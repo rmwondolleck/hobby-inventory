@@ -62,6 +62,8 @@ safe-outputs:
       - "package-lock.json"
       - "prisma/schema.prisma"
       - "prisma/migrations/**"
+checkout:
+  ref: ${{ github.event.inputs.epic_branch }}
 network:
   allowed:
     - defaults
