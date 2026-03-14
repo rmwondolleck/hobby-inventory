@@ -54,6 +54,7 @@ safe-outputs:
   push-to-pull-request-branch:
     target: "*"
     commit-title-suffix: "[fix]"
+    protected-files: fallback-to-issue
     allowed-files:
       - "*"
       - "**/*"
