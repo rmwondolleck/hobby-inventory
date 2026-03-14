@@ -41,6 +41,12 @@ safe-outputs:
       - "package-lock.json"
       - "prisma/schema.prisma"
       - "prisma/migrations/**"
+      - "jest.config.ts"
+      - "jest.setup.ts"
+      - "postcss.config.js"
+      - "next.config.js"
+      - "tailwind.config.ts"
+      - "tsconfig.json"
   add-comment:
     target: "*"
     max: 5
