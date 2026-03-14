@@ -1,19 +1,28 @@
 import { GET, PATCH, DELETE } from '../route';
 
-// Mock Prisma
-const mockPrisma = {
-  location: {
-    findUnique: jest.fn(),
-    findMany: jest.fn(),
-    update: jest.fn(),
-    delete: jest.fn(),
-  },
-};
-
+// Mock Prisma — factory must not reference outer variables (jest.mock is hoisted)
 jest.mock('@/lib/db', () => ({
   __esModule: true,
-  default: mockPrisma,
+  default: {
+    location: {
+      findUnique: jest.fn(),
+      findMany: jest.fn(),
+      update: jest.fn(),
+      delete: jest.fn(),
+    },
+    $transaction: jest.fn(),
+  },
 }));
+
+const mockPrisma = jest.requireMock('@/lib/db').default as {
+  location: {
+    findUnique: jest.Mock;
+    findMany: jest.Mock;
+    update: jest.Mock;
+    delete: jest.Mock;
+  };
+  $transaction: jest.Mock;
+};
 
 const makeRequest = (url: string, options?: RequestInit) =>
   new Request(url, options);
@@ -41,7 +50,11 @@ const childLocation = {
 };
 
 beforeEach(() => {
-  jest.clearAllMocks();
+  jest.resetAllMocks();
+  // $transaction executes the callback with the same mock client
+  mockPrisma.$transaction.mockImplementation(
+    (fn: (tx: typeof mockPrisma) => Promise<unknown>) => fn(mockPrisma)
+  );
 });
 
 describe('GET /api/locations/[id]', () => {
@@ -126,6 +139,23 @@ describe('PATCH /api/locations/[id]', () => {
     expect(body.error).toBe('BadRequest');
   });
 
+  it('returns 400 when body is null JSON', async () => {
+    mockPrisma.location.findUnique.mockResolvedValueOnce(sampleLocation);
+
+    const response = await PATCH(
+      makeRequest('http://localhost/api/locations/loc-1', {
+        method: 'PATCH',
+        body: 'null',
+        headers: { 'Content-Type': 'application/json' },
+      }),
+      makeParams('loc-1')
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(body.error).toBe('BadRequest');
+  });
+
   it('returns 400 when name is empty string', async () => {
     mockPrisma.location.findUnique.mockResolvedValueOnce(sampleLocation);
 
@@ -171,6 +201,29 @@ describe('PATCH /api/locations/[id]', () => {
     );
 
     expect(response.status).toBe(400);
+  });
+
+  it('normalizes empty string parentId to null (removes parent) in PATCH', async () => {
+    const locationWithParent = { ...childLocation };
+    const updated = { ...childLocation, parentId: null, path: 'Shelf 1' };
+    mockPrisma.location.findUnique.mockResolvedValueOnce(locationWithParent);
+    mockPrisma.location.update.mockResolvedValueOnce(updated);
+    mockPrisma.location.findMany.mockResolvedValueOnce([]);
+
+    const response = await PATCH(
+      makeRequest('http://localhost/api/locations/loc-2', {
+        method: 'PATCH',
+        body: JSON.stringify({ parentId: '' }),
+      }),
+      makeParams('loc-2')
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(mockPrisma.location.update).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ parentId: null }) })
+    );
+    expect(body.data.parentId).toBeNull();
   });
 
   it('returns 400 when setting a location as its own parent', async () => {

@@ -90,6 +90,10 @@ export async function POST(request: Request) {
     );
   }
 
+  // Normalize empty/whitespace string parentId to null
+  const resolvedParentId: string | null =
+    typeof parentId === 'string' && parentId.trim() !== '' ? parentId : null;
+
   if (notes !== undefined && notes !== null && typeof notes !== 'string') {
     return NextResponse.json(
       { error: 'BadRequest', message: 'notes must be a string or null' },
@@ -98,8 +102,8 @@ export async function POST(request: Request) {
   }
 
   let path: string;
-  if (parentId) {
-    const parent = await prisma.location.findUnique({ where: { id: parentId as string } });
+  if (resolvedParentId) {
+    const parent = await prisma.location.findUnique({ where: { id: resolvedParentId } });
     if (!parent) {
       return NextResponse.json(
         { error: 'NotFound', message: 'Parent location not found' },
@@ -114,7 +118,7 @@ export async function POST(request: Request) {
   const location = await prisma.location.create({
     data: {
       name: name.trim(),
-      parentId: (parentId as string | null) ?? null,
+      parentId: resolvedParentId,
       path,
       notes: (notes as string | null) ?? null,
     },

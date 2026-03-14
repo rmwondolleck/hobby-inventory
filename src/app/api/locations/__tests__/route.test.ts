@@ -1,18 +1,24 @@
 import { GET, POST } from '../route';
 
-// Mock Prisma
-const mockPrisma = {
-  location: {
-    findMany: jest.fn(),
-    findUnique: jest.fn(),
-    create: jest.fn(),
-  },
-};
-
+// Mock Prisma — factory must not reference outer variables (jest.mock is hoisted)
 jest.mock('@/lib/db', () => ({
   __esModule: true,
-  default: mockPrisma,
+  default: {
+    location: {
+      findMany: jest.fn(),
+      findUnique: jest.fn(),
+      create: jest.fn(),
+    },
+  },
 }));
+
+const mockPrisma = jest.requireMock('@/lib/db').default as {
+  location: {
+    findMany: jest.Mock;
+    findUnique: jest.Mock;
+    create: jest.Mock;
+  };
+};
 
 const makeRequest = (url: string, options?: RequestInit) =>
   new Request(url, options);
@@ -38,7 +44,7 @@ const childLocation = {
 };
 
 beforeEach(() => {
-  jest.clearAllMocks();
+  jest.resetAllMocks();
 });
 
 describe('GET /api/locations', () => {
@@ -229,5 +235,36 @@ describe('POST /api/locations', () => {
     );
 
     expect(response.status).toBe(201);
+  });
+
+  it('treats empty string parentId as null (creates root location)', async () => {
+    mockPrisma.location.create.mockResolvedValueOnce(sampleLocation);
+
+    const response = await POST(
+      makeRequest('http://localhost/api/locations', {
+        method: 'POST',
+        body: JSON.stringify({ name: 'Room A', parentId: '' }),
+      })
+    );
+
+    expect(response.status).toBe(201);
+    expect(mockPrisma.location.findUnique).not.toHaveBeenCalled();
+    expect(mockPrisma.location.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({ parentId: null }),
+    });
+  });
+
+  it('returns 400 when body is null JSON', async () => {
+    const response = await POST(
+      makeRequest('http://localhost/api/locations', {
+        method: 'POST',
+        body: 'null',
+        headers: { 'Content-Type': 'application/json' },
+      })
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(body.error).toBe('BadRequest');
   });
 });
