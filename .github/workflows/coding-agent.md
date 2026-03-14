@@ -53,6 +53,12 @@ safe-outputs:
   push-to-pull-request-branch:
     target: "*"
     commit-title-suffix: "[fix]"
+    allowed-files:
+      - "**/*"
+      - "package.json"
+      - "package-lock.json"
+      - "prisma/schema.prisma"
+      - "prisma/migrations/**"
 network:
   allowed:
     - defaults

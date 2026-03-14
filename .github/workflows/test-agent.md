@@ -29,6 +29,12 @@ safe-outputs:
   push-to-pull-request-branch:
     target: ${{ github.event.inputs.pr_number }}
     commit-title-suffix: "[tests]"
+    allowed-files:
+      - "**/*"
+      - "package.json"
+      - "package-lock.json"
+      - "prisma/schema.prisma"
+      - "prisma/migrations/**"
   add-comment:
     target: "*"
     max: 3
