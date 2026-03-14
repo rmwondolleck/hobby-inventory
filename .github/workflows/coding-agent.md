@@ -41,6 +41,7 @@ safe-outputs:
     draft: true
     base-branch: ${{ github.event.inputs.epic_branch }}
     expires: 14d
+    protected-files: fallback-to-issue
     allowed-files:
       - "*"
       - "**/*"
