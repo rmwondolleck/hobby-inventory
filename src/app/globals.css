@@ -2,6 +2,33 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ============================================================
+   Print styles — applied when printing label pages
+   ============================================================ */
+@media print {
+  /* Hide the controls bar */
+  .no-print {
+    display: none !important;
+  }
+
+  /* Remove body background gradient on print pages */
+  body {
+    background: white !important;
+    color: black !important;
+  }
+
+  /* Ensure labels don't get split across pages */
+  .label-card {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  /* Remove page padding when printing */
+  .label-sheet {
+    padding: 4mm !important;
+  }
+}
+
 :root {
   --foreground-rgb: 0, 0, 0;
   --background-start-rgb: 214, 219, 220;
