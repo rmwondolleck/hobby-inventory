@@ -1,162 +1,145 @@
 # Orchestration System Handoff Document
 
-**Date**: March 12, 2026  
-**Status**: ✅ **RUNNING** - Orchestrator successfully deployed and operational  
-**Repository**: https://github.com/rmwondolleck/hobby-inventory
+**Date**: March 14, 2026 ~04:20 UTC  
+**Status**: ✅ **RUNNING** — Epic 2 pipeline in progress, both lead PRs build-passed, awaiting Copilot review  
+**Repository**: https://github.com/rmwondolleck/hobby-inventory  
+**Work Queue**: [Issue #28](https://github.com/rmwondolleck/hobby-inventory/issues/28)
 
-## 🚂 Current Status (March 13, 2026 03:00 UTC)
+---
 
-**Orchestrator Status**: ✅ Authenticated and running with **AUTO-PROGRESSION enabled**  
-**Work Queue**: [Issue #28](https://github.com/rmwondolleck/hobby-inventory/issues/28)  
-**Current Work**: Issue #6 (Define statuses) - coding-agent dispatched  
-**Completed**: Issue #5 (Domain model) - PR #30 merged ✅, Issue #7 (Skeleton) - completed manually ✅
+## 🚨 Immediate Next Action Required
 
-### 🔄 Sequential Agent Pipeline (Automatic Progression with Safe-Outputs Only)
+**The orchestrator has NOT yet processed the two build-pass AGENT_REPORTs.** The Work Queue still shows `needs-work` but both PRs are actually build-green and ready for Copilot review assignment.
 
-**Feature**: Orchestrator automatically progresses work through the full pipeline using ONLY safe-outputs (no gh CLI authentication needed)
-
-**How it works**:
-1. ✅ **Coding-agent completes** → Creates PR via `create-pull-request` safe-output
-2. 🔄 **Orchestrator detects completion** → Immediately dispatches test-agent via `dispatch-workflow`
-3. ✅ **Test-agent completes** → Adds tests via `add-comment`
-4. 🔄 **Orchestrator detects completion** → Immediately dispatches build-agent via `dispatch-workflow`
-5. ✅ **Build-agent completes** → Validates build via `add-comment`
-6. 🤖 **Orchestrator assigns Copilot** → Uses `assign-to-agent` safe-output for review
-7. 🔧 **If review has comments** → Orchestrator dispatches coding-agent in remediation mode
-8. 🔁 **Fixes pushed, pipeline restarts** → Goes through test → build → review again
-9. ✅ **Review approved** → Orchestrator posts "ready for merge" notification
-10. 👤 **Human merges PR** → Orchestrator detects merge event
-11. 🎉 **Epic advances** → Next issue unblocks automatically
-
-**Benefits**:
-- Fully automated pipeline from issue → ready-to-merge
-- Uses ONLY safe-outputs (no authentication needed)
-- No manual intervention until merge stage
-- Copilot ensures quality before merge
-- One human action: Click merge button
-
-**Complete Stage Flow**:
-```
-ready → coding → testing → building → review → ready-to-merge → merged
-           ↓                    ↓           ↓
-           └──── needs-work ←───┴──────────┘
-                    ↓
-                 testing (restart pipeline)
+**Trigger the orchestrator immediately:**
+```bash
+gh workflow run orchestrator.lock.yml
 ```
 
-**Stage Descriptions**:
-- `ready` - Issue dependencies met, waiting for orchestrator dispatch
-- `coding` - Coding-agent implementing feature
-- `testing` - Test-agent adding tests to PR
-- `building` - Build-agent validating build and tests pass
-- `review` - Copilot assigned, awaiting review
-- `ready-to-merge` - Copilot approved, awaiting human merge
-- `needs-work` - Build failed or review has comments, coding-agent fixing
-- `merged` - PR merged, issue complete
-
-### Recent Fix (March 13, 2026)
-
-**Problem 1**: Coding-agents were not creating PRs automatically. Agents completed work and created branches, but PRs had to be created manually.
-
-**Root Cause**: The `coding-agent.md` workflow was missing:
-1. The `edit` tool (required to make code changes)
-2. The `bash` tool (useful for git operations)
-3. Proper instructions on how to use the `safe-outputs` pattern for PR creation
-
-**Solution Applied**:
-- Added `edit:` and `bash:` tools to coding-agent
-- Updated Step 3 & 4 instructions to use the safe-outputs YAML format:
-  ```yaml
-  ---
-  create-pull-request:
-    title: "..."
-    body: |
-      ...
-  ---
-  ```
-- Fixed the AGENT_REPORT format to use safe-outputs:
-  ```yaml
-  ---
-  add-comment:
-    target: issue_number
-    body: |
-      AGENT_REPORT: {...}
-  ---
-  ```
-
-**Status**: Fix deployed to main branch. New coding-agent runs will create PRs automatically.
+The orchestrator will:
+1. Read the two `build-agent result: passed` AGENT_REPORTs on issue #28  
+2. Transition #9 and #10 from `needs-work` → `review`  
+3. Use `assign-to-agent` to assign Copilot to PR #38 and PR #39  
+4. Update and comment the Work Queue
 
 ---
 
-**Problem 2**: Coding-agent PR creation failed with "patch modifies protected files (package-lock.json, package.json)".
+## 📊 Current Pipeline State (04:20 UTC March 14)
 
-**Root Cause**: The `safe-outputs.create-pull-request` configuration didn't include an `allowed-files` list, so the default protected files policy blocked package file modifications.
+### Epic 1 — ✅ COMPLETE
+PR #36 merged to main.
 
-**Solution Applied**:
-- Added `allowed-files` configuration to `coding-agent.md`:
-  ```yaml
-  safe-outputs:
-    create-pull-request:
-      allowed-files:
-        - "**/*"
-        - "package.json"
-        - "package-lock.json"
-        - "prisma/schema.prisma"
-        - "prisma/migrations/**"
-  ```
+### Epic 2 — 🟡 IN PROGRESS (2/5 issues near ready-to-merge)
 
-**Status**: Fix deployed to main branch (commit 77fb554). Orchestrator manually triggered to retry issue #6.
+| Issue | Title | PR | Branch | Build | Stage |
+|-------|-------|----|--------|-------|-------|
+| #9 | CRUD API for parts | #38 | `epic/2-inventory-core-93cec74a7d2abf0e` | ✅ passed 04:14 UTC | needs orchestrator → `review` |
+| #10 | CRUD API for locations | #39 | `feat/10-locations-crud-api-e34698529f60c265` | ✅ passed 04:19 UTC | needs orchestrator → `review` |
+| #11 | CRUD API for lots/stock | — | — | — | `blocked` (needs #9 + #10) |
+| #12 | Event history log | — | — | — | `blocked` (needs #11) |
+| #13 | Basic list/filter API | — | — | — | `blocked` (needs #9, #10, #11) |
 
----
-
-**Next Steps**:
-- Monitor issue #6 coding-agent run to verify PR creation succeeds
-- Future agent runs will create PRs automatically and can modify package files
+### AGENT_REPORTs already in Work Queue (issue #28)
+| Comment | Time | Summary |
+|---------|------|---------|
+| `build-agent result: passed` for #9 / PR #38 | 04:14 UTC | [comment](https://github.com/rmwondolleck/hobby-inventory/issues/28#issuecomment-4059440174) |
+| `build-agent result: passed` for #10 / PR #39 | 04:19 UTC | [comment](https://github.com/rmwondolleck/hobby-inventory/issues/28#issuecomment-4059449144) |
 
 ---
 
-## What Was Built
+## ⚠️ Critical Operational Notes
 
-### 1. Project Foundation (Issue #7 - CLOSED)
-- Next.js 14 + TypeScript + Prisma + SQLite skeleton
-- Health endpoint, domain types, utilities
-- Full Prisma schema with all MVP models
-- Seed data script
+### 1. `issue_comment` trigger does NOT fire on bot comments
+GitHub's GITHUB_TOKEN prevents Actions from triggering other Actions. Only **human** comments on issue #28 fire the orchestrator's `issue_comment` trigger. After any agent posts an AGENT_REPORT, the orchestrator must be manually triggered OR wait for the 2-hour schedule.
 
-### 2. GitHub Issues (26 total)
-- 4 Epic issues (#1-#4)
-- 22 implementation issues (#5-#26)
-- All issues have dependency information in "Notes" section
-- Labels: `epic`, `backend`, `frontend`, `api`, `db`, `search`, `intake`, `project`, `p0`, `p1`, `p2`
+**Workaround**: Post a human comment on issue #28 to trigger the orchestrator immediately, OR run:
+```bash
+gh workflow run orchestrator.lock.yml
+```
 
-### 3. Agentic Workflow System (5 workflows)
-All compiled and pushed to `main`:
+### 2. Orchestrator schedule
+Runs `every 2 hours on weekdays`. Next automatic runs: ~06:00, 08:00, 10:00... UTC March 14.
 
-| Workflow | Purpose | Trigger |
-|----------|---------|---------|
-| `orchestrator.md` | Central coordinator, state management, dispatches agents | Schedule (2h) + issue_comment + manual |
-| `coding-agent.md` | Implements features, creates PRs | workflow_dispatch only |
-| `test-agent.md` | Reviews PRs, adds tests | workflow_dispatch only |
-| `build-agent.md` | Validates builds | workflow_dispatch only |
-| `integration-agent.md` | Merges epic branches to main | workflow_dispatch only |
+### 3. `pull_request_review` trigger DOES fire automatically
+When Copilot submits a review (approved or changes_requested) on any PR, the orchestrator WILL trigger immediately via the `pull_request_review` event. No manual intervention needed for that transition.
 
-### 4. Epic Feature Branches
-All pushed to origin:
-- `epic/1-foundation`
-- `epic/2-inventory-core`
-- `epic/3-projects-compatibility`
-- `epic/4-intake-usability`
+### 4. PR branches have been manually synced
+Both PR branches had stale `package.json` (missing Jest, `@tailwindcss/postcss`, `@prisma/client`). They were fixed directly via MCP commits:
+- PR #38 branch: commit `9fd36b46` (04:09 UTC)
+- PR #39 branch: commit `253c7260` (04:09 UTC)
+- Epic base `epic/2-inventory-core`: commit `2b006e90` (04:09 UTC)
+- All future branches from this epic will have the correct config.
 
 ---
 
-## Architecture Decisions
+## 🐛 Bugs Fixed This Session (March 13–14)
+
+All fixes are compiled and live on `main` (latest commit: `036ede1`).
+
+### Workflow fixes
+| File | Fix | Commit |
+|------|-----|--------|
+| `orchestrator.md` | Added `pull_request_review: types: [submitted]` trigger | `8d125e7` |
+| `orchestrator.md` | Added Task 5a: explicit Copilot review detection via `get_reviews` | `8d125e7` |
+| `orchestrator.md` | Added early-exit guard for non-Work-Queue `issue_comment` events | `8d125e7` |
+| `orchestrator.md` | `dispatch-workflow: max: 5 → max: 10` | `8d125e7` |
+| `coding-agent.md` | Added `push-to-pull-request-branch` with `protected-files: fallback-to-issue` for remediation | `036ede1` |
+| `test-agent.md` | Added `protected-files: fallback-to-issue` + `allowed-files: ["*", "**/*", ...]` | `cff92a0` / `0f7c4c7` |
+| `test-agent.md` | Added instruction: do NOT run `npm install` (deps pre-declared in package.json) | `c63caf0` |
+| `build-agent.md` | Added `npm install` + `export DATABASE_URL=file:./dev.db` before checks | `b828432` |
+| `build-agent.md` | Documented expected CI non-failures (Google Fonts, lint dir) | `b828432` |
+| `integration-agent.md` | Added `target: "*"` to `add-comment` safe output | `8d125e7` |
+
+### Project fixes
+| File | Fix | Commit |
+|------|-----|--------|
+| `jest.config.ts` | `setupFilesAfterFramework` → `setupFilesAfterEnv` (typo) | `b828432` |
+| `postcss.config.js` | `tailwindcss` → `@tailwindcss/postcss` (Tailwind v4 breaking change) | `b828432` |
+| `package.json` | Added Jest 29 + ts-jest + @testing-library/* + @tailwindcss/postcss devDeps | `c63caf0` / `b828432` |
+| `jest.config.ts` | Created with ts-jest preset, `@/` alias, `setupFilesAfterEnv` | `c63caf0` |
+| `jest.setup.ts` | Created with `@testing-library/jest-dom` import | `c63caf0` |
+
+### Key safe-outputs lessons learned
+| Problem | Root Cause | Fix |
+|---------|-----------|-----|
+| `patch modifies files outside the allowed-files list (jest.config.ts)` | `"**/*"` glob doesn't match root-level files (no `/` in path) | Add bare `"*"` glob alongside `"**/*"` |
+| `patch modifies protected files (package-lock.json, package.json)` | System-level `protected_files` list separate from `allowed-files`; `allowed-files` alone is not enough | Add `protected-files: fallback-to-issue` to the safe output config |
+| `ERR_VALIDATION: unauthorized GitHub Actions expressions` | `github.event.review.user.login` and `github.event.review.state` are NOT in the safe expression list | Use natural language + `get_reviews` API call instead; only `github.event.review.id` and `github.event.pull_request.number` are safe |
+| `ERR_CONFIG: Lock file is outdated` | `.md` frontmatter changed without recompiling `.lock.yml` | Always run `gh aw compile --strict` and commit BOTH files together |
+
+---
+
+## 🗺️ Expected Overnight Flow
+
+Assuming orchestrator is triggered now and Copilot reviews reasonably quickly:
+
+```
+04:20 UTC  → Trigger orchestrator manually
+04:25 UTC  → Orchestrator assigns Copilot to PR #38 and #39
+~1-2 hrs   → Copilot submits reviews
+             → pull_request_review trigger fires orchestrator immediately
+             IF approved: transition to ready-to-merge
+             IF changes_requested: dispatch coding-agent remediation
+
+Both ready-to-merge → orchestrator dispatches coding-agent for #11 (lots CRUD)
+#11: coding (~10 min) → test (~15 min) → build (~5 min) → review
+#11 ready-to-merge → orchestrator dispatches #12 (events) AND #13 (search) concurrently
+#12 + #13 pipeline → all 5 Epic 2 issues ready-to-merge
+→ integration-agent synthesizes ONE epic PR for human review
+```
+
+**Estimated wall-clock**: 6–12 hours if Copilot reviews promptly and no new failures.
+
+---
+
+## 🏗️ Architecture (unchanged)
 
 ### Hub-and-Spoke Model
 ```
                     ┌─────────────┐
                     │ ORCHESTRATOR│ ← Single source of truth
                     └──────┬──────┘
-                           │ dispatch_workflow
+                           │ dispatch_workflow safe-output
          ┌─────────────────┼─────────────────┐
          ▼                 ▼                 ▼
    ┌───────────┐    ┌───────────┐    ┌───────────┐
@@ -166,204 +149,78 @@ All pushed to origin:
          │                │                │
          └────────────────┴────────────────┘
                           │
-                          ▼ AGENT_REPORT comment
+                          ▼ AGENT_REPORT comment on Work Queue issue
                  ┌─────────────────┐
-                 │ Work Queue Issue│ ← State storage
+                 │ Work Queue #28  │ ← State storage
                  └─────────────────┘
 ```
 
-### Key Design Decisions
-
-1. **Only orchestrator dispatches** - Agents do NOT trigger other agents
-2. **State in GitHub Issue** - "[Orchestrator] Work Queue" issue is single source of truth
-3. **Structured reporting** - Agents post `AGENT_REPORT: {...}` JSON in comments
-4. **Max 3 concurrent coding tasks** - Avoids overwhelming reviewers
-5. **2-hour polling** - Orchestrator runs every 2 hours on weekdays
-
-### Stage Transitions (Orchestrator's responsibility)
+### Stage Flow
 ```
-ready → coding → testing → building → review → merging → merged
-           ↓                    ↓           ↓
-           └──── needs-work ←───┴───────────┘
-                    ↓
-                 testing (restart pipeline)
+ready → coding → testing → building → review → ready-to-merge
+           ↓                    ↓           ↓         ↓
+           └──── needs-work ←───┴───────────┘    (accumulate all
+                    ↓                              epic issues)
+                 testing                               ↓
+                                              integration-agent
+                                                       ↓
+                                              ONE epic PR → human merges
 ```
 
-**Automatic Progression**: When an agent reports completion, the orchestrator immediately dispatches the next agent in the pipeline. No waiting between stages.
+### Key Design Rules
+1. **Only orchestrator dispatches** — agents never trigger other agents
+2. **State in issue #28** — `[Orchestrator] Work Queue` is single source of truth
+3. **AGENT_REPORT format**: `AGENT_REPORT: { "agent": "...", "issue": N, "status": "completed"|"failed"|"remediation_complete", "pr_number": N, "result": "passed"|"failed" }`
+4. **Max 3 concurrent coding tasks**
+5. **Human only merges the final epic PR** — individual feature PRs are NOT merged manually
 
 ---
 
-## State Tracking Protocol
-
-### Work Queue Issue Format
-The orchestrator creates/maintains issue titled `[Orchestrator] Work Queue`:
-
-```markdown
-## 📋 Active Work
-| Issue | Title | Stage | Agent | PR | Started |
-|-------|-------|-------|-------|-----|---------|
-| #5 | Domain model | `coding` | coding-agent | - | 2024-01-15 10:00 |
-
-## ✅ Completed (Last 7 Days)
-| Issue | Title | Completed | PR |
-|-------|-------|-----------|-----|
-
-## 🚫 Blocked
-| Issue | Title | Blocked By |
-|-------|-------|------------|
-
-## 📊 Epic Progress
-| Epic | Progress | Issues |
-|------|----------|--------|
-```
-
-### Agent Report Format
-Each agent posts this to the Work Queue issue:
-```json
-AGENT_REPORT: {
-  "agent": "coding-agent",
-  "issue": 5,
-  "status": "completed",
-  "pr_number": 42,
-  "branch": "epic/1-foundation",
-  "message": "Created PR implementing domain model"
-}
-```
-
----
-
-## Open Questions / Next Steps
-
-### Immediate Next Steps
-
-1. **Update Node.js** - Current v16.13.2 is too old
-   - Prisma requires Node >=20.9.0
-   - Next.js requires Node >=20.9.0
-   ```bash
-   nvm install 20
-   nvm use 20
-   npm install
-   npx prisma generate
-   npx prisma migrate dev --name init
-   ```
-
-2. **Test Orchestrator** - Manually trigger to verify it:
-   - Creates Work Queue issue
-   - Parses issue dependencies correctly
-   - Identifies ready issues (#5, #7 can run in parallel)
-
-3. **Verify Dispatch Chain** - Test full cycle:
-   - Orchestrator dispatches coding-agent
-   - Coding-agent creates PR, reports back
-   - Orchestrator picks up report, dispatches test-agent
-   - etc.
-
-### Questions to Resolve
-
-1. **PR merge automation** - Should build-agent auto-merge when checks pass?
-   - Current: Stops at "review" stage for human merge
-   - Could add `merge-pull-request` safe output
-
-2. **Failure handling** - What happens when coding-agent fails?
-   - Current: Reports failure, orchestrator should re-dispatch
-   - Need to test retry logic
-
-3. **Stuck work detection** - Orchestrator checks for >24h stuck items
-   - May need to tune this threshold
-   - Should it auto-retry or just alert?
-
-4. **Integration timing** - When does integration-agent run?
-   - Current: When ALL issues in epic are merged
-   - Alternative: Could integrate incrementally
-
-5. **Rate limiting** - Is 2-hour polling frequent enough?
-   - Could react to more events (PR merged, issue closed)
-   - Balance between responsiveness and API usage
-
----
-
-## File Locations
+## 📁 File Locations
 
 ```
 .github/
-├── aw/
-│   └── actions-lock.json          # Action SHAs
 ├── docs/
-│   └── ORCHESTRATION-HANDOFF.md   # This file
+│   └── ORCHESTRATION-HANDOFF.md     ← This file
 └── workflows/
-    ├── orchestrator.md            # Central coordinator
-    ├── orchestrator.lock.yml      # Compiled workflow
-    ├── coding-agent.md            # Feature implementation
-    ├── coding-agent.lock.yml
-    ├── test-agent.md              # Test writing
-    ├── test-agent.lock.yml
-    ├── build-agent.md             # Build validation
-    ├── build-agent.lock.yml
-    ├── integration-agent.md       # Epic merging
-    ├── integration-agent.lock.yml
-    ├── agentics-maintenance.yml   # Auto-generated maintenance
-    └── shared/
-        └── state-tracking.md      # Protocol documentation
+    ├── orchestrator.md / .lock.yml
+    ├── coding-agent.md / .lock.yml
+    ├── test-agent.md / .lock.yml
+    ├── build-agent.md / .lock.yml
+    └── integration-agent.md / .lock.yml
+
+# Project root
+jest.config.ts       ← Jest 29 + ts-jest + @/ alias (setupFilesAfterEnv)
+jest.setup.ts        ← @testing-library/jest-dom
+postcss.config.js    ← @tailwindcss/postcss (Tailwind v4)
+package.json         ← includes jest, @tailwindcss/postcss, @prisma/client devDeps
 ```
-
----
-
-## How to Continue
-
-### To pick up this work:
-1. Read this document
-2. Check GitHub issues for current state
-3. Look for `[Orchestrator] Work Queue` issue (may not exist yet)
-4. Review workflow files in `.github/workflows/`
-
-### To test the system:
-1. Go to GitHub Actions → orchestrator workflow
-2. Click "Run workflow" → "Run workflow" (manual dispatch)
-3. Watch the run logs
-4. Check if Work Queue issue was created
-5. Check if coding-agent was dispatched
-
-### To modify workflows:
-1. Edit the `.md` file
-2. Run `gh aw compile <workflow-name>`
-3. Commit both `.md` and `.lock.yml` files
-4. Push to trigger
 
 ---
 
 ## Commands Quick Reference
 
 ```bash
-# Compile all workflows
+# Compile all workflows (ALWAYS do this after editing any .md)
 gh aw compile --strict
 
-# Compile one workflow
-gh aw compile orchestrator
-
-# View workflow logs
-gh aw logs orchestrator
-
-# Manual workflow trigger (via GitHub CLI)
+# Manually trigger orchestrator
 gh workflow run orchestrator.lock.yml
 
-# Check workflow runs
-gh run list --workflow=orchestrator.lock.yml
+# Manually trigger specific agent
+gh workflow run build-agent.lock.yml -f pr_number=38 -f issue_number=9 -f state_issue_number=28
+
+# Check recent runs
+gh run list --workflow=orchestrator.lock.yml --limit 5
+gh run list --limit 10
+
+# Watch a run live
+gh run watch <run-id>
+
+# Get failure logs
+gh run view <run-id> --log-failed
 ```
 
 ---
 
-## Issue Dependency Graph (Epic 1)
-
-```
-#5 (domain model) ──┬──► #6 (statuses) ──┐
-                    │                     ├──► #8 (migrations)
-#7 (skeleton) ✓ ────┴─────────────────────┘
-```
-
-**Ready to start**: #5, #6 (both depend only on each other or nothing)
-**Blocked**: #8 (needs #5, #6, #7)
-
----
-
-*Last updated: March 12, 2026*
-
+*Last updated: March 14, 2026 ~04:20 UTC by GitHub Copilot session*
