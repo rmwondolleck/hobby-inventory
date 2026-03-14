@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
+import { safeParseJson } from '@/lib/utils';
 
 type RouteParams = { params: Promise<{ id: string }> };
 
@@ -28,11 +29,11 @@ export async function GET(_request: Request, { params }: RouteParams) {
   return NextResponse.json({
     data: {
       ...part,
-      tags: (() => { try { return JSON.parse(part.tags); } catch { return []; } })(),
-      parameters: (() => { try { return JSON.parse(part.parameters); } catch { return {}; } })(),
+      tags: safeParseJson<string[]>(part.tags, []),
+      parameters: safeParseJson<Record<string, unknown>>(part.parameters, {}),
       lots: part.lots.map((lot) => ({
         ...lot,
-        source: (() => { try { return JSON.parse(lot.source); } catch { return {}; } })(),
+        source: safeParseJson<Record<string, unknown>>(lot.source, {}),
       })),
     },
   });
@@ -100,8 +101,8 @@ export async function PATCH(request: Request, { params }: RouteParams) {
   return NextResponse.json({
     data: {
       ...updated,
-      tags: (() => { try { return JSON.parse(updated.tags); } catch { return []; } })(),
-      parameters: (() => { try { return JSON.parse(updated.parameters); } catch { return {}; } })(),
+      tags: safeParseJson<string[]>(updated.tags, []),
+      parameters: safeParseJson<Record<string, unknown>>(updated.parameters, {}),
     },
   });
 }
@@ -132,8 +133,8 @@ export async function DELETE(_request: Request, { params }: RouteParams) {
   return NextResponse.json({
     data: {
       ...archived,
-      tags: (() => { try { return JSON.parse(archived.tags); } catch { return []; } })(),
-      parameters: (() => { try { return JSON.parse(archived.parameters); } catch { return {}; } })(),
+      tags: safeParseJson<string[]>(archived.tags, []),
+      parameters: safeParseJson<Record<string, unknown>>(archived.parameters, {}),
     },
   });
 }
