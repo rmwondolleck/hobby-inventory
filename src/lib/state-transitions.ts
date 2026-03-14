@@ -1,6 +1,6 @@
 /**
  * State transition validation for hobby inventory system
- * 
+ *
  * See /docs/state-transitions.md for full specification
  * Related: Issue #6 (Define statuses and state transitions)
  */
@@ -137,10 +137,10 @@ export function getTransitionError(
   to: string
 ): string {
   const validStates = getValidTransitions(type, from);
-  const validList = validStates.length > 0 
-    ? validStates.join(', ') 
+  const validList = validStates.length > 0
+    ? validStates.join(', ')
     : 'none (terminal state)';
-  
+
   return `Invalid ${type} status transition from '${from}' to '${to}'. Valid transitions: ${validList}`;
 }
 
@@ -181,5 +181,7 @@ export function validateTransition(
  * Check if a status is a terminal state (no valid transitions out)
  */
 export function isTerminalState(type: StatusType, status: string): boolean {
+  const known: StatusType[] = ['stock', 'project', 'allocation'];
+  if (!known.includes(type)) return false;
   return getValidTransitions(type, status).length === 0;
 }
