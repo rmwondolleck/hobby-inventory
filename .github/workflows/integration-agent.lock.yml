@@ -23,7 +23,7 @@
 #
 # Synthesizes all feature PRs in an epic into one polished PR for human review
 #
-# gh-aw-metadata: {"schema_version":"v2","frontmatter_hash":"8b6ed034183540685dcd02ce666d99aac58ff17432abc561085cbed2af3ddab1","compiler_version":"v0.57.2","strict":true}
+# gh-aw-metadata: {"schema_version":"v2","frontmatter_hash":"7625528b9cd1531a1ac801295440710e758687dbc4b618eeb05f881550158791","compiler_version":"v0.57.2","strict":true}
 
 name: "Integration Agent (Epic Synthesis)"
 "on":
