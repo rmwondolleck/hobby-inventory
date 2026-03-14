@@ -48,7 +48,11 @@ safe-outputs:
       - "prisma/schema.prisma"
       - "prisma/migrations/**"
   add-comment:
+    target: "*"
     max: 3
+  push-to-pull-request-branch:
+    target: "*"
+    commit-title-suffix: "[fix]"
 network:
   allowed:
     - defaults
@@ -243,15 +247,22 @@ Common review comment types:
 
 ### Step 3: Push Fixes to Existing PR Branch
 
-**IMPORTANT**: Do NOT create a new PR. Push to the existing branch.
+**IMPORTANT**: Do NOT create a new PR. Do NOT use `git push` via bash (no git credentials in this environment). Instead, use the `push-to-pull-request-branch` safe output to push your fixes directly to PR #${{ github.event.inputs.remediation_pr }}.
 
-Use the `bash` tool to push changes:
-```bash
-# The branch name is in the PR details
-git add .
-git commit -m "fix: Address Copilot review comments"
-git push origin <branch-name>
+After making all fixes with the `edit` tool, output:
+
+```yaml
+---
+push-to-pull-request-branch:
+  target: ${{ github.event.inputs.remediation_pr }}
+  files:
+    - path: <path/to/fixed/file>
+      content: |
+        <full file content after fixes>
+---
 ```
+
+List every file you modified. Include the full file content for each, not just the diff.
 
 ### Step 4: Report Remediation Complete
 

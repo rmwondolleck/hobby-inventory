@@ -42,6 +42,7 @@ safe-outputs:
       - "prisma/schema.prisma"
       - "prisma/migrations/**"
   add-comment:
+    target: "*"
     max: 5
   create-issue:
     title-prefix: "[Integration] "

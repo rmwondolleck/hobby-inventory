@@ -7,6 +7,10 @@ on:
         description: "Pull request number to validate"
         required: true
         type: number
+      issue_number:
+        description: "Original issue number this PR implements"
+        required: true
+        type: number
       state_issue_number:
         description: "Work Queue issue number for reporting"
         required: true
@@ -17,15 +21,18 @@ permissions:
   issues: read
   actions: read
 tools:
+  bash: true
   github:
     toolsets: [default]
 safe-outputs:
   add-comment:
+    target: "*"
     max: 3
 network:
   allowed:
     - defaults
     - node
+    - "binaries.prisma.sh"
 ---
 
 # Build Agent
@@ -75,29 +82,39 @@ Capture:
 
 ### Step 3: Comment on PR
 
-Add a summary comment to PR #${{ github.event.inputs.pr_number }}:
+Add a summary comment to PR #${{ github.event.inputs.pr_number }} using the `add-comment` safe output:
 
 **If all checks pass:**
-```markdown
-✅ **Build Validation Passed**
+```yaml
+---
+add-comment:
+  target: ${{ github.event.inputs.pr_number }}
+  body: |
+    ✅ **Build Validation Passed**
 
-- ✅ TypeScript compilation
-- ✅ Linting
-- ✅ Tests passed
-- ✅ Prisma schema valid
-- ✅ Production build successful
+    - ✅ TypeScript compilation
+    - ✅ Linting
+    - ✅ Tests passed
+    - ✅ Prisma schema valid
+    - ✅ Production build successful
 
-Ready for human review.
+    Ready for review.
+---
 ```
 
 **If checks fail:**
-```markdown
-❌ **Build Validation Failed**
+```yaml
+---
+add-comment:
+  target: ${{ github.event.inputs.pr_number }}
+  body: |
+    ❌ **Build Validation Failed**
 
-### Errors Found
-[List specific errors]
+    ### Errors Found
+    [List specific errors]
 
-Please fix and push new commits.
+    Please fix and push new commits.
+---
 ```
 
 ### Step 4: Report to Orchestrator (CRITICAL)
@@ -105,38 +122,50 @@ Please fix and push new commits.
 Add a comment to the **Work Queue issue** (#${{ github.event.inputs.state_issue_number }}):
 
 **On success:**
-```markdown
-AGENT_REPORT: {
-  "agent": "build-agent",
-  "pr_number": ${{ github.event.inputs.pr_number }},
-  "status": "completed",
-  "result": "passed",
-  "checks": {
-    "typecheck": "passed",
-    "lint": "passed",
-    "tests": "passed",
-    "build": "passed"
-  },
-  "message": "All validation checks passed. PR ready for review."
-}
+```yaml
+---
+add-comment:
+  target: ${{ github.event.inputs.state_issue_number }}
+  body: |
+    AGENT_REPORT: {
+      "agent": "build-agent",
+      "issue": ${{ github.event.inputs.issue_number }},
+      "pr_number": ${{ github.event.inputs.pr_number }},
+      "status": "completed",
+      "result": "passed",
+      "checks": {
+        "typecheck": "passed",
+        "lint": "passed",
+        "tests": "passed",
+        "build": "passed"
+      },
+      "message": "All validation checks passed. PR ready for review."
+    }
+---
 ```
 
 **On failure:**
-```markdown
-AGENT_REPORT: {
-  "agent": "build-agent",
-  "pr_number": ${{ github.event.inputs.pr_number }},
-  "status": "completed",
-  "result": "failed",
-  "checks": {
-    "typecheck": "passed",
-    "lint": "failed",
-    "tests": "skipped",
-    "build": "skipped"
-  },
-  "errors": ["ESLint: 3 errors in src/app/api/parts/route.ts"],
-  "message": "Build validation failed. See PR comment for details."
-}
+```yaml
+---
+add-comment:
+  target: ${{ github.event.inputs.state_issue_number }}
+  body: |
+    AGENT_REPORT: {
+      "agent": "build-agent",
+      "issue": ${{ github.event.inputs.issue_number }},
+      "pr_number": ${{ github.event.inputs.pr_number }},
+      "status": "completed",
+      "result": "failed",
+      "checks": {
+        "typecheck": "passed",
+        "lint": "failed",
+        "tests": "skipped",
+        "build": "skipped"
+      },
+      "errors": ["ESLint: 3 errors in src/app/api/parts/route.ts"],
+      "message": "Build validation failed. See PR comment for details."
+    }
+---
 ```
 
 ## Security

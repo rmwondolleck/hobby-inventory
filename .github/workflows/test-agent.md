@@ -7,6 +7,10 @@ on:
         description: "Pull request number to test"
         required: true
         type: number
+      issue_number:
+        description: "Original issue number this PR implements"
+        required: true
+        type: number
       state_issue_number:
         description: "Work Queue issue number for reporting"
         required: true
@@ -17,6 +21,8 @@ permissions:
   issues: read
   actions: read
 tools:
+  edit:
+  bash: true
   github:
     toolsets: [default]
 safe-outputs:
@@ -24,11 +30,13 @@ safe-outputs:
     target: ${{ github.event.inputs.pr_number }}
     commit-title-suffix: "[tests]"
   add-comment:
+    target: "*"
     max: 3
 network:
   allowed:
     - defaults
     - node
+    - "binaries.prisma.sh"
 ---
 
 # Test Agent
@@ -92,25 +100,37 @@ Use `push-to-pull-request-branch` to add your test files to the PR.
 Add a comment to the **Work Queue issue** (#${{ github.event.inputs.state_issue_number }}):
 
 **On success:**
-```markdown
-AGENT_REPORT: {
-  "agent": "test-agent",
-  "pr_number": ${{ github.event.inputs.pr_number }},
-  "status": "completed",
-  "tests_added": 5,
-  "message": "Added 5 test cases covering API endpoints and validation"
-}
+```yaml
+---
+add-comment:
+  target: ${{ github.event.inputs.state_issue_number }}
+  body: |
+    AGENT_REPORT: {
+      "agent": "test-agent",
+      "issue": ${{ github.event.inputs.issue_number }},
+      "pr_number": ${{ github.event.inputs.pr_number }},
+      "status": "completed",
+      "tests_added": 5,
+      "message": "Added 5 test cases covering API endpoints and validation"
+    }
+---
 ```
 
 **On failure:**
-```markdown
-AGENT_REPORT: {
-  "agent": "test-agent",
-  "pr_number": ${{ github.event.inputs.pr_number }},
-  "status": "failed",
-  "error": "[What went wrong]",
-  "message": "Could not add tests due to [reason]"
-}
+```yaml
+---
+add-comment:
+  target: ${{ github.event.inputs.state_issue_number }}
+  body: |
+    AGENT_REPORT: {
+      "agent": "test-agent",
+      "issue": ${{ github.event.inputs.issue_number }},
+      "pr_number": ${{ github.event.inputs.pr_number }},
+      "status": "failed",
+      "error": "[What went wrong]",
+      "message": "Could not add tests due to [reason]"
+    }
+---
 ```
 
 ## Test Coverage Guidelines

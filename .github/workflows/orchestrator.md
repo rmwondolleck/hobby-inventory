@@ -6,6 +6,9 @@ on:
   # Secondary: React to completions reported by agents
   issue_comment:
     types: [created]
+  # React immediately when Copilot submits a PR review (approved or changes requested)
+  pull_request_review:
+    types: [submitted]
   # Manual trigger for immediate orchestration
   workflow_dispatch:
 permissions:
@@ -32,7 +35,7 @@ safe-outputs:
     max: 20
   dispatch-workflow:
     workflows: [coding-agent, test-agent, build-agent, integration-agent]
-    max: 5
+    max: 10
   assign-to-agent:
     name: "copilot"
     allowed: [copilot]
@@ -170,6 +173,17 @@ If not found, create it with the template above.
 
 ### Task 2: Check Agent Completion Reports
 
+**Early exit checks (run FIRST, before any other work):**
+
+- **If triggered by `issue_comment`:**
+  - The comment is on issue `#${{ github.event.issue.number }}`
+  - Find the Work Queue issue (Task 1). If the comment is NOT on the Work Queue issue, use `noop` and **stop immediately**. The comment is irrelevant.
+  - Only continue if it IS on the Work Queue issue.
+
+- **If triggered by `pull_request_review`:**
+  - A review was submitted on PR `#${{ github.event.pull_request.number }}`
+  - Skip directly to **Task 5a** to process the review. Do not parse AGENT_REPORTs in this task.
+
 If triggered by `issue_comment`:
 - Check if comment is on the Work Queue issue
 - Parse completion reports from agents (format: `AGENT_REPORT: {...}`)
@@ -234,6 +248,61 @@ When an agent reports completion, automatically dispatch the next agent:
 | `review` | Copilot has comments | `needs-work` | Dispatch coding-agent to remediate |
 | `needs-work` | `remediation_complete` | `testing` | Restart pipeline |
 
+#### PR Discovery (IMPORTANT)
+
+The coding-agent's AGENT_REPORT may NOT contain `pr_number` because the PR is created by safe-outputs after the agent finishes. When the report lacks `pr_number`:
+
+1. **Search for PRs** targeting the epic branch that reference the issue number
+2. **Use `search_pull_requests`**: query `repo:rmwondolleck/hobby-inventory is:open head:feat base:<epic_branch>` or similar
+3. **Check PR titles** for patterns like `feat(#<issue_number>):`
+4. **Extract the PR number** and use it when dispatching test-agent
+
+#### Dispatch Templates for Stage Transitions
+
+**Coding → Testing**: When coding-agent reports completion, discover the PR number (see above), then dispatch:
+```json
+{
+  "workflow_name": "test-agent",
+  "inputs": {
+    "pr_number": "<discovered-pr-number>",
+    "issue_number": "<issue-number-from-report>",
+    "state_issue_number": "<work-queue-issue>"
+  }
+}
+```
+
+**Testing → Building**: When test-agent reports completion:
+```json
+{
+  "workflow_name": "build-agent",
+  "inputs": {
+    "pr_number": "<pr-number-from-report>",
+    "issue_number": "<issue-number-from-report>",
+    "state_issue_number": "<work-queue-issue>"
+  }
+}
+```
+
+**Building → Review**: When build-agent reports `result: "passed"`:
+- Use `assign-to-agent` safe output to assign Copilot to review PR #<pr_number>
+
+**Building → Needs-Work**: When build-agent reports `result: "failed"`:
+```json
+{
+  "workflow_name": "coding-agent",
+  "inputs": {
+    "issue_number": "<issue-number>",
+    "epic_branch": "<epic-branch>",
+    "state_issue_number": "<work-queue-issue>",
+    "remediation_pr": "<pr-number>",
+    "remediation_mode": true
+  }
+}
+```
+
+**Review → Needs-Work** (Copilot has comments):
+Same as Building → Needs-Work above.
+
 **CRITICAL: When issue reaches `ready-to-merge`:**
 - ✅ Add `ready-to-merge` label to the issue
 - ✅ Update Work Queue to show issue as `ready-to-merge`
@@ -242,6 +311,73 @@ When an agent reports completion, automatically dispatch the next agent:
 - ❌ DO NOT tell human to merge
 
 The PR sits open until ALL issues in the epic reach `ready-to-merge`.
+
+### Task 5a: Monitor Issues in `review` Stage
+
+**Run this every cycle, for every issue currently in `review` stage.**
+
+The orchestrator assigns Copilot to review PRs, but Copilot's review arrives as a `pull_request_review` event — NOT as an AGENT_REPORT comment. You MUST actively poll for review outcomes.
+
+#### How to Check Review Status
+
+For each issue in `review` stage in the Active Work table:
+
+1. Get the PR number from the Work Queue row
+2. Use `get_reviews` on that PR
+3. Find the most recent review from `github-copilot[bot]`
+
+#### Decision Logic
+
+```
+Latest Copilot review state = APPROVED?
+  → Transition to ready-to-merge (see below)
+
+Latest Copilot review state = CHANGES_REQUESTED?
+  → Transition to needs-work, dispatch remediation (see below)
+
+No Copilot review yet, OR state = COMMENTED?
+  → No action. Review is pending. Next run will catch it.
+```
+
+#### On APPROVED — Transition to `ready-to-merge`
+
+1. Update Work Queue: stage `review` → `ready-to-merge`
+2. Add label `ready-to-merge` to the issue
+3. Add comment to Work Queue:
+   ```
+   ✅ Issue #X: PR #Y approved by Copilot. Stage: `ready-to-merge`.
+   Waiting for remaining epic issues before dispatching integration-agent.
+   ```
+
+#### On CHANGES_REQUESTED — Transition to `needs-work`
+
+1. Update Work Queue: stage `review` → `needs-work`
+2. Dispatch coding-agent in remediation mode:
+   ```json
+   {
+     "workflow_name": "coding-agent",
+     "inputs": {
+       "issue_number": "<issue-number>",
+       "epic_branch": "<epic-branch>",
+       "state_issue_number": "<work-queue-issue>",
+       "remediation_pr": "<pr-number>",
+       "remediation_mode": true
+     }
+   }
+   ```
+3. Add comment to Work Queue:
+   ```
+   🔧 Issue #X: Copilot requested changes on PR #Y. Dispatching remediation agent.
+   Stage: needs-work → will restart at testing after fixes.
+   ```
+
+#### When triggered by `pull_request_review` event
+
+If PR `#${{ github.event.pull_request.number }}` matches a PR currently in `review` stage in the Work Queue:
+- Call `get_reviews` on that PR to read the review state
+- Look for a review from `github-copilot[bot]` and check its `state` field (`approved`, `changes_requested`, or `commented`)
+- Process it immediately using the logic above
+- Only act on `approved` or `changes_requested` — ignore `commented`
 
 ### Task 6: Check Epic Completion (TRIGGER INTEGRATION)
 
