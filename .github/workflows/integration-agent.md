@@ -58,6 +58,7 @@ network:
   allowed:
     - defaults
     - node
+    - "binaries.prisma.sh"
 ---
 
 # Integration Agent (Epic Synthesis)
