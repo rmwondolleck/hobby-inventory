@@ -63,6 +63,13 @@ export async function POST(request: Request) {
     );
   }
 
+  if (typeof body !== 'object' || body === null || Array.isArray(body)) {
+    return NextResponse.json(
+      { error: 'BadRequest', message: 'Request body must be a JSON object' },
+      { status: 400 }
+    );
+  }
+
   const { name, parentId, notes } = body as {
     name?: unknown;
     parentId?: unknown;
