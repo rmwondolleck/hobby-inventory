@@ -29,6 +29,7 @@ safe-outputs:
   push-to-pull-request-branch:
     target: ${{ github.event.inputs.pr_number }}
     commit-title-suffix: "[tests]"
+    protected-files: fallback-to-issue
     allowed-files:
       - "*"
       - "**/*"
@@ -56,6 +57,22 @@ The orchestrator handles all workflow coordination. Your only responsibilities:
 1. Review the PR and understand what needs testing
 2. Add appropriate tests
 3. Report completion to the Work Queue issue
+
+## ⚠️ Critical: Do NOT Install Packages
+
+The project already has **Jest 29 + ts-jest + @testing-library** installed as devDependencies. Do NOT run `npm install`, `npm install --save-dev`, or modify `package.json`.
+
+**Pre-installed test stack:**
+- `jest` + `ts-jest` — test runner with TypeScript support
+- `@types/jest` — Jest type definitions
+- `@testing-library/react` + `@testing-library/jest-dom` — React component testing
+- `jest-environment-jsdom` — browser environment for component tests
+
+**Config files already in the repo:**
+- `jest.config.ts` — pre-configured with `@/` path alias, `ts-jest` transform
+- `jest.setup.ts` — imports `@testing-library/jest-dom`
+
+Simply **write test files** — the infrastructure is ready. If you genuinely need a package that isn't installed, note it in your AGENT_REPORT and skip that test rather than trying to install it.
 
 ## Context
 
