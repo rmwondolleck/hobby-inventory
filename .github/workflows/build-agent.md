@@ -54,7 +54,17 @@ The orchestrator handles all workflow coordination. Your only responsibilities:
 
 ### Step 1: Run Validation Checks
 
-Execute these checks in order:
+First, set up the environment:
+
+```bash
+# Install dependencies (picks up any new devDeps from main)
+npm install
+
+# Set a mock DATABASE_URL so Prisma doesn't error on validate/generate
+export DATABASE_URL="file:./dev.db"
+```
+
+Then execute these checks in order:
 
 ```bash
 # 1. Type check
@@ -79,6 +89,11 @@ Capture:
 - Pass/fail status for each check
 - Error messages if any
 - Warnings that should be addressed
+
+**⚠️ Expected CI-environment issues — do NOT treat these as failures:**
+- `DATABASE_URL not set` — handled by the `export DATABASE_URL="file:./dev.db"` above
+- Google Fonts network fetch errors during `npm run build` — the AWF sandbox blocks external font CDNs; this does not affect the code
+- `next lint: Invalid project directory` — run `npx next lint --dir src` instead of `npm run lint` if this occurs
 
 ### Step 3: Comment on PR
 
