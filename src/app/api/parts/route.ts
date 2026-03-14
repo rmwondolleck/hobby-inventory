@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
+import { safeParseJson } from '@/lib/utils';
 
 function parseTags(tags: unknown): string[] {
   if (Array.isArray(tags)) return tags.filter((t) => typeof t === 'string');
@@ -25,28 +26,18 @@ export async function GET(request: Request) {
   const where: Record<string, unknown> = {};
   if (category) where.category = category;
   if (!includeArchived) where.archivedAt = null;
+  // Filter by tag using a SQL contains on the stored JSON string (e.g. `"resistor"`)
+  if (tag) where.tags = { contains: JSON.stringify(tag) };
 
   const parts = await prisma.part.findMany({
     where,
     orderBy: { createdAt: 'desc' },
   });
 
-  // Filter by tag (stored as JSON string)
-  const filtered = tag
-    ? parts.filter((p) => {
-        try {
-          const tags: unknown = JSON.parse(p.tags);
-          return Array.isArray(tags) && tags.includes(tag);
-        } catch {
-          return false;
-        }
-      })
-    : parts;
-
-  const data = filtered.map((p) => ({
+  const data = parts.map((p) => ({
     ...p,
-    tags: (() => { try { return JSON.parse(p.tags); } catch { return []; } })(),
-    parameters: (() => { try { return JSON.parse(p.parameters); } catch { return {}; } })(),
+    tags: safeParseJson<string[]>(p.tags, []),
+    parameters: safeParseJson<Record<string, unknown>>(p.parameters, {}),
   }));
 
   return NextResponse.json({ data, total: data.length });
@@ -103,8 +94,8 @@ export async function POST(request: Request) {
   const response = {
     data: {
       ...part,
-      tags: parseTags(tags),
-      parameters: parseParameters(parameters),
+      tags: safeParseJson<string[]>(part.tags, []),
+      parameters: safeParseJson<Record<string, unknown>>(part.parameters, {}),
     },
     ...(duplicateWarning
       ? {

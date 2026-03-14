@@ -97,13 +97,17 @@ describe('GET /api/parts', () => {
     );
   });
 
-  it('filters by tag query param (in-memory tag filter)', async () => {
-    const otherPart = { ...basePart, id: 'cltest002', tags: '["capacitor"]' };
-    mockFindMany.mockResolvedValue([basePart, otherPart]);
+  it('filters by tag query param using SQL contains filter', async () => {
+    mockFindMany.mockResolvedValue([basePart]);
 
     const res = await GET(makeRequest('http://localhost/api/parts?tag=resistor'));
     const json = await res.json();
 
+    expect(mockFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ tags: { contains: '"resistor"' } }),
+      })
+    );
     expect(json.data).toHaveLength(1);
     expect(json.data[0].id).toBe('cltest001');
   });
