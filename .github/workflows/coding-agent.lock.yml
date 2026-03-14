@@ -23,7 +23,7 @@
 #
 # Implements features from GitHub issues, creates PRs, and reports completion to orchestrator
 #
-# gh-aw-metadata: {"schema_version":"v2","frontmatter_hash":"ab9dff52b7e1ba50f2d7ec1bc23d860dbbadfb4e2a9bdaff644da5f1b30ffd31","compiler_version":"v0.57.2","strict":true}
+# gh-aw-metadata: {"schema_version":"v2","frontmatter_hash":"c19f33e5122cfd2e4f5b0cc164ec435856d4d351809453b90df9793d4ff276bb","compiler_version":"v0.57.2","strict":true}
 
 name: "Coding Agent"
 "on":
@@ -182,6 +182,9 @@ jobs:
           {{#if __GH_AW_GITHUB_RUN_ID__ }}
           - **workflow-run-id**: __GH_AW_GITHUB_RUN_ID__
           {{/if}}
+          - **checkouts**: The following repositories have been checked out and are available in the workspace:
+            - `$GITHUB_WORKSPACE` → `__GH_AW_GITHUB_REPOSITORY__` (cwd) [shallow clone, fetch-depth=1 (default)]
+            - **Note**: If a branch you need is not in the list above and is not listed as an additional fetched ref, it has NOT been checked out. For private repositories you cannot fetch it without proper authentication. If the branch is required and not available, exit with an error and ask the user to add it to the `fetch:` option of the `checkout:` configuration (e.g., `fetch: ["refs/pulls/open/*"]` for all open PR refs, or `fetch: ["main", "feature/my-branch"]` for specific branches).
           </github-context>
           
           GH_AW_PROMPT_EOF
@@ -304,6 +307,7 @@ jobs:
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           persist-credentials: false
+          ref: ${{ github.event.inputs.epic_branch }}
       - name: Create gh-aw temp directory
         run: bash /opt/gh-aw/actions/create_gh_aw_tmp_dir.sh
       - name: Configure Git credentials
