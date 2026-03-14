@@ -42,6 +42,7 @@ safe-outputs:
     base-branch: ${{ github.event.inputs.epic_branch }}
     expires: 14d
     allowed-files:
+      - "*"
       - "**/*"
       - "package.json"
       - "package-lock.json"
@@ -54,6 +55,7 @@ safe-outputs:
     target: "*"
     commit-title-suffix: "[fix]"
     allowed-files:
+      - "*"
       - "**/*"
       - "package.json"
       - "package-lock.json"

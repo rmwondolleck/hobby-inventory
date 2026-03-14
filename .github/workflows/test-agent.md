@@ -30,6 +30,7 @@ safe-outputs:
     target: ${{ github.event.inputs.pr_number }}
     commit-title-suffix: "[tests]"
     allowed-files:
+      - "*"
       - "**/*"
       - "package.json"
       - "package-lock.json"
