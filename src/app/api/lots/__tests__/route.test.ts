@@ -15,6 +15,9 @@ jest.mock('@/lib/db', () => ({
       findUnique: jest.fn(),
       findMany: jest.fn(),
     },
+    event: {
+      create: jest.fn(),
+    },
   },
 }));
 

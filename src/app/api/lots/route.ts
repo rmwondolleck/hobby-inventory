@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
+import { createEvent } from '@/lib/events';
 
 const DEFAULT_LIMIT = 50;
 const MAX_LIMIT = 500;
@@ -241,6 +242,8 @@ export async function POST(request: Request) {
       location: { select: { id: true, name: true, path: true } },
     },
   });
+
+  await createEvent({ lotId: lot.id, type: 'received' });
 
   return NextResponse.json(
     {
