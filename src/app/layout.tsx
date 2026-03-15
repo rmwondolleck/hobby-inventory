@@ -27,6 +27,18 @@ export default function RootLayout({
                 </Link>
                 <div className="flex items-center gap-1">
                   <Link
+                    href="/parts"
+                    className="px-3 py-1.5 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-md"
+                  >
+                    Parts
+                  </Link>
+                  <Link
+                    href="/projects"
+                    className="px-3 py-1.5 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-md"
+                  >
+                    Projects
+                  </Link>
+                  <Link
                     href="/locations"
                     className="px-3 py-1.5 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-md"
                   >
