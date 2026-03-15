@@ -40,7 +40,7 @@ beforeEach(() => {
 // ─── GET /api/projects ────────────────────────────────────────────────────────
 
 describe('GET /api/projects', () => {
-  it('returns 200 with data array and total', async () => {
+  it('returns 200 with data array, total, limit and offset', async () => {
     mockCount.mockResolvedValue(1);
     mockFindMany.mockResolvedValue([baseProject]);
 
@@ -50,6 +50,8 @@ describe('GET /api/projects', () => {
     const json = await res.json();
     expect(json.total).toBe(1);
     expect(json.data).toHaveLength(1);
+    expect(json.limit).toBe(50);
+    expect(json.offset).toBe(0);
   });
 
   it('parses tags JSON string into array', async () => {
@@ -59,10 +61,31 @@ describe('GET /api/projects', () => {
     const res = await GET(makeRequest('http://localhost/api/projects'));
     const json = await res.json();
 
-    expect(json.data[0].tags).toEqual(['robotics', 'hardware']);
+    expect(json.data[0].tags).toEqual(['robot', 'arduino']);
   });
 
-  it('excludes archived projects by default', async () => {
+  it('computes allocationCount and allocationsByStatus', async () => {
+    mockCount.mockResolvedValue(1);
+    mockFindMany.mockResolvedValue([baseProject]);
+
+    const res = await GET(makeRequest('http://localhost/api/projects'));
+    const json = await res.json();
+
+    expect(json.data[0].allocationCount).toBe(3);
+    expect(json.data[0].allocationsByStatus).toEqual({ in_use: 2, reserved: 1 });
+  });
+
+  it('excludes allocations from list response', async () => {
+    mockCount.mockResolvedValue(1);
+    mockFindMany.mockResolvedValue([baseProject]);
+
+    const res = await GET(makeRequest('http://localhost/api/projects'));
+    const json = await res.json();
+
+    expect(json.data[0].allocations).toBeUndefined();
+  });
+
+  it('excludes archived projects by default (archivedAt: null filter)', async () => {
     mockCount.mockResolvedValue(0);
     mockFindMany.mockResolvedValue([]);
 
@@ -71,15 +94,15 @@ describe('GET /api/projects', () => {
     expect(mockFindMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: expect.objectContaining({ archivedAt: null }),
-      }),
+      })
     );
   });
 
-  it('includes archived projects when ?archived=true', async () => {
+  it('includes archived projects when ?includeArchived=true', async () => {
     mockCount.mockResolvedValue(0);
     mockFindMany.mockResolvedValue([]);
 
-    await GET(makeRequest('http://localhost/api/projects?archived=true'));
+    await GET(makeRequest('http://localhost/api/projects?includeArchived=true'));
 
     const callArgs = mockFindMany.mock.calls[0][0];
     expect(callArgs.where).not.toHaveProperty('archivedAt');
@@ -93,39 +116,42 @@ describe('GET /api/projects', () => {
 
     expect(mockFindMany).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: expect.objectContaining({ status: { in: ['active'] } }),
-      }),
+        where: expect.objectContaining({ status: 'active' }),
+      })
     );
   });
 
-  it('filters by comma-separated status list', async () => {
+  it('applies search filter across name, notes, and tags', async () => {
     mockCount.mockResolvedValue(0);
     mockFindMany.mockResolvedValue([]);
 
-    await GET(makeRequest('http://localhost/api/projects?status=active,planned'));
-
-    expect(mockFindMany).toHaveBeenCalledWith(
-      expect.objectContaining({
-        where: expect.objectContaining({ status: { in: ['active', 'planned'] } }),
-      }),
-    );
-  });
-
-  it('filters by tags query param', async () => {
-    mockCount.mockResolvedValue(1);
-    mockFindMany.mockResolvedValue([baseProject]);
-
-    await GET(makeRequest('http://localhost/api/projects?tags=robotics'));
+    await GET(makeRequest('http://localhost/api/projects?search=robot'));
 
     expect(mockFindMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: expect.objectContaining({
-          AND: expect.arrayContaining([
-            expect.objectContaining({ tags: { contains: 'robotics' } }),
+          OR: expect.arrayContaining([
+            { name: { contains: 'robot' } },
+            { notes: { contains: 'robot' } },
+            { tags: { contains: 'robot' } },
           ]),
         }),
-      }),
+      })
     );
+  });
+
+  it('filters by tags in-memory after DB query', async () => {
+    const projectWithArduino = { ...baseProject, tags: '["arduino"]' };
+    const projectWithRobot = { ...baseProject, id: 'proj-2', tags: '["robot"]' };
+    mockCount.mockResolvedValue(2);
+    mockFindMany.mockResolvedValue([projectWithArduino, projectWithRobot]);
+
+    const res = await GET(makeRequest('http://localhost/api/projects?tags=arduino'));
+    const json = await res.json();
+
+    expect(json.data).toHaveLength(1);
+    expect(json.data[0].id).toBe('proj-1');
+    expect(json.total).toBe(1);
   });
 
   it('returns empty data array when no projects match', async () => {
@@ -139,117 +165,47 @@ describe('GET /api/projects', () => {
     expect(json.total).toBe(0);
   });
 
-  it('gracefully handles malformed tags JSON', async () => {
+  it('respects custom limit and offset params', async () => {
+    mockCount.mockResolvedValue(100);
+    mockFindMany.mockResolvedValue([]);
+
+    await GET(makeRequest('http://localhost/api/projects?limit=10&offset=20'));
+
+    expect(mockFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({ take: 10, skip: 20 })
+    );
+  });
+
+  it('caps limit at MAX_LIMIT (500)', async () => {
+    mockCount.mockResolvedValue(0);
+    mockFindMany.mockResolvedValue([]);
+
+    await GET(makeRequest('http://localhost/api/projects?limit=9999'));
+
+    expect(mockFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({ take: 500 })
+    );
+  });
+
+  it('gracefully handles malformed tags JSON (returns empty array)', async () => {
+    const badProject = { ...baseProject, tags: 'not-valid-json' };
     mockCount.mockResolvedValue(1);
-    mockFindMany.mockResolvedValue([{ ...baseProject, tags: 'not-valid-json' }]);
+    mockFindMany.mockResolvedValue([badProject]);
 
     const res = await GET(makeRequest('http://localhost/api/projects'));
     const json = await res.json();
 
     expect(json.data[0].tags).toEqual([]);
   });
-});
 
-// ─── POST /api/projects ───────────────────────────────────────────────────────
+  it('returns 500 on unexpected DB error', async () => {
+    mockCount.mockRejectedValue(new Error('DB connection lost'));
+    mockFindMany.mockRejectedValue(new Error('DB connection lost'));
 
-describe('POST /api/projects', () => {
-  it('returns 201 with the created project', async () => {
-    mockCreate.mockResolvedValue({ ...baseProject, id: 'projnew001' });
-
-    const req = makeRequest('http://localhost/api/projects', {
-      method: 'POST',
-      body: JSON.stringify({ name: 'Robot Arm', status: 'active' }),
-    });
-
-    const res = await POST(req);
-    expect(res.status).toBe(201);
+    const res = await GET(makeRequest('http://localhost/api/projects'));
+    expect(res.status).toBe(500);
 
     const json = await res.json();
-    expect(json.data.id).toBe('projnew001');
-  });
-
-  it('defaults status to "idea" when not provided', async () => {
-    mockCreate.mockResolvedValue({ ...baseProject, status: 'idea', id: 'projnew002' });
-
-    const req = makeRequest('http://localhost/api/projects', {
-      method: 'POST',
-      body: JSON.stringify({ name: 'New Idea' }),
-    });
-
-    await POST(req);
-
-    expect(mockCreate).toHaveBeenCalledWith(
-      expect.objectContaining({
-        data: expect.objectContaining({ status: 'idea' }),
-      }),
-    );
-  });
-
-  it('returns 400 when name is missing', async () => {
-    const req = makeRequest('http://localhost/api/projects', {
-      method: 'POST',
-      body: JSON.stringify({ status: 'active' }),
-    });
-
-    const res = await POST(req);
-    expect(res.status).toBe(400);
-
-    const json = await res.json();
-    expect(json.error).toBe('validation_error');
-  });
-
-  it('returns 400 when name is an empty string', async () => {
-    const req = makeRequest('http://localhost/api/projects', {
-      method: 'POST',
-      body: JSON.stringify({ name: '   ' }),
-    });
-
-    const res = await POST(req);
-    expect(res.status).toBe(400);
-  });
-
-  it('returns 400 for invalid status', async () => {
-    const req = makeRequest('http://localhost/api/projects', {
-      method: 'POST',
-      body: JSON.stringify({ name: 'Bad Status Project', status: 'in_progress' }),
-    });
-
-    const res = await POST(req);
-    expect(res.status).toBe(400);
-
-    const json = await res.json();
-    expect(json.error).toBe('validation_error');
-  });
-
-  it('returns 400 for invalid JSON body', async () => {
-    const req = new Request('http://localhost/api/projects', {
-      method: 'POST',
-      body: 'not-json',
-      headers: { 'Content-Type': 'application/json' },
-    });
-
-    const res = await POST(req);
-    expect(res.status).toBe(400);
-
-    const json = await res.json();
-    expect(json.error).toBe('invalid_json');
-  });
-
-  it('serializes tags array correctly', async () => {
-    mockCreate.mockResolvedValue({
-      ...baseProject,
-      tags: '["led","wall"]',
-      id: 'projnew003',
-    });
-
-    const req = makeRequest('http://localhost/api/projects', {
-      method: 'POST',
-      body: JSON.stringify({ name: 'LED Wall', tags: ['led', 'wall'] }),
-    });
-
-    const res = await POST(req);
-    const json = await res.json();
-
-    expect(json.data.tags).toEqual(['led', 'wall']);
+    expect(json.error).toBe('internal_error');
   });
 });

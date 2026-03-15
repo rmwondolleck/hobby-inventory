@@ -38,7 +38,7 @@ function matchesParameterFilters(
 
     if (rawValue === 'true' || rawValue === 'false') {
       if (actual !== (rawValue === 'true')) return false;
-    } else if (!isNaN(Number(rawValue))) {
+    } else if (rawValue.trim() !== '' && !isNaN(Number(rawValue))) {
       if (Number(actual) !== Number(rawValue)) return false;
     } else {
       if (String(actual) !== rawValue) return false;

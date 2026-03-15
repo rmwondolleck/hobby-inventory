@@ -1,129 +1,91 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { safeParseJson } from '@/lib/utils';
-import type { ProjectStatus } from '@/lib/types';
 
 const DEFAULT_LIMIT = 50;
 const MAX_LIMIT = 500;
-const VALID_STATUSES: ProjectStatus[] = ['idea', 'planned', 'active', 'deployed', 'retired'];
-
-function parseTags(tags: unknown): string[] {
-  if (Array.isArray(tags)) return tags.filter((t) => typeof t === 'string');
-  return [];
-}
 
 export async function GET(request: Request) {
-  const { searchParams } = new URL(request.url);
-
-  const q = searchParams.get('q') ?? undefined;
-  const statusParam = searchParams.get('status') ?? undefined;
-  const tagsParam = searchParams.get('tags') ?? undefined;
-  const archived = searchParams.get('archived');
-  const limit = Math.min(
-    parseInt(searchParams.get('limit') ?? String(DEFAULT_LIMIT), 10) || DEFAULT_LIMIT,
-    MAX_LIMIT,
-  );
-  const offset = Math.max(parseInt(searchParams.get('offset') ?? '0', 10) || 0, 0);
-
-  const includeArchived = archived === 'true';
-  const tagList = tagsParam ? tagsParam.split(',').map((t) => t.trim()).filter(Boolean) : [];
-
-  // Parse comma-separated status list
-  const statusList = statusParam
-    ? statusParam.split(',').map((s) => s.trim()).filter(Boolean)
-    : undefined;
-
-  const where = {
-    ...(!includeArchived ? { archivedAt: null } : {}),
-    ...(statusList && statusList.length > 0 ? { status: { in: statusList } } : {}),
-    ...(q || tagList.length > 0
-      ? {
-          AND: [
-            ...(q
-              ? [
-                  {
-                    OR: [
-                      { name: { contains: q } },
-                      { notes: { contains: q } },
-                      { tags: { contains: q } },
-                      { wishlistNotes: { contains: q } },
-                    ],
-                  },
-                ]
-              : []),
-            ...(tagList.length > 0 ? tagList.map((tag) => ({ tags: { contains: tag } })) : []),
-          ],
-        }
-      : {}),
-  };
-
-  const [total, projects] = await Promise.all([
-    prisma.project.count({ where }),
-    prisma.project.findMany({
-      where,
-      skip: offset,
-      take: limit,
-      orderBy: { updatedAt: 'desc' },
-    }),
-  ]);
-
-  const data = projects.map((project: (typeof projects)[number]) => ({
-    ...project,
-    tags: safeParseJson<string[]>(project.tags, []),
-  }));
-
-  return NextResponse.json({ data, total, limit, offset });
-}
-
-export async function POST(request: Request) {
-  let body: Record<string, unknown>;
   try {
-    body = await request.json();
+    const { searchParams } = new URL(request.url);
+
+    const search = searchParams.get('search') ?? undefined;
+    const statusParam = searchParams.get('status') ?? undefined;
+    const tagsParam = searchParams.get('tags') ?? undefined;
+    const includeArchived = searchParams.get('includeArchived') === 'true';
+    const limit = Math.min(
+      parseInt(searchParams.get('limit') ?? String(DEFAULT_LIMIT), 10) || DEFAULT_LIMIT,
+      MAX_LIMIT,
+    );
+    const offset = Math.max(parseInt(searchParams.get('offset') ?? '0', 10) || 0, 0);
+
+    const where: Record<string, unknown> = {};
+
+    if (!includeArchived) {
+      where.archivedAt = null;
+    }
+
+    if (statusParam) {
+      where.status = statusParam;
+    }
+
+    if (search) {
+      where.OR = [
+        { name: { contains: search } },
+        { notes: { contains: search } },
+        { tags: { contains: search } },
+      ];
+    }
+
+    const [total, projects] = await Promise.all([
+      prisma.project.count({ where }),
+      prisma.project.findMany({
+        where,
+        skip: offset,
+        take: limit,
+        orderBy: { updatedAt: 'desc' },
+        include: {
+          allocations: {
+            select: { status: true },
+          },
+        },
+      }),
+    ]);
+
+    type ProjectFromDB = (typeof projects)[number];
+
+    let data = projects.map((project: ProjectFromDB) => {
+      const tags = safeParseJson<string[]>(project.tags, []);
+      const allocationsByStatus = project.allocations.reduce<Record<string, number>>(
+        (acc, alloc) => {
+          acc[alloc.status] = (acc[alloc.status] ?? 0) + 1;
+          return acc;
+        },
+        {},
+      );
+      const { allocations: _allocations, ...rest } = project;
+      return {
+        ...rest,
+        tags,
+        allocationCount: project.allocations.length,
+        allocationsByStatus,
+      };
+    });
+
+    // In-memory tag filter
+    if (tagsParam) {
+      const filterTags = tagsParam
+        .split(',')
+        .map((t) => t.trim())
+        .filter(Boolean);
+      data = data.filter((p) => filterTags.every((tag) => p.tags.includes(tag)));
+    }
+
+    return NextResponse.json({ data, total: tagsParam ? data.length : total, limit, offset });
   } catch {
     return NextResponse.json(
-      { error: 'invalid_json', message: 'Request body must be valid JSON' },
-      { status: 400 },
+      { error: 'internal_error', message: 'An unexpected error occurred' },
+      { status: 500 },
     );
   }
-
-  const { name, status, notes, tags, wishlistNotes } = body;
-
-  if (!name || typeof name !== 'string' || name.trim() === '') {
-    return NextResponse.json(
-      { error: 'validation_error', message: 'name is required' },
-      { status: 400 },
-    );
-  }
-
-  const projectStatus = (status ?? 'idea') as string;
-  if (!VALID_STATUSES.includes(projectStatus as ProjectStatus)) {
-    return NextResponse.json(
-      {
-        error: 'validation_error',
-        message: `status must be one of: ${VALID_STATUSES.join(', ')}`,
-      },
-      { status: 400 },
-    );
-  }
-
-  const project = await prisma.project.create({
-    data: {
-      name: (name as string).trim(),
-      status: projectStatus,
-      notes: notes && typeof notes === 'string' ? notes : undefined,
-      tags: JSON.stringify(parseTags(tags)),
-      wishlistNotes:
-        wishlistNotes && typeof wishlistNotes === 'string' ? wishlistNotes : undefined,
-    },
-  });
-
-  return NextResponse.json(
-    {
-      data: {
-        ...project,
-        tags: safeParseJson<string[]>(project.tags, []),
-      },
-    },
-    { status: 201 },
-  );
 }
