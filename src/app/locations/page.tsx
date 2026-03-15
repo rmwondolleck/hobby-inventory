@@ -31,7 +31,11 @@ export default function LocationsPage() {
   }, []);
 
   const openPrintLabel = (ids: string[], size = 'medium') => {
-    window.open(`/print/labels?type=location&ids=${ids.join(',')}&size=${size}`, '_blank');
+    window.open(
+      `/print/labels?type=location&ids=${encodeURIComponent(ids.join(','))}&size=${encodeURIComponent(size)}`,
+      '_blank',
+      'noopener,noreferrer'
+    );
   };
 
   if (loading) {
@@ -110,8 +114,9 @@ export default function LocationsPage() {
                         </button>
                       )}
                       <Link
-                        href={`/print/labels?type=lot&locationId=${location.id}&size=medium`}
+                        href={`/print/labels?type=lot&locationId=${encodeURIComponent(location.id)}&size=medium`}
                         target="_blank"
+                        rel="noopener noreferrer"
                         title="Print labels for all lots at this location"
                         style={{ fontSize: 12, background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, padding: '3px 8px', cursor: 'pointer', textDecoration: 'none', color: 'inherit' }}
                       >

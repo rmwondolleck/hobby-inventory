@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 
 export type LabelSize = 'small' | 'medium' | 'large';
 
@@ -38,15 +38,33 @@ const LABEL_DIMENSIONS: Record<LabelSize, {
 
 function QRImage({ url, size }: { url: string; size: number }) {
   const [dataUrl, setDataUrl] = useState<string>('');
+  const [error, setError] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
-    import('qrcode').then((QRCode) => {
-      QRCode.default.toDataURL(url, { width: size, margin: 1, errorCorrectionLevel: 'M' })
-        .then((du) => { if (!cancelled) setDataUrl(du); });
-    });
+    import('qrcode')
+      .then((QRCode) =>
+        QRCode.default.toDataURL(url, { width: size, margin: 1, errorCorrectionLevel: 'M' })
+      )
+      .then((du) => { if (!cancelled) setDataUrl(du); })
+      .catch(() => { if (!cancelled) setError(true); });
     return () => { cancelled = true; };
   }, [url, size]);
+
+  if (error) {
+    const errorStyle: React.CSSProperties = {
+      width: size,
+      height: size,
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      background: '#fee2e2',
+      fontSize: size > 60 ? 10 : 7,
+      color: '#dc2626',
+      textAlign: 'center',
+    };
+    return <div style={errorStyle}>QR error</div>;
+  }
 
   if (!dataUrl) {
     return (

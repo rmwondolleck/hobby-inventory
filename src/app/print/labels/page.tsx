@@ -29,12 +29,13 @@ async function fetchLabels(
   }
 
   if (type === 'lot') {
+    if (ids.length === 0 && !locationId) {
+      return [];
+    }
     const where =
       ids.length > 0
         ? { id: { in: ids } }
-        : locationId
-          ? { locationId }
-          : {};
+        : { locationId };
     const lots = await prisma.lot.findMany({
       where,
       orderBy: { createdAt: 'desc' },

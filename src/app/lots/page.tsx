@@ -32,7 +32,11 @@ export default function LotsPage() {
   }, []);
 
   const openPrintLabel = (ids: string[], size = 'medium') => {
-    window.open(`/print/labels?type=lot&ids=${ids.join(',')}&size=${size}`, '_blank');
+    window.open(
+      `/print/labels?type=lot&ids=${encodeURIComponent(ids.join(','))}&size=${encodeURIComponent(size)}`,
+      '_blank',
+      'noopener,noreferrer'
+    );
   };
 
   if (loading) {
