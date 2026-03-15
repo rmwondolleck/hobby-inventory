@@ -155,7 +155,7 @@ export function ProjectsListClient() {
 
   const sidebarInitialized = useRef(false);
 
-  const fetchProjects = useCallback(async (currentFilters: ProjectFilters) => {
+  const fetchProjects = useCallback(async (currentFilters: ProjectFilters, signal: AbortSignal) => {
     setLoading(true);
     setError(null);
     try {
@@ -166,7 +166,7 @@ export function ProjectsListClient() {
         params.set('tags', currentFilters.tags.join(','));
       params.set('limit', '200');
 
-      const res = await fetch(`/api/projects?${params.toString()}`);
+      const res = await fetch(`/api/projects?${params.toString()}`, { signal });
       if (!res.ok) throw new Error('Failed to fetch projects');
       const json = (await res.json()) as { data: ProjectListItem[]; total: number };
 
@@ -179,14 +179,17 @@ export function ProjectsListClient() {
         sidebarInitialized.current = true;
       }
     } catch (err) {
+      if (err instanceof Error && err.name === 'AbortError') return;
       setError(err instanceof Error ? err.message : 'Unknown error');
     } finally {
-      setLoading(false);
+      if (!signal.aborted) setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    fetchProjects(filters);
+    const controller = new AbortController();
+    fetchProjects(filters, controller.signal);
+    return () => controller.abort();
   }, [fetchProjects, filters]);
 
   return (

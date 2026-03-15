@@ -73,9 +73,7 @@ function AllocationRow({ allocation }: { allocation: AllocationWithDetails }) {
         )}
       </td>
       <td className="py-2 pr-4 text-sm text-gray-700">{qtyDisplay}</td>
-      {allocation.notes && (
-        <td className="py-2 text-sm text-gray-500">{allocation.notes}</td>
-      )}
+      <td className="py-2 text-sm text-gray-500">{allocation.notes ?? '—'}</td>
     </tr>
   );
 }
@@ -104,6 +102,7 @@ function AllocationGroup({
               <th className="py-2 pr-4 text-left text-xs font-medium text-gray-500">Part</th>
               <th className="py-2 pr-4 text-left text-xs font-medium text-gray-500">Location</th>
               <th className="py-2 pr-4 text-left text-xs font-medium text-gray-500">Quantity</th>
+              <th className="py-2 text-left text-xs font-medium text-gray-500">Notes</th>
             </tr>
           </thead>
           <tbody>
@@ -132,14 +131,10 @@ function EventRow({ event }: { event: ProjectEvent }) {
         </Link>
       </td>
       <td className="py-2 pr-4 text-sm text-gray-600 capitalize">{event.type}</td>
-      {event.delta != null && (
-        <td className="py-2 pr-4 text-sm text-gray-600">
-          {event.delta > 0 ? `+${event.delta}` : event.delta}
-        </td>
-      )}
-      {event.notes && (
-        <td className="py-2 text-sm text-gray-500">{event.notes}</td>
-      )}
+      <td className="py-2 pr-4 text-sm text-gray-600">
+        {event.delta != null ? (event.delta > 0 ? `+${event.delta}` : event.delta) : '—'}
+      </td>
+      <td className="py-2 text-sm text-gray-500">{event.notes ?? '—'}</td>
     </tr>
   );
 }
@@ -300,7 +295,8 @@ export function ProjectDetailClient({ id }: ProjectDetailClientProps) {
                   <th className="py-2 pr-4 text-left text-xs font-medium text-gray-500">Date</th>
                   <th className="py-2 pr-4 text-left text-xs font-medium text-gray-500">Part</th>
                   <th className="py-2 pr-4 text-left text-xs font-medium text-gray-500">Type</th>
-                  <th className="py-2 text-left text-xs font-medium text-gray-500">Delta</th>
+                  <th className="py-2 pr-4 text-left text-xs font-medium text-gray-500">Delta</th>
+                  <th className="py-2 text-left text-xs font-medium text-gray-500">Notes</th>
                 </tr>
               </thead>
               <tbody>
