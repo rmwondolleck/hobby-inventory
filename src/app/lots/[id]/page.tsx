@@ -3,6 +3,8 @@ import Link from 'next/link';
 import prisma from '@/lib/db';
 import { safeParseJson, formatDate, formatDateTime, cn } from '@/lib/utils';
 import { LotStatusBadge } from '@/features/lots/components/LotStatusBadge';
+import { LotActionsPanel } from '@/features/lots/components/LotActionsPanel';
+import { AllocationActions } from '@/features/lots/components/AllocationActions';
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -126,6 +128,18 @@ export default async function LotDetailPage({ params }: PageProps) {
         </div>
 
         <div className="space-y-6">
+          {/* Actions */}
+          <LotActionsPanel
+            lotId={lot.id}
+            status={lot.status}
+            quantityMode={lot.quantityMode}
+            quantity={lot.quantity}
+            qualitativeStatus={lot.qualitativeStatus}
+            unit={lot.unit}
+            locationId={lot.locationId}
+            notes={lot.notes}
+          />
+
           {/* Core Details */}
           <section className="rounded-lg bg-white p-6 shadow-sm">
             <h2 className="mb-4 text-base font-semibold text-gray-900">Lot Details</h2>
@@ -230,37 +244,44 @@ export default async function LotDetailPage({ params }: PageProps) {
               </h2>
               <div className="divide-y">
                 {lot.allocations.map(alloc => (
-                  <div key={alloc.id} className="flex items-center justify-between py-3">
-                    <div>
-                      <Link
-                        href={`/projects/${alloc.project.id}`}
-                        className="text-sm font-medium text-blue-600 hover:underline"
-                      >
-                        {alloc.project.name}
-                      </Link>
-                      {alloc.notes && (
-                        <p className="text-xs text-gray-500">{alloc.notes}</p>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-2 text-right">
-                      {alloc.quantity !== null && (
-                        <span className="text-sm font-medium text-gray-900">
-                          {alloc.quantity}
-                          {lot.unit ? ` ${lot.unit}` : ''}
-                        </span>
-                      )}
-                      <span
-                        className={cn(
-                          'inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium',
-                          alloc.status === 'reserved' && 'bg-blue-100 text-blue-800',
-                          alloc.status === 'in_use' && 'bg-green-100 text-green-800',
-                          alloc.status === 'deployed' && 'bg-purple-100 text-purple-800',
-                          alloc.status === 'recovered' && 'bg-gray-100 text-gray-800'
+                  <div key={alloc.id} className="py-3">
+                    <div className="flex items-start justify-between gap-4">
+                      <div>
+                        <Link
+                          href={`/projects/${alloc.project.id}`}
+                          className="text-sm font-medium text-blue-600 hover:underline"
+                        >
+                          {alloc.project.name}
+                        </Link>
+                        {alloc.notes && (
+                          <p className="text-xs text-gray-500">{alloc.notes}</p>
                         )}
-                      >
-                        {alloc.status}
-                      </span>
+                      </div>
+                      <div className="flex items-center gap-2 text-right">
+                        {alloc.quantity !== null && (
+                          <span className="text-sm font-medium text-gray-900">
+                            {alloc.quantity}
+                            {lot.unit ? ` ${lot.unit}` : ''}
+                          </span>
+                        )}
+                        <span
+                          className={cn(
+                            'inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium',
+                            alloc.status === 'reserved' && 'bg-blue-100 text-blue-800',
+                            alloc.status === 'in_use' && 'bg-green-100 text-green-800',
+                            alloc.status === 'deployed' && 'bg-purple-100 text-purple-800',
+                            alloc.status === 'recovered' && 'bg-gray-100 text-gray-800'
+                          )}
+                        >
+                          {alloc.status}
+                        </span>
+                      </div>
                     </div>
+                    <AllocationActions
+                      allocationId={alloc.id}
+                      status={alloc.status}
+                      projectName={alloc.project.name}
+                    />
                   </div>
                 ))}
               </div>
