@@ -15,6 +15,7 @@ on:
         description: "Work Queue issue number for reporting"
         required: true
         type: number
+timeout-minutes: 60
 permissions:
   contents: read
   pull-requests: read
