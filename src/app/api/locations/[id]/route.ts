@@ -1,50 +1,47 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { buildLocationPath } from '@/lib/utils';
+import type { Prisma } from '@prisma/client';
 
 type Params = { params: Promise<{ id: string }> };
 
-type LocationRecord = { id: string; name: string; parentId: string | null };
-type ChildEntry = { child: LocationRecord; childPath: string };
+type LocationChild = { id: string; name: string; parentId: string | null };
+type ChildEntry = { id: string; path: string };
 
 async function updateDescendantPaths(
-  tx: typeof prisma,
+  tx: Prisma.TransactionClient,
   locationId: string,
   newParentPath: string
 ): Promise<void> {
-  let currentLevel: Array<{ parentId: string; parentPath: string }> = [
-    { parentId: locationId, parentPath: newParentPath },
-  ];
+  // Map from location ID → its newly computed path, for the current BFS level
+  let parentMap = new Map<string, string>([[locationId, newParentPath]]);
 
-  while (currentLevel.length > 0) {
-    // Fetch children for all nodes at the current level in parallel
-    const childGroups = await Promise.all(
-      currentLevel.map(({ parentId, parentPath }) =>
-        (tx.location.findMany({ where: { parentId } }) as Promise<LocationRecord[]>).then(
-          (children) =>
-            children.map((child): ChildEntry => ({
-              child,
-              childPath: `${parentPath}/${child.name}`,
-            }))
-        )
-      )
-    );
+  while (parentMap.size > 0) {
+    const parentIds = Array.from(parentMap.keys());
 
-    const flatChildren: ChildEntry[] = childGroups.flat();
-    if (flatChildren.length === 0) break;
+    // Single query for all children across this entire level
+    const children = (await tx.location.findMany({
+      where: { parentId: { in: parentIds } },
+      select: { id: true, name: true, parentId: true },
+    })) as LocationChild[];
 
-    // Update all nodes at this level in parallel
+    if (children.length === 0) break;
+
+    // Compute new paths using the shared helper
+    const childEntries: ChildEntry[] = children.map((child) => ({
+      id: child.id,
+      path: buildLocationPath(child.name, parentMap.get(child.parentId!)!),
+    }));
+
+    // Update all children at this level in parallel
     await Promise.all(
-      flatChildren.map(({ child, childPath }) =>
-        tx.location.update({ where: { id: child.id }, data: { path: childPath } })
+      childEntries.map(({ id: childId, path }: ChildEntry) =>
+        tx.location.update({ where: { id: childId }, data: { path } })
       )
     );
 
     // Advance to the next level
-    currentLevel = flatChildren.map(({ child, childPath }) => ({
-      parentId: child.id,
-      parentPath: childPath,
-    }));
+    parentMap = new Map(childEntries.map(({ id: childId, path }: ChildEntry) => [childId, path]));
   }
 }
 
@@ -102,14 +99,6 @@ export async function PATCH(request: Request, { params }: Params) {
       notes?: unknown;
     };
 
-    const existing = await prisma.location.findUnique({ where: { id } });
-    if (!existing) {
-      return NextResponse.json(
-        { error: 'not_found', message: 'Location not found' },
-        { status: 404 }
-      );
-    }
-
     if (name !== undefined && (typeof name !== 'string' || !name.trim())) {
       return NextResponse.json(
         { error: 'validation_error', message: 'Name cannot be empty' },
@@ -124,20 +113,31 @@ export async function PATCH(request: Request, { params }: Params) {
       );
     }
 
-    const newParentId =
-      'parentId' in body
-        ? (typeof parentId === 'string' && parentId ? parentId : null)
-        : existing.parentId;
+    // Early 404 check (before any heavy validation)
+    const locationExists = await prisma.location.findUnique({ where: { id }, select: { id: true } });
+    if (!locationExists) {
+      return NextResponse.json(
+        { error: 'not_found', message: 'Location not found' },
+        { status: 404 }
+      );
+    }
 
-    if (newParentId) {
-      if (newParentId === id) {
+    // Determine the desired new parentId from the request body
+    // undefined = field not present → inherit from existing inside the transaction
+    const hasParentId = 'parentId' in body;
+    const desiredParentId = hasParentId
+      ? (typeof parentId === 'string' && parentId ? parentId : null)
+      : undefined;
+
+    if (desiredParentId !== undefined && desiredParentId !== null) {
+      if (desiredParentId === id) {
         return NextResponse.json(
           { error: 'validation_error', message: 'Location cannot be its own parent' },
           { status: 400 }
         );
       }
       // Check that the new parent is not a descendant of this location
-      let current = await prisma.location.findUnique({ where: { id: newParentId } });
+      let current = await prisma.location.findUnique({ where: { id: desiredParentId } });
       while (current?.parentId) {
         if (current.parentId === id) {
           return NextResponse.json(
@@ -148,8 +148,8 @@ export async function PATCH(request: Request, { params }: Params) {
         current = await prisma.location.findUnique({ where: { id: current.parentId } });
       }
 
-      const parent = await prisma.location.findUnique({ where: { id: newParentId } });
-      if (!parent) {
+      const parentExists = await prisma.location.findUnique({ where: { id: desiredParentId }, select: { id: true } });
+      if (!parentExists) {
         return NextResponse.json(
           { error: 'not_found', message: 'Parent location not found' },
           { status: 404 }
@@ -157,29 +157,34 @@ export async function PATCH(request: Request, { params }: Params) {
       }
     }
 
-    const newName = (typeof name === 'string' && name.trim()) ? name.trim() : existing.name;
-    const nameChanged = newName !== existing.name;
-    const parentChanged = newParentId !== existing.parentId;
+    const hasNotes = 'notes' in body;
 
-    let newPath = existing.path;
-    if (nameChanged || parentChanged) {
-      let parentPath: string | undefined;
-      if (newParentId) {
-        const parent = await prisma.location.findUnique({ where: { id: newParentId } });
-        parentPath = parent?.path;
+    const location = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+      // Re-fetch inside the transaction so path/notes computation uses consistent, fresh state
+      const existing = await tx.location.findUniqueOrThrow({ where: { id } });
+
+      const resolvedParentId = desiredParentId !== undefined ? desiredParentId : existing.parentId;
+      const newName = (typeof name === 'string' && name.trim()) ? name.trim() : existing.name;
+      const nameChanged = newName !== existing.name;
+      const parentChanged = resolvedParentId !== existing.parentId;
+
+      let newPath = existing.path;
+      if (nameChanged || parentChanged) {
+        let parentPath: string | undefined;
+        if (resolvedParentId) {
+          const parent = await tx.location.findUnique({ where: { id: resolvedParentId } });
+          parentPath = parent?.path;
+        }
+        newPath = buildLocationPath(newName, parentPath);
       }
-      newPath = buildLocationPath(newName, parentPath);
-    }
 
-    const newNotes =
-      'notes' in body
+      const newNotes = hasNotes
         ? (typeof notes === 'string' && notes.trim() ? notes.trim() : null)
         : existing.notes;
 
-    const location = await prisma.$transaction(async (tx: typeof prisma) => {
       const updated = await tx.location.update({
         where: { id },
-        data: { name: newName, parentId: newParentId, path: newPath, notes: newNotes },
+        data: { name: newName, parentId: resolvedParentId, path: newPath, notes: newNotes },
       });
 
       if (nameChanged || parentChanged) {
