@@ -111,7 +111,10 @@ export function PartsListClient() {
       if (err instanceof Error && err.name === 'AbortError') return;
       setError(err instanceof Error ? err.message : 'Unknown error');
     } finally {
-      setLoading(false);
+      // Only clear loading if this request is still the active one
+      if (abortControllerRef.current === controller) {
+        setLoading(false);
+      }
     }
   }, []);
 
