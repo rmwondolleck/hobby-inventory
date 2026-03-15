@@ -8,7 +8,12 @@ const MAX_LIMIT = 500;
 const VALID_STATUSES: ProjectStatus[] = ['idea', 'planned', 'active', 'deployed', 'retired'];
 
 function parseTags(tags: unknown): string[] {
-  if (Array.isArray(tags)) return tags.filter((t) => typeof t === 'string');
+  if (Array.isArray(tags)) {
+    return tags
+      .filter((t) => typeof t === 'string')
+      .map((t) => (t as string).trim())
+      .filter(Boolean);
+  }
   return [];
 }
 

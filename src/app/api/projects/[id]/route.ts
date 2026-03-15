@@ -81,7 +81,13 @@ export async function PATCH(request: Request, { params }: RouteParams) {
     );
   }
 
-  const updateData: Record<string, unknown> = {};
+  const updateData: {
+    name?: string;
+    status?: string;
+    notes?: string | null;
+    tags?: string;
+    wishlistNotes?: string | null;
+  } = {};
 
   if ('name' in body) {
     if (typeof body.name !== 'string' || body.name.trim() === '') {
@@ -114,21 +120,37 @@ export async function PATCH(request: Request, { params }: RouteParams) {
         { status: 422 },
       );
     }
-    updateData.status = body.status;
+    updateData.status = body.status as string;
   }
 
   if ('notes' in body) {
-    updateData.notes = body.notes === null ? null : String(body.notes);
+    if (body.notes !== null && typeof body.notes !== 'string') {
+      return NextResponse.json(
+        { error: 'validation_error', message: 'notes must be a string or null' },
+        { status: 400 },
+      );
+    }
+    updateData.notes = body.notes as string | null;
   }
 
   if ('tags' in body) {
-    const tags = Array.isArray(body.tags) ? body.tags.filter((t) => typeof t === 'string') : [];
+    const tags = Array.isArray(body.tags)
+      ? body.tags
+          .filter((t) => typeof t === 'string')
+          .map((t) => (t as string).trim())
+          .filter(Boolean)
+      : [];
     updateData.tags = JSON.stringify(tags);
   }
 
   if ('wishlistNotes' in body) {
-    updateData.wishlistNotes =
-      body.wishlistNotes === null ? null : String(body.wishlistNotes);
+    if (body.wishlistNotes !== null && typeof body.wishlistNotes !== 'string') {
+      return NextResponse.json(
+        { error: 'validation_error', message: 'wishlistNotes must be a string or null' },
+        { status: 400 },
+      );
+    }
+    updateData.wishlistNotes = body.wishlistNotes as string | null;
   }
 
   const updated = await prisma.project.update({ where: { id }, data: updateData });
