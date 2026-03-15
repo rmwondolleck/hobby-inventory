@@ -240,6 +240,25 @@ This epic is ready for human review. Key accomplishments:
 3. Create follow-up issues for low-priority improvements
 ```
 
+### Step 3b: Rebase Epic Branch onto Main (REQUIRED before any edits)
+
+Before making any edits, sync the epic branch with the current state of `main`. This is critical — if main has moved forward since the epic branch was created (e.g., a previous epic was merged), the `create-pull-request` patch will fail unless the epic branch is rebased first.
+
+```bash
+git fetch origin main
+git rebase origin/main
+```
+
+If rebase produces conflicts, resolve them as part of the synthesis work — these are exactly the integration conflicts you need to address. Use standard git conflict resolution:
+
+```bash
+# For each conflicted file, resolve and stage
+git add <resolved-file>
+git rebase --continue
+```
+
+Once complete, the epic branch will be a clean forward-port onto main and all subsequent edits will patch cleanly.
+
 ### Step 4: Make Consolidation Improvements (Optional)
 
 If you identified easy fixes during analysis:
