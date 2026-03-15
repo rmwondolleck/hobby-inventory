@@ -17,6 +17,44 @@ function parseParameters(parameters: unknown): Record<string, unknown> {
   return {};
 }
 
+/**
+ * Parse `parameters.*` query params from the URL.
+ * e.g. ?parameters.ble=true&parameters.voltage=3.3V => { ble: 'true', voltage: '3.3V' }
+ */
+function parseParameterFilters(searchParams: URLSearchParams): Record<string, string> {
+  const filters: Record<string, string> = {};
+  for (const [key, value] of Array.from(searchParams.entries())) {
+    if (key.startsWith('parameters.')) {
+      const paramKey = key.slice('parameters.'.length);
+      if (paramKey) filters[paramKey] = value;
+    }
+  }
+  return filters;
+}
+
+/**
+ * Match a part's parameters object against the filter map.
+ * Coerces booleans and numbers for comparison.
+ */
+function matchesParameterFilters(
+  parameters: Record<string, unknown>,
+  filters: Record<string, string>
+): boolean {
+  for (const [key, rawValue] of Object.entries(filters)) {
+    const actual = parameters[key];
+    if (actual === undefined) return false;
+
+    if (rawValue === 'true' || rawValue === 'false') {
+      if (actual !== (rawValue === 'true')) return false;
+    } else if (!isNaN(Number(rawValue))) {
+      if (Number(actual) !== Number(rawValue)) return false;
+    } else {
+      if (String(actual) !== rawValue) return false;
+    }
+  }
+  return true;
+}
+
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
 
@@ -26,6 +64,8 @@ export async function GET(request: Request) {
   const archived = searchParams.get('archived');
   const limit = Math.min(parseInt(searchParams.get('limit') ?? String(DEFAULT_LIMIT), 10) || DEFAULT_LIMIT, MAX_LIMIT);
   const offset = Math.max(parseInt(searchParams.get('offset') ?? '0', 10) || 0, 0);
+  const paramFilters = parseParameterFilters(searchParams);
+  const hasParamFilters = Object.keys(paramFilters).length > 0;
 
   const includeArchived = archived === 'true';
   const tagList = tagsParam ? tagsParam.split(',').map((t) => t.trim()).filter(Boolean) : [];
@@ -57,6 +97,30 @@ export async function GET(request: Request) {
       : {}),
   };
 
+  // When parameter filters are present, fetch all matching and filter in-memory, then paginate.
+  if (hasParamFilters) {
+    const all = await prisma.part.findMany({ where, orderBy: { updatedAt: 'desc' } });
+
+    const filtered = all.filter((part: { parameters: string }) => {
+      const params = safeParseJson<Record<string, unknown>>(part.parameters, {});
+      return matchesParameterFilters(params, paramFilters);
+    });
+
+    const total = filtered.length;
+    const page = filtered.slice(offset, offset + limit);
+
+    return NextResponse.json({
+      data: page.map((part: (typeof filtered)[number]) => ({
+        ...part,
+        tags: safeParseJson<string[]>(part.tags, []),
+        parameters: safeParseJson<Record<string, unknown>>(part.parameters, {}),
+      })),
+      total,
+      limit,
+      offset,
+    });
+  }
+
   const [total, parts] = await Promise.all([
     prisma.part.count({ where }),
     prisma.part.findMany({
@@ -78,6 +142,7 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   let body: Record<string, unknown>;
+
   try {
     body = await request.json();
   } catch {
