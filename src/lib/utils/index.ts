@@ -74,3 +74,14 @@ export function buildLocationPath(name: string, parentPath?: string): string {
   return parentPath ? `${parentPath}/${name}` : name;
 }
 
+/**
+ * Safely parse a JSON string, returning fallback on any parse error
+ */
+export function safeJsonParse<T>(value: string, fallback: T): T {
+  try {
+    return JSON.parse(value) as T;
+  } catch {
+    return fallback;
+  }
+}
+

@@ -59,7 +59,9 @@ export function FilterSidebar({
               {categories.map((cat) => (
                 <li key={cat}>
                   <button
+                    type="button"
                     onClick={() => handleCategoryToggle(cat)}
+                    aria-pressed={filters.category === cat}
                     className={cn(
                       'w-full rounded px-2 py-1 text-left text-sm transition-colors',
                       filters.category === cat
@@ -84,7 +86,9 @@ export function FilterSidebar({
               {availableTags.map((tag) => (
                 <button
                   key={tag}
+                  type="button"
                   onClick={() => handleTagToggle(tag)}
+                  aria-pressed={filters.tags.includes(tag)}
                   className={cn(
                     'rounded-full px-2 py-0.5 text-xs transition-colors',
                     filters.tags.includes(tag)

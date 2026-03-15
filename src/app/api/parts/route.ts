@@ -1,16 +1,22 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
+import { safeJsonParse } from '@/lib/utils';
 
 const DEFAULT_LIMIT = 50;
 const MAX_LIMIT = 500;
 
-function safeJsonParse<T>(value: string, fallback: T): T {
-  try {
-    return JSON.parse(value) as T;
-  } catch {
-    return fallback;
-  }
-}
+// Mirrors Prisma.PartWhereInput; replace with that import once @prisma/client is available
+type PartWhereInput = {
+  AND?: PartWhereInput[];
+  archivedAt?: null;
+  category?: string;
+  OR?: Array<{
+    name?: { contains: string };
+    mpn?: { contains: string };
+    manufacturer?: { contains: string };
+    tags?: { contains: string };
+  }>;
+};
 
 export async function GET(request: Request) {
   try {
@@ -20,31 +26,51 @@ export async function GET(request: Request) {
     const category = searchParams.get('category') ?? '';
     const tags = searchParams.get('tags') ?? '';
     const includeArchived = searchParams.get('includeArchived') === 'true';
+
+    const rawLimit = parseInt(searchParams.get('limit') ?? String(DEFAULT_LIMIT), 10);
+    const rawOffset = parseInt(searchParams.get('offset') ?? '0', 10);
     const limit = Math.min(
-      parseInt(searchParams.get('limit') ?? String(DEFAULT_LIMIT), 10),
+      Number.isFinite(rawLimit) && rawLimit > 0 ? rawLimit : DEFAULT_LIMIT,
       MAX_LIMIT
     );
-    const offset = parseInt(searchParams.get('offset') ?? '0', 10);
+    const offset = Number.isFinite(rawOffset) && rawOffset >= 0 ? rawOffset : 0;
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const where: Record<string, any> = {};
+    const andConditions: PartWhereInput[] = [];
 
     if (!includeArchived) {
-      where.archivedAt = null;
+      andConditions.push({ archivedAt: null });
     }
 
     if (category) {
-      where.category = category;
+      andConditions.push({ category });
     }
 
     if (search) {
-      where.OR = [
-        { name: { contains: search } },
-        { mpn: { contains: search } },
-        { manufacturer: { contains: search } },
-        { tags: { contains: search } },
-      ];
+      andConditions.push({
+        OR: [
+          { name: { contains: search } },
+          { mpn: { contains: search } },
+          { manufacturer: { contains: search } },
+          { tags: { contains: search } },
+        ],
+      });
     }
+
+    const tagFilter = tags.split(',').filter(Boolean);
+    if (tagFilter.length > 0) {
+      // Tags are stored as JSON arrays (e.g. '["resistor","0402"]').
+      // Match each tag by looking for the quoted string inside the serialized JSON value.
+      // Escape backslashes and quotes so user input cannot break out of the JSON pattern.
+      andConditions.push({
+        OR: tagFilter.map((tag) => {
+          const escaped = tag.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+          return { tags: { contains: `"${escaped}"` } };
+        }),
+      });
+    }
+
+    const where: PartWhereInput =
+      andConditions.length > 0 ? { AND: andConditions } : {};
 
     const [parts, total] = await Promise.all([
       prisma.part.findMany({
@@ -66,9 +92,7 @@ export async function GET(request: Request) {
       prisma.part.count({ where }),
     ]);
 
-    const tagFilter = tags.split(',').filter(Boolean);
-
-    const enriched = parts.map((part) => ({
+    const data = parts.map((part) => ({
       ...part,
       tags: safeJsonParse<string[]>(part.tags, []),
       parameters: safeJsonParse<Record<string, unknown>>(part.parameters, {}),
@@ -85,17 +109,7 @@ export async function GET(request: Request) {
       lotCount: part.lots.length,
     }));
 
-    const filtered =
-      tagFilter.length > 0
-        ? enriched.filter((p) => tagFilter.some((t) => p.tags.includes(t)))
-        : enriched;
-
-    return NextResponse.json({
-      data: filtered,
-      total: tagFilter.length > 0 ? filtered.length : total,
-      limit,
-      offset,
-    });
+    return NextResponse.json({ data, total, limit, offset });
   } catch (error) {
     console.error('[GET /api/parts]', error);
     return NextResponse.json(

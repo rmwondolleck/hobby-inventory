@@ -1,13 +1,6 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
-
-function safeJsonParse<T>(value: string, fallback: T): T {
-  try {
-    return JSON.parse(value) as T;
-  } catch {
-    return fallback;
-  }
-}
+import { safeJsonParse } from '@/lib/utils';
 
 export async function GET(
   _request: Request,

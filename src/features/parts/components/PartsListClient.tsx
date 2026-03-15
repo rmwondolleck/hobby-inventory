@@ -64,8 +64,15 @@ export function PartsListClient() {
 
   // Track whether sidebar data has been initialized
   const sidebarInitialized = useRef(false);
+  // Hold a reference to the latest AbortController so we can cancel in-flight requests
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   const fetchParts = useCallback(async (currentFilters: PartFilters) => {
+    // Abort any in-flight request before starting a new one
+    abortControllerRef.current?.abort();
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
     setLoading(true);
     setError(null);
     try {
@@ -75,9 +82,10 @@ export function PartsListClient() {
       if (currentFilters.tags.length > 0)
         params.set('tags', currentFilters.tags.join(','));
       if (currentFilters.includeArchived) params.set('includeArchived', 'true');
-      params.set('limit', '200');
 
-      const res = await fetch(`/api/parts?${params.toString()}`);
+      const res = await fetch(`/api/parts?${params.toString()}`, {
+        signal: controller.signal,
+      });
       if (!res.ok) throw new Error('Failed to fetch parts');
       const json = (await res.json()) as { data: PartListItem[]; total: number };
 
@@ -100,6 +108,7 @@ export function PartsListClient() {
         sidebarInitialized.current = true;
       }
     } catch (err) {
+      if (err instanceof Error && err.name === 'AbortError') return;
       setError(err instanceof Error ? err.message : 'Unknown error');
     } finally {
       setLoading(false);
