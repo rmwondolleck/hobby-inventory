@@ -135,7 +135,7 @@ export async function POST(request: Request) {
     );
   }
 
-  if (typeof body !== 'object' || body === null) {
+  if (typeof body !== 'object' || body === null || Array.isArray(body)) {
     return NextResponse.json(
       { error: 'invalid_body', message: 'Request body must be an object' },
       { status: 400 }

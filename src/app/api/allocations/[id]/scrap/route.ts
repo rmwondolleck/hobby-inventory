@@ -33,7 +33,8 @@ export async function POST(_request: Request, { params }: RouteParams) {
     );
   }
 
-  const ops: Parameters<typeof prisma.$transaction>[0] = [
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const ops: any[] = [
     // Mark allocation recovered (removes it from active count)
     prisma.allocation.update({
       where: { id },
