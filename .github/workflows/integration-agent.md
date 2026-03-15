@@ -35,6 +35,7 @@ safe-outputs:
     labels: [epic-integration, synthesis]
     draft: false
     base-branch: "main"
+    protected-files: fallback-to-issue
     allowed-files:
       - "**/*"
       - "package.json"
