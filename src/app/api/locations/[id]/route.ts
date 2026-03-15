@@ -55,7 +55,27 @@ export async function PATCH(
   }
   if (notes !== undefined) updates.notes = notes?.trim() || null;
 
-  const location = await prisma.location.update({ where: { id }, data: updates });
+  let location;
+  if (updates.path && updates.path !== existing.path) {
+    const oldPath = existing.path;
+    const newPath = updates.path;
+    const descendants = await prisma.location.findMany({
+      where: { path: { startsWith: oldPath + '/' } },
+    });
+    const ops = [
+      ...descendants.map((d: { id: string; path: string }) =>
+        prisma.location.update({
+          where: { id: d.id },
+          data: { path: d.path.replace(oldPath, newPath) },
+        })
+      ),
+      prisma.location.update({ where: { id }, data: updates }),
+    ];
+    const results = await prisma.$transaction(ops);
+    location = results[results.length - 1];
+  } else {
+    location = await prisma.location.update({ where: { id }, data: updates });
+  }
   return NextResponse.json(location);
 }
 

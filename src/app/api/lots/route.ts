@@ -6,8 +6,10 @@ const MAX_LIMIT = 500;
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
-  const limit = Math.min(parseInt(searchParams.get('limit') ?? String(DEFAULT_LIMIT)), MAX_LIMIT);
-  const offset = parseInt(searchParams.get('offset') ?? '0');
+  const rawLimit = parseInt(searchParams.get('limit') ?? '', 10);
+  const limit = Math.min(Number.isNaN(rawLimit) || rawLimit < 1 ? DEFAULT_LIMIT : rawLimit, MAX_LIMIT);
+  const rawOffset = parseInt(searchParams.get('offset') ?? '', 10);
+  const offset = Number.isNaN(rawOffset) || rawOffset < 0 ? 0 : rawOffset;
   const locationId = searchParams.get('locationId');
   const partId = searchParams.get('partId');
   const status = searchParams.get('status');
