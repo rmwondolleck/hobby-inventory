@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
+import { Prisma } from '@prisma/client';
 import type { AllocationStatus } from '@/lib/types';
 
 type RouteParams = { params: Promise<{ id: string }> };
@@ -33,8 +34,7 @@ export async function POST(_request: Request, { params }: RouteParams) {
     );
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const ops: any[] = [
+  const ops: Prisma.PrismaPromise<unknown>[] = [
     // Mark allocation recovered (removes it from active count)
     prisma.allocation.update({
       where: { id },
