@@ -20,11 +20,10 @@ export async function GET(request: Request) {
     const status = searchParams.get('status') ?? '';
     const tags = searchParams.get('tags') ?? '';
     const includeArchived = searchParams.get('includeArchived') === 'true';
-    const limit = Math.min(
-      parseInt(searchParams.get('limit') ?? String(DEFAULT_LIMIT), 10),
-      MAX_LIMIT
-    );
-    const offset = parseInt(searchParams.get('offset') ?? '0', 10);
+    const rawLimit = parseInt(searchParams.get('limit') ?? String(DEFAULT_LIMIT), 10);
+    const rawOffset = parseInt(searchParams.get('offset') ?? '0', 10);
+    const limit = Math.min(isNaN(rawLimit) ? DEFAULT_LIMIT : rawLimit, MAX_LIMIT);
+    const offset = isNaN(rawOffset) ? 0 : rawOffset;
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const where: Record<string, any> = {};
@@ -48,11 +47,6 @@ export async function GET(request: Request) {
     const [projects, total] = await Promise.all([
       prisma.project.findMany({
         where,
-        include: {
-          allocations: {
-            select: { status: true },
-          },
-        },
         orderBy: { updatedAt: 'desc' },
         take: limit,
         skip: offset,
@@ -60,22 +54,39 @@ export async function GET(request: Request) {
       prisma.project.count({ where }),
     ]);
 
+    const projectIds = projects.map((p) => p.id);
+
+    const allocationCounts =
+      projectIds.length > 0
+        ? await prisma.allocation.groupBy({
+            by: ['projectId', 'status'],
+            _count: { id: true },
+            where: { projectId: { in: projectIds } },
+          })
+        : [];
+
+    // Build a map of projectId → { total, byStatus }
+    const allocationMap = new Map<string, { total: number; byStatus: Record<string, number> }>();
+    for (const row of allocationCounts) {
+      if (!allocationMap.has(row.projectId)) {
+        allocationMap.set(row.projectId, { total: 0, byStatus: {} });
+      }
+      const entry = allocationMap.get(row.projectId)!;
+      entry.total += row._count.id;
+      entry.byStatus[row.status] = row._count.id;
+    }
+
     const tagFilter = tags.split(',').filter(Boolean);
 
     const enriched = projects.map((project) => {
       const parsedTags = safeJsonParse<string[]>(project.tags, []);
-      const allocationsByStatus: Record<string, number> = {};
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      project.allocations.forEach((a: any) => {
-        allocationsByStatus[a.status] = (allocationsByStatus[a.status] ?? 0) + 1;
-      });
+      const counts = allocationMap.get(project.id) ?? { total: 0, byStatus: {} };
 
       return {
         ...project,
         tags: parsedTags,
-        allocationCount: project.allocations.length,
-        allocationsByStatus,
-        allocations: undefined,
+        allocationCount: counts.total,
+        allocationsByStatus: counts.byStatus,
       };
     });
 

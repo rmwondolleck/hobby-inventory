@@ -1,4 +1,4 @@
-import type { ProjectStatus, AllocationStatus } from '@/lib/types';
+import type { ProjectStatus, AllocationStatus, QuantityMode, QualitativeLevel, StockStatus, EventType } from '@/lib/types';
 
 export interface ProjectListItem {
   id: string;
@@ -18,10 +18,10 @@ export interface AllocationLot {
   id: string;
   partId: string;
   quantity?: number | null;
-  quantityMode: string;
-  qualitativeStatus?: string | null;
+  quantityMode: QuantityMode;
+  qualitativeStatus?: QualitativeLevel | null;
   unit?: string | null;
-  status: string;
+  status: StockStatus;
   locationId?: string | null;
   location?: {
     id: string;
@@ -50,7 +50,7 @@ export interface AllocationWithDetails {
 export interface ProjectEvent {
   id: string;
   lotId: string;
-  type: string;
+  type: EventType;
   delta?: number | null;
   notes?: string | null;
   createdAt: string;
@@ -70,6 +70,6 @@ export interface ProjectDetail extends ProjectListItem {
 
 export interface ProjectFilters {
   search: string;
-  status: string;
+  status: ProjectStatus | '';
   tags: string[];
 }
