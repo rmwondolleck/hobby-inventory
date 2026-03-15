@@ -2,15 +2,17 @@ import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { safeParseJson } from '@/lib/utils';
 import { DEFAULT_CATEGORY_TEMPLATES } from '@/lib/categories/defaults';
-import type { ParameterDefinition } from '@/lib/types';
+import type { ParameterDefinition, DefaultCategoryTemplate } from '@/lib/types';
 
 const DEFAULT_LIMIT = 50;
 const MAX_LIMIT = 500;
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
-  const limit = Math.min(parseInt(searchParams.get('limit') ?? String(DEFAULT_LIMIT)), MAX_LIMIT);
-  const offset = parseInt(searchParams.get('offset') ?? '0');
+  const rawLimit = parseInt(searchParams.get('limit') ?? String(DEFAULT_LIMIT));
+  const rawOffset = parseInt(searchParams.get('offset') ?? '0');
+  const limit = Number.isFinite(rawLimit) && rawLimit >= 1 ? Math.min(rawLimit, MAX_LIMIT) : DEFAULT_LIMIT;
+  const offset = Number.isFinite(rawOffset) && rawOffset >= 0 ? rawOffset : 0;
   const includeDefaults = searchParams.get('includeDefaults') !== 'false';
 
   try {
@@ -24,10 +26,17 @@ export async function GET(request: Request) {
       parameterSchema: safeParseJson<Record<string, ParameterDefinition>>(cat.parameterSchema, {}),
     }));
 
-    if (includeDefaults && offset === 0) {
-      const existingNames = new Set(data.map((c: { name: string }) => c.name));
-      const defaults = Object.entries(DEFAULT_CATEGORY_TEMPLATES)
-        .filter(([name]) => !existingNames.has(name))
+    // Always build the defaults array — query all existing names to avoid pagination gaps
+    let defaults: DefaultCategoryTemplate[] = [];
+    if (includeDefaults) {
+      const templateNames = Object.keys(DEFAULT_CATEGORY_TEMPLATES);
+      const savedCategories = await prisma.category.findMany({
+        where: { name: { in: templateNames } },
+        select: { name: true },
+      });
+      const savedNames = new Set(savedCategories.map((c: { name: string }) => c.name));
+      defaults = Object.entries(DEFAULT_CATEGORY_TEMPLATES)
+        .filter(([name]) => !savedNames.has(name))
         .map(([name, parameterSchema]) => ({
           id: null,
           name,
@@ -36,17 +45,9 @@ export async function GET(request: Request) {
           updatedAt: null,
           isDefault: true,
         }));
-
-      return NextResponse.json({
-        data,
-        defaults,
-        total,
-        limit,
-        offset,
-      });
     }
 
-    return NextResponse.json({ data, total, limit, offset });
+    return NextResponse.json({ data, defaults, total, limit, offset });
   } catch (error) {
     console.error('GET /api/categories error:', error);
     return NextResponse.json(

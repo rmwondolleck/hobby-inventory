@@ -66,7 +66,7 @@ describe('GET /api/categories', () => {
     });
   });
 
-  it('includes defaults for templates not already saved (at offset=0)', async () => {
+  it('includes defaults for templates not already saved', async () => {
     mockFindMany.mockResolvedValue([baseCategory]); // Only 'Resistors' saved
     mockCount.mockResolvedValue(1);
 
@@ -96,24 +96,24 @@ describe('GET /api/categories', () => {
     expect(defaultEntry.createdAt).toBeNull();
   });
 
-  it('excludes defaults when includeDefaults=false', async () => {
+  it('returns empty defaults array when includeDefaults=false', async () => {
     mockFindMany.mockResolvedValue([baseCategory]);
     mockCount.mockResolvedValue(1);
 
     const res = await GET(makeRequest('http://localhost/api/categories?includeDefaults=false'));
     const json = await res.json();
 
-    expect(json.defaults).toBeUndefined();
+    expect(json.defaults).toEqual([]);
   });
 
-  it('excludes defaults when offset > 0', async () => {
+  it('still returns defaults when offset > 0', async () => {
     mockFindMany.mockResolvedValue([]);
     mockCount.mockResolvedValue(5);
 
     const res = await GET(makeRequest('http://localhost/api/categories?offset=50'));
     const json = await res.json();
 
-    expect(json.defaults).toBeUndefined();
+    expect(Array.isArray(json.defaults)).toBe(true);
   });
 
   it('returns empty defaults when all templates are already saved', async () => {

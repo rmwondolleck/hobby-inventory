@@ -185,6 +185,16 @@ export interface Category {
   updatedAt: Date;
 }
 
+/** Default category template (not yet saved to DB) */
+export interface DefaultCategoryTemplate {
+  id: null;
+  name: string;
+  parameterSchema: Record<string, ParameterDefinition>;
+  createdAt: null;
+  updatedAt: null;
+  isDefault: true;
+}
+
 // ============================================================================
 // API Response Types
 // ============================================================================
@@ -195,6 +205,11 @@ export interface PaginatedResponse<T> {
   total: number;
   limit: number;
   offset: number;
+}
+
+/** Response for GET /api/categories — always includes a `defaults` array */
+export interface CategoryListResponse extends PaginatedResponse<Category> {
+  defaults: DefaultCategoryTemplate[];
 }
 
 /** API error response */

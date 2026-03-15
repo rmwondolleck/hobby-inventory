@@ -47,8 +47,10 @@ function matchesParameterFilters(
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
 
-  const limit = Math.min(parseInt(searchParams.get('limit') ?? String(DEFAULT_LIMIT)), MAX_LIMIT);
-  const offset = parseInt(searchParams.get('offset') ?? '0');
+  const rawLimit = parseInt(searchParams.get('limit') ?? String(DEFAULT_LIMIT));
+  const rawOffset = parseInt(searchParams.get('offset') ?? '0');
+  const limit = Number.isFinite(rawLimit) && rawLimit >= 1 ? Math.min(rawLimit, MAX_LIMIT) : DEFAULT_LIMIT;
+  const offset = Number.isFinite(rawOffset) && rawOffset >= 0 ? rawOffset : 0;
   const category = searchParams.get('category') ?? undefined;
   const search = searchParams.get('search') ?? undefined;
   const archived = searchParams.get('archived');

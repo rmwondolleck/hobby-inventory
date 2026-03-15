@@ -117,8 +117,9 @@ export async function PATCH(request: Request, { params }: RouteContext) {
       'code' in error &&
       (error as { code: string }).code === 'P2002'
     ) {
+      const conflictName = updates.name ?? 'unknown';
       return NextResponse.json(
-        { error: 'conflict', message: `Category name "${name}" already exists` },
+        { error: 'conflict', message: `Category name "${conflictName}" already exists` },
         { status: 409 }
       );
     }
