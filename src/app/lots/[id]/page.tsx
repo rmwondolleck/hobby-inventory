@@ -50,6 +50,15 @@ function formatQuantity(
   return unit ? `${quantity} ${unit}` : String(quantity);
 }
 
+function isSafeUrl(url: string): boolean {
+  try {
+    const parsed = new URL(url);
+    return parsed.protocol === 'http:' || parsed.protocol === 'https:';
+  } catch {
+    return false;
+  }
+}
+
 function DefinitionItem({
   label,
   children,
@@ -64,6 +73,8 @@ function DefinitionItem({
     </div>
   );
 }
+
+const EVENTS_LIMIT = 50;
 
 export default async function LotDetailPage({ params }: PageProps) {
   const { id } = await params;
@@ -81,7 +92,7 @@ export default async function LotDetailPage({ params }: PageProps) {
       },
       events: {
         orderBy: { createdAt: 'desc' },
-        take: 50,
+        take: EVENTS_LIMIT,
       },
     },
   });
@@ -196,7 +207,7 @@ export default async function LotDetailPage({ params }: PageProps) {
                 )}
               </dl>
 
-              {source.url && (
+              {source.url && isSafeUrl(source.url) && (
                 <div className="mt-4 border-t pt-4">
                   <a
                     href={source.url}
@@ -260,7 +271,7 @@ export default async function LotDetailPage({ params }: PageProps) {
           {lot.events.length > 0 && (
             <section className="rounded-lg bg-white p-6 shadow-sm">
               <h2 className="mb-4 text-base font-semibold text-gray-900">
-                History ({lot.events.length})
+                History ({lot.events.length === EVENTS_LIMIT ? `most recent ${EVENTS_LIMIT}` : lot.events.length})
               </h2>
               <div className="space-y-3">
                 {lot.events.map(event => (
@@ -269,7 +280,7 @@ export default async function LotDetailPage({ params }: PageProps) {
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">
                         <span className="text-sm font-medium capitalize text-gray-900">
-                          {event.type.replace('_', ' ')}
+                          {event.type.replace(/_/g, ' ')}
                         </span>
                         {event.delta !== null && (
                           <span
