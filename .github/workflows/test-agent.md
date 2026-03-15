@@ -31,12 +31,11 @@ safe-outputs:
     commit-title-suffix: "[tests]"
     protected-files: fallback-to-issue
     allowed-files:
-      - "*"
-      - "**/*"
-      - "package.json"
-      - "package-lock.json"
-      - "prisma/schema.prisma"
-      - "prisma/migrations/**"
+      - "src/**/__tests__/**"
+      - "src/**/*.test.ts"
+      - "src/**/*.test.tsx"
+      - "src/**/*.spec.ts"
+      - "src/**/*.spec.tsx"
   add-comment:
     target: "*"
     max: 3
@@ -63,6 +62,8 @@ The orchestrator handles all workflow coordination. Your only responsibilities:
 ## ⚠️ Critical: Do NOT Install Packages
 
 The project already has **Jest 29 + ts-jest + @testing-library** installed as devDependencies. Do NOT run `npm install`, `npm install --save-dev`, or modify `package.json`.
+
+> **This is also enforced by configuration** — `package.json` and `package-lock.json` are not in the `allowed-files` list for this agent. Any patch touching them will be blocked. If a package you need is genuinely missing, note it in your AGENT_REPORT and skip that test rather than trying to install it.
 
 **Pre-installed test stack:**
 - `jest` + `ts-jest` — test runner with TypeScript support
