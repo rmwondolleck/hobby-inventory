@@ -4,12 +4,47 @@ import { buildLocationPath } from '@/lib/utils';
 
 type Params = { params: Promise<{ id: string }> };
 
-async function updateDescendantPaths(locationId: string, newParentPath: string): Promise<void> {
-  const children = await prisma.location.findMany({ where: { parentId: locationId } });
-  for (const child of children) {
-    const childPath = `${newParentPath}/${child.name}`;
-    await prisma.location.update({ where: { id: child.id }, data: { path: childPath } });
-    await updateDescendantPaths(child.id, childPath);
+type LocationRecord = { id: string; name: string; parentId: string | null };
+type ChildEntry = { child: LocationRecord; childPath: string };
+
+async function updateDescendantPaths(
+  tx: typeof prisma,
+  locationId: string,
+  newParentPath: string
+): Promise<void> {
+  let currentLevel: Array<{ parentId: string; parentPath: string }> = [
+    { parentId: locationId, parentPath: newParentPath },
+  ];
+
+  while (currentLevel.length > 0) {
+    // Fetch children for all nodes at the current level in parallel
+    const childGroups = await Promise.all(
+      currentLevel.map(({ parentId, parentPath }) =>
+        (tx.location.findMany({ where: { parentId } }) as Promise<LocationRecord[]>).then(
+          (children) =>
+            children.map((child): ChildEntry => ({
+              child,
+              childPath: `${parentPath}/${child.name}`,
+            }))
+        )
+      )
+    );
+
+    const flatChildren: ChildEntry[] = childGroups.flat();
+    if (flatChildren.length === 0) break;
+
+    // Update all nodes at this level in parallel
+    await Promise.all(
+      flatChildren.map(({ child, childPath }) =>
+        tx.location.update({ where: { id: child.id }, data: { path: childPath } })
+      )
+    );
+
+    // Advance to the next level
+    currentLevel = flatChildren.map(({ child, childPath }) => ({
+      parentId: child.id,
+      parentPath: childPath,
+    }));
   }
 }
 
@@ -44,7 +79,23 @@ export async function PATCH(request: Request, { params }: Params) {
   const { id } = await params;
 
   try {
-    const body = await request.json();
+    let body: unknown;
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json(
+        { error: 'validation_error', message: 'Invalid JSON body' },
+        { status: 400 }
+      );
+    }
+
+    if (typeof body !== 'object' || body === null || Array.isArray(body)) {
+      return NextResponse.json(
+        { error: 'validation_error', message: 'Request body must be a JSON object' },
+        { status: 400 }
+      );
+    }
+
     const { name, parentId, notes } = body as {
       name?: unknown;
       parentId?: unknown;
@@ -62,6 +113,13 @@ export async function PATCH(request: Request, { params }: Params) {
     if (name !== undefined && (typeof name !== 'string' || !name.trim())) {
       return NextResponse.json(
         { error: 'validation_error', message: 'Name cannot be empty' },
+        { status: 400 }
+      );
+    }
+
+    if (typeof name === 'string' && name.includes('/')) {
+      return NextResponse.json(
+        { error: 'validation_error', message: 'Name cannot contain "/" character' },
         { status: 400 }
       );
     }
@@ -118,14 +176,18 @@ export async function PATCH(request: Request, { params }: Params) {
         ? (typeof notes === 'string' && notes.trim() ? notes.trim() : null)
         : existing.notes;
 
-    const location = await prisma.location.update({
-      where: { id },
-      data: { name: newName, parentId: newParentId, path: newPath, notes: newNotes },
-    });
+    const location = await prisma.$transaction(async (tx: typeof prisma) => {
+      const updated = await tx.location.update({
+        where: { id },
+        data: { name: newName, parentId: newParentId, path: newPath, notes: newNotes },
+      });
 
-    if (nameChanged || parentChanged) {
-      await updateDescendantPaths(id, newPath);
-    }
+      if (nameChanged || parentChanged) {
+        await updateDescendantPaths(tx, id, newPath);
+      }
+
+      return updated;
+    });
 
     return NextResponse.json(location);
   } catch (error) {
