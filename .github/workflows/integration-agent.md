@@ -245,6 +245,7 @@ This epic is ready for human review. Key accomplishments:
 Before making any edits, sync the epic branch with the current state of `main`. This is critical — if main has moved forward since the epic branch was created (e.g., a previous epic was merged), the `create-pull-request` patch will fail unless the epic branch is rebased first.
 
 ```bash
+git checkout ${{ github.event.inputs.epic_branch }}
 git fetch origin main
 git rebase origin/main
 ```
