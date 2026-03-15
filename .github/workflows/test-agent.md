@@ -36,6 +36,8 @@ safe-outputs:
       - "src/**/*.test.tsx"
       - "src/**/*.spec.ts"
       - "src/**/*.spec.tsx"
+      - "jest.config.ts"
+      - "jest.setup.ts"
   add-comment:
     target: "*"
     max: 3
@@ -76,6 +78,16 @@ The project already has **Jest 29 + ts-jest + @testing-library** installed as de
 - `jest.setup.ts` — imports `@testing-library/jest-dom`
 
 Simply **write test files** — the infrastructure is ready. If you genuinely need a package that isn't installed, note it in your AGENT_REPORT and skip that test rather than trying to install it.
+
+### Running Tests on Branches Without Jest in package.json
+
+Feature branches may predate jest being added to `package.json`. If `npm test` fails because jest is not found, install it **without saving** to package.json:
+
+```sh
+npm install --no-save jest ts-jest @types/jest @testing-library/react @testing-library/jest-dom jest-environment-jsdom ts-node
+```
+
+Then run tests normally. The integration agent will reconcile `package.json` across all branches. **Never add jest to package.json yourself.**
 
 ## Context
 
