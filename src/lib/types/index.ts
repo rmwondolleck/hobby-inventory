@@ -160,6 +160,32 @@ export interface Event {
 }
 
 // ============================================================================
+// Category and Parameter Types
+// ============================================================================
+
+/** Supported parameter value types in a category template */
+export type ParameterType = 'string' | 'boolean' | 'number';
+
+/** Definition of a single parameter field in a category template */
+export interface ParameterDefinition {
+  type: ParameterType;
+  /** Allowed values for string parameters */
+  options?: string[];
+  /** Optional unit label for number parameters (e.g., "MHz", "mA") */
+  unit?: string;
+}
+
+/** Category - Groups parts by type and defines their shared parameter schema */
+export interface Category {
+  id: string;
+  name: string;
+  /** Maps parameter keys to their definitions */
+  parameterSchema: Record<string, ParameterDefinition>;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+// ============================================================================
 // API Response Types
 // ============================================================================
 
