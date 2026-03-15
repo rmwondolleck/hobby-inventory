@@ -1,7 +1,12 @@
 import prisma from '@/lib/db';
-import LocationTree from '@/components/locations/LocationTree';
+import LocationTree, { type LocationWithCount } from '@/components/locations/LocationTree';
 
 export const dynamic = 'force-dynamic';
+
+type LocationFromDb = Omit<LocationWithCount, 'createdAt' | 'updatedAt'> & {
+  createdAt: Date;
+  updatedAt: Date;
+};
 
 export default async function LocationsPage() {
   const locations = await prisma.location.findMany({
@@ -19,7 +24,11 @@ export default async function LocationsPage() {
           Browse and manage your storage hierarchy — rooms, shelves, drawers, and bins.
         </p>
       </div>
-      <LocationTree locations={locations} />
+      <LocationTree locations={(locations as LocationFromDb[]).map((loc) => ({
+        ...loc,
+        createdAt: loc.createdAt.toISOString(),
+        updatedAt: loc.updatedAt.toISOString(),
+      }))} />
     </div>
   );
 }

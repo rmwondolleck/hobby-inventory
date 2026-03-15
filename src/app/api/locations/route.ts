@@ -27,7 +27,23 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const body = await request.json();
+    let body: unknown;
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json(
+        { error: 'validation_error', message: 'Invalid JSON body' },
+        { status: 400 }
+      );
+    }
+
+    if (typeof body !== 'object' || body === null || Array.isArray(body)) {
+      return NextResponse.json(
+        { error: 'validation_error', message: 'Request body must be a JSON object' },
+        { status: 400 }
+      );
+    }
+
     const { name, parentId, notes } = body as {
       name: unknown;
       parentId?: unknown;
@@ -37,6 +53,13 @@ export async function POST(request: Request) {
     if (!name || typeof name !== 'string' || !name.trim()) {
       return NextResponse.json(
         { error: 'validation_error', message: 'Name is required' },
+        { status: 400 }
+      );
+    }
+
+    if (name.includes('/')) {
+      return NextResponse.json(
+        { error: 'validation_error', message: 'Name cannot contain "/" character' },
         { status: 400 }
       );
     }
