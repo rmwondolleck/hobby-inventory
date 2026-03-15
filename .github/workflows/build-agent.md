@@ -33,6 +33,8 @@ network:
     - defaults
     - node
     - "binaries.prisma.sh"
+    - "checkpoint.prisma.io"
+    - fonts
 ---
 
 # Build Agent

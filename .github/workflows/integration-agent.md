@@ -59,6 +59,8 @@ network:
     - defaults
     - node
     - "binaries.prisma.sh"
+    - "checkpoint.prisma.io"
+    - fonts
 ---
 
 # Integration Agent (Epic Synthesis)
