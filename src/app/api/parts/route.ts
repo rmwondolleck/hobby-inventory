@@ -5,79 +5,127 @@ import { safeParseJson } from '@/lib/utils';
 const DEFAULT_LIMIT = 50;
 const MAX_LIMIT = 500;
 
-function parseTags(tags: unknown): string[] {
-  if (Array.isArray(tags)) return tags.filter((t) => typeof t === 'string');
-  return [];
+/**
+ * Parse `parameters.*` query params from the URL.
+ * e.g. ?parameters.ble=true&parameters.voltage=3.3V => { ble: 'true', voltage: '3.3V' }
+ */
+function parseParameterFilters(searchParams: URLSearchParams): Record<string, string> {
+  const filters: Record<string, string> = {};
+  for (const [key, value] of Array.from(searchParams.entries())) {
+    if (key.startsWith('parameters.')) {
+      const paramKey = key.slice('parameters.'.length);
+      if (paramKey) filters[paramKey] = value;
+    }
+  }
+  return filters;
 }
 
-function parseParameters(parameters: unknown): Record<string, unknown> {
-  if (parameters && typeof parameters === 'object' && !Array.isArray(parameters)) {
-    return parameters as Record<string, unknown>;
+/**
+ * Match a part's parameters object against the filter map.
+ * Coerces booleans and numbers for comparison.
+ */
+function matchesParameterFilters(
+  parameters: Record<string, unknown>,
+  filters: Record<string, string>
+): boolean {
+  for (const [key, rawValue] of Object.entries(filters)) {
+    const actual = parameters[key];
+    if (actual === undefined) return false;
+
+    // Coerce filter value for boolean comparison
+    if (rawValue === 'true' || rawValue === 'false') {
+      if (actual !== (rawValue === 'true')) return false;
+    } else if (!isNaN(Number(rawValue))) {
+      if (Number(actual) !== Number(rawValue)) return false;
+    } else {
+      if (String(actual) !== rawValue) return false;
+    }
   }
-  return {};
+  return true;
 }
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
 
-  const q = searchParams.get('q') ?? undefined;
+  const limit = Math.min(parseInt(searchParams.get('limit') ?? String(DEFAULT_LIMIT)), MAX_LIMIT);
+  const offset = parseInt(searchParams.get('offset') ?? '0');
   const category = searchParams.get('category') ?? undefined;
-  const tagsParam = searchParams.get('tags') ?? undefined;
+  const search = searchParams.get('search') ?? undefined;
   const archived = searchParams.get('archived');
-  const limit = Math.min(parseInt(searchParams.get('limit') ?? String(DEFAULT_LIMIT), 10) || DEFAULT_LIMIT, MAX_LIMIT);
-  const offset = Math.max(parseInt(searchParams.get('offset') ?? '0', 10) || 0, 0);
+  const paramFilters = parseParameterFilters(searchParams);
+  const hasParamFilters = Object.keys(paramFilters).length > 0;
 
-  const includeArchived = archived === 'true';
-  const tagList = tagsParam ? tagsParam.split(',').map((t) => t.trim()).filter(Boolean) : [];
+  try {
+    const where = {
+      ...(category ? { category } : {}),
+      ...(archived === 'true'
+        ? { archivedAt: { not: null } }
+        : archived === 'false'
+        ? { archivedAt: null }
+        : {}),
+      ...(search
+        ? {
+            OR: [
+              { name: { contains: search } },
+              { manufacturer: { contains: search } },
+              { mpn: { contains: search } },
+              { notes: { contains: search } },
+            ],
+          }
+        : {}),
+    };
 
-  const where = {
-    ...(!includeArchived ? { archivedAt: null } : {}),
-    ...(category ? { category } : {}),
-    ...(q || tagList.length > 0
-      ? {
-          AND: [
-            ...(q
-              ? [
-                  {
-                    OR: [
-                      { name: { contains: q } },
-                      { mpn: { contains: q } },
-                      { manufacturer: { contains: q } },
-                      { tags: { contains: q } },
-                      { notes: { contains: q } },
-                    ],
-                  },
-                ]
-              : []),
-            ...(tagList.length > 0
-              ? tagList.map((tag) => ({ tags: { contains: tag } }))
-              : []),
-          ],
-        }
-      : {}),
-  };
+    // When parameter filters are present, fetch all matching (without pagination)
+    // and apply in-memory filtering, then paginate manually.
+    if (hasParamFilters) {
+      const all = await prisma.part.findMany({ where, orderBy: { createdAt: 'desc' } });
 
-  const [total, parts] = await Promise.all([
-    prisma.part.count({ where }),
-    prisma.part.findMany({
-      where,
-      skip: offset,
-      take: limit,
-      orderBy: { updatedAt: 'desc' },
-    }),
-  ]);
+      const filtered = all.filter((part: { parameters: string }) => {
+        const params = safeParseJson<Record<string, unknown>>(part.parameters, {});
+        return matchesParameterFilters(params, paramFilters);
+      });
 
-  const data = parts.map((part: (typeof parts)[number]) => ({
-    ...part,
-    tags: safeParseJson<string[]>(part.tags, []),
-    parameters: safeParseJson<Record<string, unknown>>(part.parameters, {}),
-  }));
+      const total = filtered.length;
+      const page = filtered.slice(offset, offset + limit);
 
-  return NextResponse.json({ data, total, limit, offset });
+      return NextResponse.json({
+        data: page.map((p: { tags: string; parameters: string }) => ({
+          ...p,
+          tags: safeParseJson<string[]>(p.tags, []),
+          parameters: safeParseJson<Record<string, unknown>>(p.parameters, {}),
+        })),
+        total,
+        limit,
+        offset,
+      });
+    }
+
+    const [parts, total] = await prisma.$transaction([
+      prisma.part.findMany({ where, take: limit, skip: offset, orderBy: { createdAt: 'desc' } }),
+      prisma.part.count({ where }),
+    ]);
+
+    return NextResponse.json({
+      data: parts.map((p: { tags: string; parameters: string }) => ({
+        ...p,
+        tags: safeParseJson<string[]>(p.tags, []),
+        parameters: safeParseJson<Record<string, unknown>>(p.parameters, {}),
+      })),
+      total,
+      limit,
+      offset,
+    });
+  } catch (error) {
+    console.error('GET /api/parts error:', error);
+    return NextResponse.json(
+      { error: 'internal_error', message: 'Failed to fetch parts' },
+      { status: 500 }
+    );
+  }
 }
 
 export async function POST(request: Request) {
-  let body: Record<string, unknown>;
+  let body: unknown;
   try {
     body = await request.json();
   } catch {
@@ -87,59 +135,72 @@ export async function POST(request: Request) {
     );
   }
 
-  const { name, category, manufacturer, mpn, tags, notes, parameters } = body;
-
-  if (!name || typeof name !== 'string' || name.trim() === '') {
+  if (typeof body !== 'object' || body === null || Array.isArray(body)) {
     return NextResponse.json(
-      { error: 'validation_error', message: 'name is required' },
+      { error: 'invalid_body', message: 'Request body must be an object' },
       { status: 400 }
     );
   }
 
-  // Duplicate warning: same MPN + manufacturer (non-archived)
-  let duplicateWarning: { id: string; name: string } | null = null;
-  if (mpn && typeof mpn === 'string' && manufacturer && typeof manufacturer === 'string') {
-    const existing = await prisma.part.findFirst({
-      where: {
-        mpn: mpn.trim(),
-        manufacturer: manufacturer.trim(),
-        archivedAt: null,
-      },
-      select: { id: true, name: true },
-    });
-    if (existing) {
-      duplicateWarning = existing;
-    }
+  const {
+    name,
+    category,
+    manufacturer,
+    mpn,
+    tags,
+    notes,
+    parameters,
+  } = body as Record<string, unknown>;
+
+  if (!name || typeof name !== 'string' || name.trim() === '') {
+    return NextResponse.json(
+      { error: 'validation_error', message: 'name is required and must be a non-empty string' },
+      { status: 400 }
+    );
   }
 
-  const part = await prisma.part.create({
-    data: {
-      name: (name as string).trim(),
-      category: category && typeof category === 'string' ? category.trim() : undefined,
-      manufacturer: manufacturer && typeof manufacturer === 'string' ? manufacturer.trim() : undefined,
-      mpn: mpn && typeof mpn === 'string' ? mpn.trim() : undefined,
-      tags: JSON.stringify(parseTags(tags)),
-      notes: notes && typeof notes === 'string' ? notes : undefined,
-      parameters: JSON.stringify(parseParameters(parameters)),
-    },
-  });
+  if (tags !== undefined && !Array.isArray(tags)) {
+    return NextResponse.json(
+      { error: 'validation_error', message: 'tags must be an array' },
+      { status: 400 }
+    );
+  }
 
-  const response = {
-    data: {
-      ...part,
-      tags: safeParseJson<string[]>(part.tags, []),
-      parameters: safeParseJson<Record<string, unknown>>(part.parameters, {}),
-    },
-    ...(duplicateWarning
-      ? {
-          warning: {
-            code: 'duplicate_mpn',
-            message: `A part with the same MPN and manufacturer already exists`,
-            existing: duplicateWarning,
-          },
-        }
-      : {}),
-  };
+  if (parameters !== undefined && (typeof parameters !== 'object' || Array.isArray(parameters) || parameters === null)) {
+    return NextResponse.json(
+      { error: 'validation_error', message: 'parameters must be an object' },
+      { status: 400 }
+    );
+  }
 
-  return NextResponse.json(response, { status: 201 });
+  try {
+    const part = await prisma.part.create({
+      data: {
+        name: (name as string).trim(),
+        category: typeof category === 'string' ? category.trim() || null : null,
+        manufacturer: typeof manufacturer === 'string' ? manufacturer.trim() || null : null,
+        mpn: typeof mpn === 'string' ? mpn.trim() || null : null,
+        notes: typeof notes === 'string' ? notes.trim() || null : null,
+        tags: JSON.stringify(Array.isArray(tags) ? tags : []),
+        parameters: JSON.stringify(
+          parameters && typeof parameters === 'object' ? parameters : {}
+        ),
+      },
+    });
+
+    return NextResponse.json(
+      {
+        ...part,
+        tags: safeParseJson<string[]>(part.tags, []),
+        parameters: safeParseJson<Record<string, unknown>>(part.parameters, {}),
+      },
+      { status: 201 }
+    );
+  } catch (error) {
+    console.error('POST /api/parts error:', error);
+    return NextResponse.json(
+      { error: 'internal_error', message: 'Failed to create part' },
+      { status: 500 }
+    );
+  }
 }

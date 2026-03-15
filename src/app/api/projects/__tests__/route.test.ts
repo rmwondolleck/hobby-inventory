@@ -1,4 +1,4 @@
-import { GET } from '../route';
+import { GET, POST } from '../route';
 
 jest.mock('@/lib/db', () => ({
   __esModule: true,
@@ -6,6 +6,7 @@ jest.mock('@/lib/db', () => ({
     project: {
       count: jest.fn(),
       findMany: jest.fn(),
+      create: jest.fn(),
     },
   },
 }));
@@ -14,26 +15,22 @@ import prisma from '@/lib/db';
 
 const mockCount = prisma.project.count as jest.Mock;
 const mockFindMany = prisma.project.findMany as jest.Mock;
+const mockCreate = prisma.project.create as jest.Mock;
 
-function makeRequest(url: string): Request {
-  return new Request(url);
+function makeRequest(url: string, options?: RequestInit): Request {
+  return new Request(url, options);
 }
 
 const baseProject = {
-  id: 'proj-1',
-  name: 'My Robot Project',
+  id: 'proj001',
+  name: 'Robot Arm',
   status: 'active',
-  tags: '["robot","arduino"]',
-  notes: 'A fun project',
+  notes: null,
+  tags: '["robotics","hardware"]',
   wishlistNotes: null,
   archivedAt: null,
   createdAt: new Date('2024-01-01'),
-  updatedAt: new Date('2024-01-15'),
-  allocations: [
-    { status: 'in_use' },
-    { status: 'in_use' },
-    { status: 'reserved' },
-  ],
+  updatedAt: new Date('2024-01-01'),
 };
 
 beforeEach(() => {

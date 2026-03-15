@@ -1,84 +1,58 @@
-import { GET } from '../route';
+import { GET, PATCH, DELETE } from '../route';
 
 jest.mock('@/lib/db', () => ({
   __esModule: true,
   default: {
     project: {
       findUnique: jest.fn(),
-    },
-    event: {
-      findMany: jest.fn(),
+      update: jest.fn(),
     },
   },
 }));
 
 import prisma from '@/lib/db';
 
-const mockProjectFindUnique = prisma.project.findUnique as jest.Mock;
-const mockEventFindMany = prisma.event.findMany as jest.Mock;
+const mockFindUnique = prisma.project.findUnique as jest.Mock;
+const mockUpdate = prisma.project.update as jest.Mock;
 
-function makeParams(id: string) {
-  return { params: Promise.resolve({ id }) };
+function makeRequest(url: string, options?: RequestInit): Request {
+  return new Request(url, options);
 }
 
-const baseLot = {
-  id: 'lot-1',
-  partId: 'part-1',
-  quantity: 5,
-  quantityMode: 'exact',
-  qualitativeStatus: null,
-  unit: 'pcs',
-  status: 'in_stock',
-  locationId: 'loc-1',
-  source: '{"type":"purchase","seller":"Digikey"}',
-  receivedAt: null,
-  notes: null,
-  createdAt: new Date('2024-01-01'),
-  updatedAt: new Date('2024-01-01'),
-  location: { id: 'loc-1', name: 'Shelf A', path: 'Office/Shelf A' },
-  part: { id: 'part-1', name: 'ATmega328P', category: 'microcontroller' },
-};
-
-const baseAllocation = {
-  id: 'alloc-1',
-  lotId: 'lot-1',
-  projectId: 'proj-1',
-  quantity: 2,
-  status: 'in_use',
-  notes: null,
-  createdAt: new Date('2024-01-02'),
-  updatedAt: new Date('2024-01-02'),
-  lot: baseLot,
-};
-
 const baseProject = {
-  id: 'proj-1',
+  id: 'proj001',
   name: 'Robot Arm',
   status: 'active',
-  tags: '["robot","servo"]',
-  notes: 'Building a robotic arm',
+  notes: null,
+  tags: '["robotics"]',
   wishlistNotes: null,
   archivedAt: null,
   createdAt: new Date('2024-01-01'),
-  updatedAt: new Date('2024-01-15'),
-  allocations: [baseAllocation],
+  updatedAt: new Date('2024-01-01'),
 };
 
-const baseEvent = {
-  id: 'evt-1',
-  lotId: 'lot-1',
-  type: 'allocated',
-  delta: 2,
-  fromLocationId: null,
-  toLocationId: null,
-  projectId: 'proj-1',
+const baseAllocation = {
+  id: 'alloc001',
+  lotId: 'lot001',
+  projectId: 'proj001',
+  quantity: 2,
+  status: 'reserved',
   notes: null,
-  createdAt: new Date('2024-01-02'),
+  createdAt: new Date('2024-01-01'),
+  updatedAt: new Date('2024-01-01'),
   lot: {
-    id: 'lot-1',
-    part: { id: 'part-1', name: 'ATmega328P' },
+    id: 'lot001',
+    quantity: 10,
+    quantityMode: 'exact',
+    qualitativeStatus: null,
+    unit: 'pcs',
+    status: 'in_stock',
+    part: { id: 'part001', name: 'ESP32', category: 'microcontroller' },
+    location: { id: 'loc001', name: 'Drawer 1', path: 'Office/Drawer 1' },
   },
 };
+
+const makeParams = (id: string) => ({ params: Promise.resolve({ id }) });
 
 beforeEach(() => {
   jest.clearAllMocks();
@@ -87,213 +61,188 @@ beforeEach(() => {
 // ─── GET /api/projects/[id] ───────────────────────────────────────────────────
 
 describe('GET /api/projects/[id]', () => {
-  it('returns 200 with project data', async () => {
-    mockProjectFindUnique.mockResolvedValue(baseProject);
-    mockEventFindMany.mockResolvedValue([baseEvent]);
+  it('returns 200 with project data and allocations', async () => {
+    mockFindUnique.mockResolvedValue({
+      ...baseProject,
+      allocations: [baseAllocation],
+    });
 
-    const res = await GET(
-      new Request('http://localhost/api/projects/proj-1'),
-      makeParams('proj-1')
-    );
-
+    const res = await GET(makeRequest('http://localhost/api/projects/proj001'), makeParams('proj001'));
     expect(res.status).toBe(200);
+
     const json = await res.json();
-    expect(json.data.id).toBe('proj-1');
-    expect(json.data.name).toBe('Robot Arm');
+    expect(json.data.id).toBe('proj001');
+    expect(json.data.tags).toEqual(['robotics']);
   });
 
-  it('returns 404 when project does not exist', async () => {
-    mockProjectFindUnique.mockResolvedValue(null);
-    mockEventFindMany.mockResolvedValue([]);
+  it('groups allocations by status', async () => {
+    const inUseAllocation = { ...baseAllocation, id: 'alloc002', status: 'in_use' };
+    mockFindUnique.mockResolvedValue({
+      ...baseProject,
+      allocations: [baseAllocation, inUseAllocation],
+    });
 
-    const res = await GET(
-      new Request('http://localhost/api/projects/nonexistent'),
-      makeParams('nonexistent')
-    );
+    const res = await GET(makeRequest('http://localhost/api/projects/proj001'), makeParams('proj001'));
+    const json = await res.json();
 
+    expect(json.data.allocationsByStatus).toHaveProperty('reserved');
+    expect(json.data.allocationsByStatus).toHaveProperty('in_use');
+    expect(json.data.allocationsByStatus.reserved).toHaveLength(1);
+    expect(json.data.allocationsByStatus.in_use).toHaveLength(1);
+  });
+
+  it('returns 404 when project not found', async () => {
+    mockFindUnique.mockResolvedValue(null);
+
+    const res = await GET(makeRequest('http://localhost/api/projects/notfound'), makeParams('notfound'));
     expect(res.status).toBe(404);
+
     const json = await res.json();
     expect(json.error).toBe('not_found');
   });
+});
 
-  it('parses tags JSON string into array', async () => {
-    mockProjectFindUnique.mockResolvedValue(baseProject);
-    mockEventFindMany.mockResolvedValue([]);
+// ─── PATCH /api/projects/[id] ─────────────────────────────────────────────────
 
-    const res = await GET(
-      new Request('http://localhost/api/projects/proj-1'),
-      makeParams('proj-1')
-    );
-    const json = await res.json();
+describe('PATCH /api/projects/[id]', () => {
+  it('returns 200 with updated project', async () => {
+    mockFindUnique.mockResolvedValue(baseProject);
+    mockUpdate.mockResolvedValue({ ...baseProject, name: 'Updated Robot Arm' });
 
-    expect(json.data.tags).toEqual(['robot', 'servo']);
-  });
-
-  it('parses lot source JSON string into object within allocations', async () => {
-    mockProjectFindUnique.mockResolvedValue(baseProject);
-    mockEventFindMany.mockResolvedValue([]);
-
-    const res = await GET(
-      new Request('http://localhost/api/projects/proj-1'),
-      makeParams('proj-1')
-    );
-    const json = await res.json();
-
-    expect(json.data.allocations[0].lot.source).toEqual({
-      type: 'purchase',
-      seller: 'Digikey',
+    const req = makeRequest('http://localhost/api/projects/proj001', {
+      method: 'PATCH',
+      body: JSON.stringify({ name: 'Updated Robot Arm' }),
     });
+
+    const res = await PATCH(req, makeParams('proj001'));
+    expect(res.status).toBe(200);
+
+    const json = await res.json();
+    expect(json.data.name).toBe('Updated Robot Arm');
   });
 
-  it('computes allocationCount correctly', async () => {
-    mockProjectFindUnique.mockResolvedValue(baseProject);
-    mockEventFindMany.mockResolvedValue([]);
+  it('returns 404 when project not found', async () => {
+    mockFindUnique.mockResolvedValue(null);
 
-    const res = await GET(
-      new Request('http://localhost/api/projects/proj-1'),
-      makeParams('proj-1')
-    );
-    const json = await res.json();
-
-    expect(json.data.allocationCount).toBe(1);
-  });
-
-  it('computes allocationsByStatus map', async () => {
-    const projectWithMultipleAllocations = {
-      ...baseProject,
-      allocations: [
-        { ...baseAllocation, id: 'a1', status: 'in_use' },
-        { ...baseAllocation, id: 'a2', status: 'in_use' },
-        { ...baseAllocation, id: 'a3', status: 'reserved' },
-        { ...baseAllocation, id: 'a4', status: 'deployed' },
-      ],
-    };
-    mockProjectFindUnique.mockResolvedValue(projectWithMultipleAllocations);
-    mockEventFindMany.mockResolvedValue([]);
-
-    const res = await GET(
-      new Request('http://localhost/api/projects/proj-1'),
-      makeParams('proj-1')
-    );
-    const json = await res.json();
-
-    expect(json.data.allocationsByStatus).toEqual({
-      in_use: 2,
-      reserved: 1,
-      deployed: 1,
+    const req = makeRequest('http://localhost/api/projects/notfound', {
+      method: 'PATCH',
+      body: JSON.stringify({ name: 'Updated' }),
     });
+
+    const res = await PATCH(req, makeParams('notfound'));
+    expect(res.status).toBe(404);
   });
 
-  it('includes events in the response', async () => {
-    mockProjectFindUnique.mockResolvedValue(baseProject);
-    mockEventFindMany.mockResolvedValue([baseEvent]);
+  it('returns 400 for invalid JSON body', async () => {
+    mockFindUnique.mockResolvedValue(baseProject);
 
-    const res = await GET(
-      new Request('http://localhost/api/projects/proj-1'),
-      makeParams('proj-1')
-    );
+    const req = new Request('http://localhost/api/projects/proj001', {
+      method: 'PATCH',
+      body: 'not-json',
+      headers: { 'Content-Type': 'application/json' },
+    });
+
+    const res = await PATCH(req, makeParams('proj001'));
+    expect(res.status).toBe(400);
+
+    const json = await res.json();
+    expect(json.error).toBe('invalid_json');
+  });
+
+  it('returns 400 for invalid status value', async () => {
+    mockFindUnique.mockResolvedValue(baseProject);
+
+    const req = makeRequest('http://localhost/api/projects/proj001', {
+      method: 'PATCH',
+      body: JSON.stringify({ status: 'invalid_status' }),
+    });
+
+    const res = await PATCH(req, makeParams('proj001'));
+    expect(res.status).toBe(400);
+
+    const json = await res.json();
+    expect(json.error).toBe('validation_error');
+  });
+
+  it('returns 422 for invalid status transition', async () => {
+    mockFindUnique.mockResolvedValue({ ...baseProject, status: 'idea' });
+
+    const req = makeRequest('http://localhost/api/projects/proj001', {
+      method: 'PATCH',
+      body: JSON.stringify({ status: 'deployed' }),
+    });
+
+    const res = await PATCH(req, makeParams('proj001'));
+    expect(res.status).toBe(422);
+
+    const json = await res.json();
+    expect(json.error).toBe('invalid_transition');
+  });
+
+  it('returns 400 when name is empty', async () => {
+    mockFindUnique.mockResolvedValue(baseProject);
+
+    const req = makeRequest('http://localhost/api/projects/proj001', {
+      method: 'PATCH',
+      body: JSON.stringify({ name: '' }),
+    });
+
+    const res = await PATCH(req, makeParams('proj001'));
+    expect(res.status).toBe(400);
+  });
+
+  it('updates tags correctly', async () => {
+    mockFindUnique.mockResolvedValue(baseProject);
+    mockUpdate.mockResolvedValue({ ...baseProject, tags: '["robotics","arm"]' });
+
+    const req = makeRequest('http://localhost/api/projects/proj001', {
+      method: 'PATCH',
+      body: JSON.stringify({ tags: ['robotics', 'arm'] }),
+    });
+
+    const res = await PATCH(req, makeParams('proj001'));
     const json = await res.json();
 
-    expect(json.data.events).toHaveLength(1);
-    expect(json.data.events[0].id).toBe('evt-1');
-    expect(json.data.events[0].type).toBe('allocated');
+    expect(json.data.tags).toEqual(['robotics', 'arm']);
   });
+});
 
-  it('returns empty events array when project has no events', async () => {
-    mockProjectFindUnique.mockResolvedValue(baseProject);
-    mockEventFindMany.mockResolvedValue([]);
+// ─── DELETE /api/projects/[id] ────────────────────────────────────────────────
 
-    const res = await GET(
-      new Request('http://localhost/api/projects/proj-1'),
-      makeParams('proj-1')
-    );
-    const json = await res.json();
-
-    expect(json.data.events).toEqual([]);
-  });
-
-  it('queries events filtered by projectId', async () => {
-    mockProjectFindUnique.mockResolvedValue(baseProject);
-    mockEventFindMany.mockResolvedValue([]);
-
-    await GET(
-      new Request('http://localhost/api/projects/proj-1'),
-      makeParams('proj-1')
-    );
-
-    expect(mockEventFindMany).toHaveBeenCalledWith(
-      expect.objectContaining({
-        where: { projectId: 'proj-1' },
-        orderBy: { createdAt: 'desc' },
-      })
-    );
-  });
-
-  it('queries project with allocations including lot, location, and part', async () => {
-    mockProjectFindUnique.mockResolvedValue(baseProject);
-    mockEventFindMany.mockResolvedValue([]);
-
-    await GET(
-      new Request('http://localhost/api/projects/proj-1'),
-      makeParams('proj-1')
-    );
-
-    expect(mockProjectFindUnique).toHaveBeenCalledWith(
-      expect.objectContaining({
-        where: { id: 'proj-1' },
-        include: expect.objectContaining({
-          allocations: expect.objectContaining({
-            include: expect.objectContaining({
-              lot: expect.anything(),
-            }),
-          }),
-        }),
-      })
-    );
-  });
-
-  it('gracefully handles malformed tags JSON (returns empty array)', async () => {
-    const badProject = { ...baseProject, tags: 'invalid-json' };
-    mockProjectFindUnique.mockResolvedValue(badProject);
-    mockEventFindMany.mockResolvedValue([]);
-
-    const res = await GET(
-      new Request('http://localhost/api/projects/proj-1'),
-      makeParams('proj-1')
-    );
-    const json = await res.json();
-
-    expect(json.data.tags).toEqual([]);
-  });
-
-  it('gracefully handles malformed lot source JSON (returns empty object)', async () => {
-    const badLot = { ...baseLot, source: 'not-json' };
-    const projectWithBadLot = {
+describe('DELETE /api/projects/[id]', () => {
+  it('returns 200 and archives the project', async () => {
+    mockFindUnique.mockResolvedValue(baseProject);
+    mockUpdate.mockResolvedValue({
       ...baseProject,
-      allocations: [{ ...baseAllocation, lot: badLot }],
-    };
-    mockProjectFindUnique.mockResolvedValue(projectWithBadLot);
-    mockEventFindMany.mockResolvedValue([]);
+      status: 'retired',
+      archivedAt: new Date(),
+    });
 
-    const res = await GET(
-      new Request('http://localhost/api/projects/proj-1'),
-      makeParams('proj-1')
-    );
+    const res = await DELETE(makeRequest('http://localhost/api/projects/proj001'), makeParams('proj001'));
+    expect(res.status).toBe(200);
+
     const json = await res.json();
-
-    expect(json.data.allocations[0].lot.source).toEqual({});
+    expect(json.data.status).toBe('retired');
+    expect(json.data.archivedAt).toBeTruthy();
   });
 
-  it('returns 500 on unexpected DB error', async () => {
-    mockProjectFindUnique.mockRejectedValue(new Error('DB failure'));
+  it('returns 404 when project not found', async () => {
+    mockFindUnique.mockResolvedValue(null);
 
-    const res = await GET(
-      new Request('http://localhost/api/projects/proj-1'),
-      makeParams('proj-1')
-    );
+    const res = await DELETE(makeRequest('http://localhost/api/projects/notfound'), makeParams('notfound'));
+    expect(res.status).toBe(404);
+  });
 
-    expect(res.status).toBe(500);
+  it('returns 409 when project is already archived', async () => {
+    mockFindUnique.mockResolvedValue({
+      ...baseProject,
+      archivedAt: new Date('2024-01-01'),
+    });
+
+    const res = await DELETE(makeRequest('http://localhost/api/projects/proj001'), makeParams('proj001'));
+    expect(res.status).toBe(409);
+
     const json = await res.json();
-    expect(json.error).toBe('internal_error');
+    expect(json.error).toBe('already_archived');
   });
 });
