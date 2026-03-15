@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
-import { useCallback } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 interface FilterOption {
   value: string;
@@ -50,6 +50,30 @@ export function LotFilterForm({ partOptions, locationOptions }: LotFilterFormPro
   const currentPartId = searchParams.get('partId') ?? '';
   const currentLocationId = searchParams.get('locationId') ?? '';
   const currentSeller = searchParams.get('seller') ?? '';
+
+  // Local state for seller input to avoid pushing on every keystroke
+  const [sellerInput, setSellerInput] = useState(currentSeller);
+  const sellerDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Keep local state in sync when the URL param changes externally (e.g. clear filters)
+  useEffect(() => {
+    setSellerInput(currentSeller);
+  }, [currentSeller]);
+
+  // Clean up pending debounce timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (sellerDebounceRef.current) clearTimeout(sellerDebounceRef.current);
+    };
+  }, []);
+
+  const handleSellerChange = (value: string) => {
+    setSellerInput(value);
+    if (sellerDebounceRef.current) clearTimeout(sellerDebounceRef.current);
+    sellerDebounceRef.current = setTimeout(() => {
+      updateFilter('seller', value);
+    }, 400);
+  };
 
   return (
     <aside className="w-56 shrink-0 space-y-5">
@@ -122,8 +146,8 @@ export function LotFilterForm({ partOptions, locationOptions }: LotFilterFormPro
         <input
           id="filter-seller"
           type="text"
-          value={currentSeller}
-          onChange={e => updateFilter('seller', e.target.value)}
+          value={sellerInput}
+          onChange={e => handleSellerChange(e.target.value)}
           placeholder="Search seller..."
           className={SELECT_CLASS}
         />

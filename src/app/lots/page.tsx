@@ -17,12 +17,42 @@ interface PageProps {
 const PAGE_SIZE = 50;
 
 async function getLotsData(params: Awaited<PageProps['searchParams']>) {
-  const offset = parseInt(params.offset ?? '0');
+  const offset = Math.max(0, Number(params.offset) || 0);
 
   const where: { partId?: string; locationId?: string; status?: string } = {};
   if (params.partId) where.partId = params.partId;
   if (params.locationId) where.locationId = params.locationId;
   if (params.status) where.status = params.status;
+
+  // When seller filter is active, fetch all matching rows first (source is a JSON string
+  // field and cannot be filtered at the database level), then apply in-memory filtering
+  // before slicing for pagination.
+  if (params.seller) {
+    const sellerLower = params.seller.toLowerCase();
+    const [allLots, parts, locations] = await Promise.all([
+      prisma.lot.findMany({
+        where,
+        include: {
+          part: { select: { id: true, name: true, category: true } },
+          location: { select: { id: true, name: true, path: true } },
+        },
+        orderBy: { createdAt: 'desc' },
+      }),
+      prisma.part.findMany({ select: { id: true, name: true }, orderBy: { name: 'asc' } }),
+      prisma.location.findMany({ select: { id: true, name: true, path: true }, orderBy: { path: 'asc' } }),
+    ]);
+
+    const filtered = allLots.filter(lot => {
+      const src = safeParseJson<{ seller?: string }>(lot.source, {});
+      return src.seller?.toLowerCase().includes(sellerLower);
+    });
+    const lots = filtered.slice(offset, offset + PAGE_SIZE).map(lot => ({
+      ...lot,
+      source: safeParseJson<Record<string, unknown>>(lot.source, {}),
+    })) satisfies LotCardLot[];
+
+    return { lots, total: filtered.length, parts, locations, offset };
+  }
 
   const [lots, total, parts, locations] = await Promise.all([
     prisma.lot.findMany({
@@ -51,16 +81,9 @@ async function getLotsData(params: Awaited<PageProps['searchParams']>) {
     source: safeParseJson<Record<string, unknown>>(lot.source, {}),
   })) satisfies LotCardLot[];
 
-  const filteredLots = params.seller
-    ? lotsWithSource.filter(lot => {
-        const src = lot.source as { seller?: string };
-        return src.seller?.toLowerCase().includes(params.seller!.toLowerCase());
-      })
-    : lotsWithSource;
-
   return {
-    lots: filteredLots,
-    total: params.seller ? filteredLots.length : total,
+    lots: lotsWithSource,
+    total,
     parts,
     locations,
     offset,
@@ -78,8 +101,13 @@ export default async function LotsPage({ searchParams }: PageProps) {
   }));
 
   const buildPaginationUrl = (newOffset: number) => {
-    const p = { ...params, offset: String(newOffset) };
-    return `/lots?${new URLSearchParams(p as Record<string, string>)}`;
+    const p = new URLSearchParams();
+    if (params.partId) p.set('partId', params.partId);
+    if (params.locationId) p.set('locationId', params.locationId);
+    if (params.status) p.set('status', params.status);
+    if (params.seller) p.set('seller', params.seller);
+    p.set('offset', String(newOffset));
+    return `/lots?${p.toString()}`;
   };
 
   return (

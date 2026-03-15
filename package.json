@@ -28,11 +28,13 @@
     "eslint-config-next": "16.1.6",
     "next": "16.1.6",
     "postcss": "8.5.8",
-    "prisma": "^5.22.0",
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "tailwind-merge": "^3.5.0",
     "tailwindcss": "4.2.1",
     "typescript": "5.9.3"
+  },
+  "devDependencies": {
+    "prisma": "^5.22.0"
   }
 }

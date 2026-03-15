@@ -2,10 +2,14 @@ import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 
 export async function GET(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
+  const { searchParams } = new URL(request.url);
+
+  const limit = Math.max(0, Math.min(Number(searchParams.get('limit')) || 50, 500));
+  const offset = Math.max(0, Number(searchParams.get('offset')) || 0);
 
   const lot = await prisma.lot.findUnique({
     where: { id },
@@ -19,10 +23,15 @@ export async function GET(
     );
   }
 
-  const events = await prisma.event.findMany({
-    where: { lotId: id },
-    orderBy: { createdAt: 'desc' },
-  });
+  const [events, total] = await Promise.all([
+    prisma.event.findMany({
+      where: { lotId: id },
+      orderBy: { createdAt: 'desc' },
+      skip: offset,
+      take: limit,
+    }),
+    prisma.event.count({ where: { lotId: id } }),
+  ]);
 
-  return NextResponse.json({ data: events, total: events.length });
+  return NextResponse.json({ data: events, total, limit, offset });
 }
