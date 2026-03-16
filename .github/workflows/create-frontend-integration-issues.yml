@@ -1,0 +1,536 @@
+name: Create Figma Frontend Integration Issues
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Dry run (print issue content without creating)'
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  issues: write
+
+jobs:
+  create-issues:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create Figma Frontend Integration Epic and Sub-Issues
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const dryRun = ${{ github.event.inputs.dry_run }};
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+
+            let dryRunCounter = 1000;
+
+            async function createIssue(title, body, labels) {
+              if (dryRun) {
+                const number = ++dryRunCounter;
+                console.log(`[DRY RUN] Would create issue #${number}: "${title}"`);
+                console.log(`Labels: ${labels.join(', ')}`);
+                console.log('---');
+                return { number, title, html_url: `https://github.com/${owner}/${repo}/issues/${number}` };
+              }
+              const result = await github.rest.issues.create({
+                owner,
+                repo,
+                title,
+                body,
+                labels,
+              });
+              console.log(`Created issue #${result.data.number}: ${title}`);
+              console.log(`URL: ${result.data.html_url}`);
+              return result.data;
+            }
+
+            // ── Sub-issues ────────────────────────────────────────────────────
+
+            const subIssues = [];
+
+            subIssues.push(await createIssue(
+              'Decide frontend integration architecture',
+              `## Goal
+            Choose between keeping the Figma frontend as a separate Vite SPA alongside the existing Next.js app, or consolidating everything into Next.js.
+
+            ## Why
+            All subsequent integration work depends on this architectural decision. The two approaches have very different migration costs and deployment strategies.
+
+            ## Options
+
+            ### Option A: Separate Vite SPA (Monorepo)
+            - Keep \`frontend/\` as a standalone Vite + React Router SPA
+            - Serve the Next.js backend on one port and the Vite frontend on another
+            - Use a reverse proxy (e.g. Nginx or Next.js rewrites) to unify them
+            - **Pros**: Minimal disruption to existing backend; clean separation of concerns
+            - **Cons**: Two build pipelines; React version mismatch (existing React 19 vs. frontend React 18 peer dep) needs resolution; CORS or proxy config required
+
+            ### Option B: Consolidate into Next.js (Recommended)
+            - Copy UI components from \`frontend/src/app/components/ui/\` into \`src/components/ui/\`
+            - Migrate each Vite page to a Next.js App Router page (\`src/app/*/page.tsx\`)
+            - Replace React Router navigation with Next.js \`<Link>\` and \`useRouter\`
+            - **Pros**: Single build pipeline; no proxy needed; existing tests continue to work
+            - **Cons**: Some React Router-specific patterns need rewriting; Vite-only features need porting
+
+            ## Acceptance Criteria
+            - [ ] Decision documented in \`docs/adr/\` (Architecture Decision Record)
+            - [ ] Migration path defined for chosen approach
+            - [ ] React version conflict resolved (align to React 18 or React 19)
+            - [ ] Development environment documented (how to run both services if Option A)
+
+            ## Notes
+            The existing codebase uses React 19.2.4; the frontend folder declares React 18.3.x as a peer dependency.
+            Consolidating into Next.js (Option B) is recommended because the project already has a working Next.js setup, the API layer lives there, and all tests use Jest/Next.js infrastructure.
+            `,
+              ['p0', 'frontend', 'backend']
+            ));
+
+            subIssues.push(await createIssue(
+              'Migrate UI component library from frontend/ into src/components/ui/',
+              `## Goal
+            Copy the ~70 Radix UI / shadcn-style UI components from \`frontend/src/app/components/ui/\` into the main \`src/components/ui/\` directory and wire up their dependencies.
+
+            ## Why
+            The Figma frontend ships a complete, polished design system. Migrating these components gives every other integration issue a solid UI foundation to build on.
+
+            ## Scope
+            - Copy all components from \`frontend/src/app/components/ui/\` → \`src/components/ui/\`
+            - Add required dependencies: \`@radix-ui/*\` primitives, \`class-variance-authority\`, \`tailwind-merge\`, \`sonner\`, \`recharts\`, \`react-hook-form\`, \`next-themes\`, \`lucide-react\`, \`embla-carousel-react\`, \`react-day-picker\`, \`react-dnd\`
+            - Update \`tailwind.config.ts\` to include the new component paths and CSS variables from \`frontend/src/styles/theme.css\`
+            - Merge \`frontend/src/styles/\` (index.css, fonts.css, theme.css) into \`src/app/globals.css\`
+            - Ensure existing \`src/components/ui/Badge\` is either kept or replaced by the new badge component
+
+            ## Key Components to Migrate (~70 total)
+            Layout: sidebar, breadcrumb, card, separator, scroll-area, resizable
+            Forms: input, textarea, button, checkbox, radio-group, toggle, toggle-group, select, form, input-otp, slider, calendar
+            Dialogs: dialog, alert-dialog, drawer, popover, hover-card, sheet, context-menu, dropdown-menu, menubar
+            Data: table, pagination, badge, avatar, skeleton, carousel, chart
+            Navigation: navigation-menu, tabs, command (combobox)
+            Feedback: progress, alert, sonner, tooltip, accordion, collapsible
+            Other: aspect-ratio
+
+            ## Acceptance Criteria
+            - [ ] All ~70 UI components present in \`src/components/ui/\`
+            - [ ] \`npm run build\` succeeds
+            - [ ] \`npm test\` passes (no regressions in existing tests)
+            - [ ] Storybook or visual check shows components render correctly (optional)
+            - [ ] \`cn()\` utility (clsx + tailwind-merge) available in \`src/lib/utils\`
+
+            ## Dependencies
+            - Depends on: architectural decision (#1 sub-issue)
+            `,
+              ['p1', 'frontend']
+            ));
+
+            subIssues.push(await createIssue(
+              'Integrate AppShell navigation and root layout',
+              `## Goal
+            Replace the current \`src/app/layout.tsx\` with the new Figma-designed AppShell that includes a collapsible sidebar, breadcrumb navigation, dark/light mode toggle, and responsive layout.
+
+            ## Why
+            The AppShell is the container for every page. Updating it first means all page migrations immediately benefit from the new design.
+
+            ## Scope
+            - Port \`frontend/src/app/components/app-shell.tsx\` to \`src/components/AppShell.tsx\`
+            - Update \`src/app/layout.tsx\` to use the new AppShell
+            - Replace existing navbar (Parts · Lots · Locations · Projects · + Add Items) with sidebar navigation
+            - Add dark/light mode toggle using \`next-themes\` (wrap app in \`ThemeProvider\`)
+            - Migrate \`frontend/src/styles/fonts.css\` font declarations into the Next.js layout
+            - Ensure breadcrumb component works with Next.js App Router (\`usePathname\`)
+
+            ## Acceptance Criteria
+            - [ ] AppShell renders on all pages with correct sidebar links
+            - [ ] Collapsible sidebar works on desktop; mobile drawer works on small screens
+            - [ ] Dark/light mode toggle persists across page reloads
+            - [ ] Existing page routes (parts, lots, locations, projects, intake, import) all still load
+            - [ ] \`npm run build\` succeeds with no TypeScript errors
+
+            ## Dependencies
+            - Depends on: UI component library migration
+            `,
+              ['p1', 'frontend']
+            ));
+
+            subIssues.push(await createIssue(
+              'Integrate Dashboard page',
+              `## Goal
+            Replace the existing home page (\`src/app/page.tsx\`) with the new Figma-designed dashboard from \`frontend/src/app/pages/dashboard.tsx\`.
+
+            ## Why
+            The dashboard is the entry point of the application. Migrating it provides the user with an at-a-glance inventory summary and quick-action cards.
+
+            ## Scope
+            - Port \`frontend/src/app/pages/dashboard.tsx\` to \`src/app/page.tsx\`
+            - Connect summary stats (total parts, total lots, low-stock count, active projects) to the existing API endpoints
+            - Replace mock/static data with live API calls (\`/api/parts\`, \`/api/lots\`, \`/api/projects\`)
+            - Preserve existing quick-action cards (Add Items, View Parts, View Lots, View Locations, View Projects)
+            - Use \`recharts\` for any charts on the dashboard (already in dependencies)
+
+            ## Acceptance Criteria
+            - [ ] Dashboard renders correctly with live data from API
+            - [ ] Quick-action cards link to correct routes
+            - [ ] Charts (if any) render with real inventory data
+            - [ ] Page loads in under 2 seconds on typical dev machine
+            - [ ] \`npm run build\` succeeds
+
+            ## Dependencies
+            - Depends on: AppShell integration; UI component library migration
+            `,
+              ['p1', 'frontend']
+            ));
+
+            subIssues.push(await createIssue(
+              'Integrate Parts pages (list and detail)',
+              `## Goal
+            Migrate the Figma parts list and part detail pages from the \`frontend/\` folder, replacing the existing \`src/app/parts/\` pages with the new design.
+
+            ## Why
+            Parts are the core entity of the inventory system. The new design includes an improved filter sidebar, part cards with parameter display, and an edit dialog.
+
+            ## Scope
+            - Port \`frontend/src/app/pages/parts-list.tsx\` → update \`src/app/parts/page.tsx\`
+            - Port \`frontend/src/app/pages/part-detail.tsx\` → update \`src/app/parts/[id]/page.tsx\`
+            - Port \`frontend/src/app/components/part-autocomplete.tsx\` → \`src/features/parts/components/PartAutocomplete.tsx\`
+            - Port \`frontend/src/app/components/edit-part-dialog.tsx\` → \`src/features/parts/components/EditPartDialog.tsx\`
+            - Replace the existing \`FilterSidebar\`, \`PartsListClient\`, \`PartDetailClient\`, \`PartCard\` with the new Figma versions
+            - Wire to existing \`/api/parts\` endpoint (GET/POST/PUT/DELETE)
+            - Preserve existing category filter, search, and parameter display functionality
+
+            ## Acceptance Criteria
+            - [ ] Parts list renders with search, filter sidebar, and paginated part cards
+            - [ ] Part detail shows all fields: name, MPN, category, description, parameters, lot summary
+            - [ ] Edit part dialog opens and saves changes via PATCH \`/api/parts/:id\`
+            - [ ] \`npm test\` passes (update existing parts tests as needed)
+            - [ ] \`npm run build\` succeeds
+
+            ## Dependencies
+            - Depends on: UI component library migration; AppShell integration
+            `,
+              ['p1', 'frontend']
+            ));
+
+            subIssues.push(await createIssue(
+              'Integrate Intake page',
+              `## Goal
+            Migrate the Figma intake page from \`frontend/src/app/pages/intake.tsx\`, replacing the existing \`src/app/intake/page.tsx\` with the new design.
+
+            ## Why
+            The intake flow is the most-used workflow. The new design streamlines the three modes (New Part+Lot, Add Lot to Existing Part, Quick Restock) with improved UX.
+
+            ## Scope
+            - Port \`frontend/src/app/pages/intake.tsx\` → update \`src/app/intake/page.tsx\`
+            - Port \`frontend/src/app/components/location-select.tsx\` → \`src/features/intake/components/LocationSelect.tsx\` (replacing existing \`LocationPicker\`)
+            - Port \`frontend/src/app/components/part-autocomplete.tsx\` → \`src/features/intake/components/PartSearch.tsx\` (if not already done in Parts issue)
+            - Preserve the three intake modes: New Part+Lot, Add Lot to Existing Part, Quick Restock
+            - Wire to \`/api/parts\` (POST for new parts) and \`/api/lots\` (POST for new lots)
+            - Preserve \`localStorage\` persistence of last-used category and location
+
+            ## Acceptance Criteria
+            - [ ] All three intake modes work end-to-end
+            - [ ] Location picker shows full location tree with search and inline "Add new location"
+            - [ ] Part autocomplete queries \`/api/parts?search=…\` with debounce
+            - [ ] New part+lot can be created in under 60 seconds
+            - [ ] \`npm test\` passes (update existing intake tests as needed)
+
+            ## Dependencies
+            - Depends on: UI component library migration; AppShell integration
+            `,
+              ['p1', 'frontend', 'intake']
+            ));
+
+            subIssues.push(await createIssue(
+              'Integrate Lots pages (list and detail)',
+              `## Goal
+            Migrate the Figma lots list and lot detail pages from the \`frontend/\` folder, replacing the existing \`src/app/lots/\` pages.
+
+            ## Why
+            The lots pages are central to tracking stock levels. The new design adds improved filtering, visual stock indicators, and clearer lot action buttons.
+
+            ## Scope
+            - Port \`frontend/src/app/pages/lots-list.tsx\` → update \`src/app/lots/page.tsx\`
+            - Port \`frontend/src/app/pages/lot-detail.tsx\` → update \`src/app/lots/[id]/page.tsx\`
+            - Port \`frontend/src/app/components/status-badge.tsx\` → update \`src/components/ui/\` or \`src/features/lots/\`
+            - Update/replace existing \`LotActionsPanel\`, \`AllocateModal\`, \`ScrapLostModal\`, \`AllocationActions\`, \`MoveModal\` with new Figma versions
+            - Wire to existing \`/api/lots\`, \`/api/allocations\` endpoints
+            - Preserve all stock actions: move, allocate, scrap/lost, receive
+
+            ## Acceptance Criteria
+            - [ ] Lots list renders with filter by part, location, status, seller; pagination works
+            - [ ] Lot detail shows part link, quantity, location, source, event history, allocations
+            - [ ] All stock action modals (move, allocate, scrap, receive) work end-to-end
+            - [ ] Status badge shows correct color for each lot status
+            - [ ] \`npm test\` passes (update existing lots tests as needed)
+
+            ## Dependencies
+            - Depends on: UI component library migration; AppShell integration
+            `,
+              ['p1', 'frontend']
+            ));
+
+            subIssues.push(await createIssue(
+              'Integrate Locations pages (list and detail)',
+              `## Goal
+            Migrate the Figma locations list and location detail pages from the \`frontend/\` folder, replacing the existing \`src/app/locations/\` pages.
+
+            ## Why
+            Location management is critical for knowing where parts are stored. The new design includes a cleaner tree view and location detail with associated lots.
+
+            ## Scope
+            - Port \`frontend/src/app/pages/locations-list.tsx\` → update \`src/app/locations/page.tsx\`
+            - Port \`frontend/src/app/pages/location-detail.tsx\` → update \`src/app/locations/[id]/page.tsx\`
+            - Update existing \`LocationTree\`, \`LocationModal\` components with new Figma versions
+            - Wire to existing \`/api/locations\` endpoint (GET/POST/PUT/DELETE)
+            - Preserve existing "Print Label" action per location and batch label printing
+
+            ## Acceptance Criteria
+            - [ ] Locations list renders as a hierarchical tree (parent → children)
+            - [ ] Location detail shows path, associated lots, and child locations
+            - [ ] Add/edit/delete location modals work end-to-end
+            - [ ] Print label action still links to \`/print/labels?type=location&ids=…\`
+            - [ ] \`npm run build\` succeeds
+
+            ## Dependencies
+            - Depends on: UI component library migration; AppShell integration
+            `,
+              ['p1', 'frontend']
+            ));
+
+            subIssues.push(await createIssue(
+              'Integrate Projects pages (list and detail)',
+              `## Goal
+            Migrate the Figma projects list and project detail pages from the \`frontend/\` folder, replacing the existing \`src/app/projects/\` pages.
+
+            ## Why
+            Project tracking with lot allocations is a key workflow. The new design provides a cleaner overview and allocation management UI.
+
+            ## Scope
+            - Port \`frontend/src/app/pages/projects-list.tsx\` → update \`src/app/projects/page.tsx\`
+            - Port \`frontend/src/app/pages/project-detail.tsx\` → update \`src/app/projects/[id]/page.tsx\`
+            - Update existing \`ProjectDetailClient\`, \`ProjectCard\` components with new Figma versions
+            - Wire to existing \`/api/projects\`, \`/api/allocations\` endpoints
+            - Preserve allocation workflow: allocate lot to project, complete/cancel allocation
+
+            ## Acceptance Criteria
+            - [ ] Projects list renders with status filter (active, completed, archived)
+            - [ ] Project detail shows allocated parts, quantities, and allocation status
+            - [ ] Add/edit project modals work end-to-end
+            - [ ] Allocation actions (allocate, complete, cancel) work correctly
+            - [ ] \`npm test\` passes (update existing projects tests as needed)
+
+            ## Dependencies
+            - Depends on: UI component library migration; AppShell integration
+            `,
+              ['p1', 'frontend', 'project']
+            ));
+
+            subIssues.push(await createIssue(
+              'Integrate Import/Export page',
+              `## Goal
+            Migrate the Figma import/export page from \`frontend/src/app/pages/import-export.tsx\`, replacing the existing \`src/app/import/page.tsx\`.
+
+            ## Why
+            CSV import is the primary bulk-data-entry path. The new design adds a file upload drop zone and step-by-step import flow with validation feedback.
+
+            ## Scope
+            - Port \`frontend/src/app/pages/import-export.tsx\` → update \`src/app/import/page.tsx\`
+            - Port \`frontend/src/app/components/file-upload.tsx\` → \`src/features/import/components/FileUpload.tsx\`
+            - Preserve the existing import pipeline: CSV parse → dry-run validation → actual import via \`/api/import/*\`
+            - Add CSV export capability (download current inventory as CSV) if present in the Figma design
+            - Display row-level validation errors in the new design
+
+            ## Acceptance Criteria
+            - [ ] File drag-and-drop upload works for CSV files
+            - [ ] Dry-run shows preview table with any validation errors highlighted
+            - [ ] Confirmed import creates parts/lots via existing API
+            - [ ] Export downloads inventory as CSV (if in design)
+            - [ ] \`npm run build\` succeeds
+
+            ## Dependencies
+            - Depends on: UI component library migration; AppShell integration
+            `,
+              ['p1', 'frontend', 'intake']
+            ));
+
+            subIssues.push(await createIssue(
+              'Implement Print Labels page (currently a placeholder in frontend/)',
+              `## Goal
+            The \`frontend/\` folder has a placeholder for the print labels page. Implement the full labels page by integrating the existing \`src/app/print/labels/\` implementation with the new Figma design.
+
+            ## Why
+            Label printing (QR codes for lots and locations) is in use today via the existing implementation. The Figma frontend needs a working labels page, not a placeholder.
+
+            ## Scope
+            - Port the existing \`src/app/print/labels/page.tsx\` + \`src/components/labels/\` logic into the new Figma design
+            - Create a matching page at \`/print/labels\` that works with the new AppShell (or remains a full-page print view)
+            - Preserve all existing label features: location/lot types, three sizes (small/medium/large), batch printing, QR code generation via \`qrcode\` library
+            - Ensure "Print Label" links from lots and locations pages continue to work
+
+            ## Acceptance Criteria
+            - [ ] \`/print/labels?type=location|lot&ids=…&size=…\` renders a printable label sheet
+            - [ ] QR codes are generated client-side and visible in the rendered labels
+            - [ ] Three label sizes (small 1"×½", medium 2"×1", large 4"×2") work correctly
+            - [ ] Browser print dialog produces a clean label sheet
+
+            ## Dependencies
+            - Depends on: UI component library migration; Lots pages integration; Locations pages integration
+            `,
+              ['p2', 'frontend']
+            ));
+
+            subIssues.push(await createIssue(
+              'Integrate API client and environment configuration',
+              `## Goal
+            Wire the Figma frontend API client (\`frontend/src/app/lib/api.ts\`) into the main application and set up proper environment configuration for API base URLs.
+
+            ## Why
+            The frontend API client is a clean typed wrapper over all backend endpoints. Centralising it eliminates ad-hoc fetch calls scattered across page components.
+
+            ## Scope
+            - Port \`frontend/src/app/lib/api.ts\` → \`src/lib/api/client.ts\` (or merge into existing \`src/lib/\`)
+            - Replace individual \`fetch('/api/…')\` calls in migrated page components with calls to the typed API client
+            - Add \`NEXT_PUBLIC_API_BASE_URL\` env var support so the frontend can point to a remote backend
+            - Document required environment variables in \`.env.example\`
+            - Port \`frontend/src/app/lib/csv-utils.ts\` → \`src/lib/csv/\` (or confirm parity with existing CSV lib)
+
+            ## Acceptance Criteria
+            - [ ] All migrated pages use the typed API client (no raw \`fetch\` for known endpoints)
+            - [ ] \`.env.example\` documents \`NEXT_PUBLIC_API_BASE_URL\` and any other required vars
+            - [ ] API client handles 4xx/5xx responses consistently (throw vs return error object)
+            - [ ] \`npm run build\` succeeds
+
+            ## Dependencies
+            - Depends on: architectural decision; UI component library migration
+            `,
+              ['p1', 'frontend', 'api']
+            ));
+
+            subIssues.push(await createIssue(
+              'Implement theme system (dark/light mode)',
+              `## Goal
+            Integrate the Figma theme system (\`frontend/src/styles/theme.css\` CSS variables + \`next-themes\`) to support dark and light mode throughout the app.
+
+            ## Why
+            The Figma design specifies a complete CSS variable–based theming system. Adding dark mode improves usability in low-light environments and aligns with modern web app expectations.
+
+            ## Scope
+            - Add \`next-themes\` dependency (\`ThemeProvider\` wrapping \`layout.tsx\`)
+            - Merge \`frontend/src/styles/theme.css\` CSS variables into \`src/app/globals.css\`
+            - Wire the AppShell theme toggle button to \`next-themes\` \`useTheme()\`
+            - Ensure all new Radix/shadcn components honour the dark theme via CSS variable overrides
+            - Test in both light and dark modes
+
+            ## Acceptance Criteria
+            - [ ] Theme toggle button in AppShell switches between light and dark modes
+            - [ ] Theme preference persists across page reloads (localStorage via next-themes)
+            - [ ] All UI components (cards, tables, dialogs, sidebar) have correct colours in both themes
+            - [ ] System preference (\`prefers-color-scheme\`) is respected on first load
+            - [ ] \`npm run build\` succeeds
+
+            ## Dependencies
+            - Depends on: UI component library migration; AppShell integration
+            `,
+              ['p2', 'frontend']
+            ));
+
+            subIssues.push(await createIssue(
+              'Add tests for new Figma UI components',
+              `## Goal
+            Write unit and integration tests for the migrated Figma UI components to ensure no regressions as the integration progresses.
+
+            ## Why
+            The existing test suite covers backend API routes and business logic. The new UI components need test coverage to catch regressions during and after integration.
+
+            ## Scope
+            - Add Jest + React Testing Library tests for key UI components: Button, Input, Select, Dialog, DataTable, StatusBadge, AppShell navigation
+            - Port \`frontend/src/app/components/data-table.tsx\` → \`src/components/DataTable.tsx\` and add tests
+            - Add smoke tests for each migrated page (renders without crashing, API calls are mocked)
+            - Aim for >80% coverage on new feature components (\`src/features/*/components/\`)
+
+            ## Acceptance Criteria
+            - [ ] At least one test file per new feature component directory
+            - [ ] DataTable renders, sorts, and paginates correctly in tests
+            - [ ] StatusBadge renders correct colour for each status value
+            - [ ] AppShell renders all navigation links and the theme toggle
+            - [ ] \`npm test\` passes with no regressions in existing tests
+
+            ## Dependencies
+            - Depends on: UI component library migration; all page integrations
+            `,
+              ['p1', 'frontend']
+            ));
+
+            // ── Epic ──────────────────────────────────────────────────────────
+
+            const subIssueRefs = subIssues
+              .map(issue => `- [ ] #${issue.number} ${issue.title}`)
+              .join('\n');
+
+            const epicBody = `## Goal
+            Integrate the Figma-generated frontend (located in the \`/frontend\` folder) into the existing Next.js codebase, replacing the current server-rendered pages with the new polished Figma design system while preserving all existing API and business logic.
+
+            ## Why
+            The Figma frontend provides a complete, modern design system with 70+ Radix UI / shadcn-style components, a responsive AppShell with sidebar navigation, dark/light mode support, and fully designed pages for every feature. Integrating it will dramatically improve the user experience without requiring any backend changes.
+
+            ## Scope
+            ${subIssueRefs}
+
+            ## Acceptance Criteria
+            - [ ] All existing API routes (\`/api/*\`) continue to work unchanged
+            - [ ] All pages render correctly with the new Figma design
+            - [ ] Dark/light mode toggle works across all pages
+            - [ ] \`npm run build\` succeeds with no TypeScript errors
+            - [ ] \`npm test\` passes with no regressions
+            - [ ] New part can be added via intake in under 60 seconds
+            - [ ] Print labels (QR codes) continue to work
+
+            ## Out of Scope
+            - Backend API changes (no new endpoints required)
+            - Database schema changes (Prisma schema unchanged)
+            - Authentication / SSO
+            - Mobile native app
+            - Removing the \`frontend/\` directory (keep as reference until integration is complete)
+
+            ## Notes
+            The \`frontend/\` folder is a standalone Vite + React Router SPA. The recommended integration strategy is **Option B: Consolidate into Next.js** — copy components into \`src/\` and replace Next.js pages one by one. This avoids dual build pipelines and keeps the project as a single deployable unit.
+
+            ### Key technology additions (from frontend/)
+            | Package | Purpose |
+            |---------|---------|
+            | \`@radix-ui/*\` | Accessible UI primitives for all new components |
+            | \`next-themes\` | Dark/light mode with system-preference support |
+            | \`sonner\` | Toast notifications |
+            | \`react-hook-form\` | Form state management |
+            | \`recharts\` | Charts on dashboard |
+            | \`react-dnd\` | Drag-and-drop (lots / allocation ordering) |
+            | \`embla-carousel-react\` | Carousel component |
+
+            ## Dependency Graph
+            \`\`\`
+            Architecture decision ──► UI component library ──► AppShell ──┬──► Dashboard
+                                                                          ├──► Parts pages
+                                                                          ├──► Intake page
+                                                                          ├──► Lots pages
+                                                                          ├──► Locations pages
+                                                                          ├──► Projects pages
+                                                                          └──► Import/Export page
+            API client integration ──────────────────────────────────────► (all pages)
+            Theme system ────────────────────────────────────────────────► AppShell
+            UI component library + all pages ───────────────────────────► Tests
+            \`\`\`
+            `;
+
+            const epic = await createIssue(
+              'Epic 5: Figma Frontend Integration',
+              epicBody,
+              ['epic']
+            );
+
+            console.log('\n=== Summary ===');
+            console.log(`Epic: #${epic.number} - ${epic.html_url}`);
+            console.log('Sub-issues:');
+            subIssues.forEach((issue, i) => {
+              console.log(`  #${issue.number} - ${issue.html_url}`);
+            });
