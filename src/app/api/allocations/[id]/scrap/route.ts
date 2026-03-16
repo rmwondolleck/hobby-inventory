@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import type { Prisma } from '@prisma/client';
 import prisma from '@/lib/db';
 import type { AllocationStatus } from '@/lib/types';
 
@@ -33,7 +34,7 @@ export async function POST(_request: Request, { params }: RouteParams) {
     );
   }
 
-  const updated = await prisma.$transaction(async (tx) => {
+  const updated = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
     // Mark allocation recovered (removes it from active count)
     const updatedAllocation = await tx.allocation.update({
       where: { id },
