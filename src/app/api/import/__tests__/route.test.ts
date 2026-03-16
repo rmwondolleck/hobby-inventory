@@ -186,3 +186,48 @@ describe('POST /api/import/execute – aborts on errors', () => {
   });
 });
 
+// ---------------------------------------------------------------------------
+// Execute – success path
+// ---------------------------------------------------------------------------
+
+describe('POST /api/import/execute – success', () => {
+  function makeExec(body: unknown): Request {
+    return new Request('http://localhost/api/import/execute', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+  }
+
+  it('returns 201 with summary when CSV is valid and error-free', async () => {
+    (mockPrisma.part.findMany as jest.Mock).mockResolvedValue([]);
+    (mockPrisma.part.create as jest.Mock).mockResolvedValue({ id: 'p-new' });
+
+    const csv = 'name,category\nESP32,MCU';
+    const res = await POSTExecute(makeExec({ type: 'parts', csv }));
+    expect(res.status).toBe(201);
+    const json = await res.json() as { data: { type: string; created: number } };
+    expect(json.data.type).toBe('parts');
+    expect(json.data.created).toBe(1);
+  });
+
+  it('returns 400 for invalid JSON body', async () => {
+    const req = new Request('http://localhost/api/import/execute', {
+      method: 'POST',
+      body: 'not-json',
+    });
+    const res = await POSTExecute(req);
+    expect(res.status).toBe(400);
+  });
+
+  it('returns 400 for unknown import type', async () => {
+    const res = await POSTExecute(makeExec({ type: 'widgets', csv: 'name\nfoo' }));
+    expect(res.status).toBe(400);
+  });
+
+  it('returns 400 when csv is empty', async () => {
+    const res = await POSTExecute(makeExec({ type: 'parts', csv: '' }));
+    expect(res.status).toBe(400);
+  });
+});
+

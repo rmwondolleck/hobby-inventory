@@ -411,4 +411,21 @@ describe('executeImport', () => {
     const summary = await executeImport(plan);
     expect(summary.type).toBe('parts');
   });
+
+  it('dispatches to executeLots', async () => {
+    (mockPrisma.lot.create as jest.Mock).mockResolvedValue({ id: 'lot-1' });
+    const plan: ImportPlan = {
+      type: 'lots',
+      willCreate: 1, willUpdate: 0, willSkip: 0, errorCount: 0,
+      rows: [{
+        rowIndex: 1,
+        action: 'create',
+        data: { _partId: 'part-1', _locationId: null, quantity: '5' },
+        errors: [],
+      }],
+    };
+    const summary = await executeImport(plan);
+    expect(summary.type).toBe('lots');
+    expect(summary.created).toBe(1);
+  });
 });
