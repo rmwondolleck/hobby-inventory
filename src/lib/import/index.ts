@@ -1,6 +1,5 @@
 import prisma from '@/lib/db';
 import { detectSourceType } from '@/lib/utils';
-import { createEvent } from '@/lib/events';
 import type {
   ImportType,
   ImportPlan,
@@ -27,6 +26,14 @@ function asRow<T>(data: Record<string, string>): T {
 function rowError(field: string | undefined, message: string): ImportRowError {
   return { field, message };
 }
+
+/** Extract a trimmed string value from a row field, returning '' if absent. */
+function strField(row: Record<string, unknown>, key: string): string {
+  return row[key] ? String(row[key]).trim() : '';
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type TransactionClient = any;
 
 // ---------------------------------------------------------------------------
 // LOCATION PLANNING
@@ -63,7 +70,9 @@ export async function planLocations(rows: Record<string, string>[]): Promise<Imp
     }
 
     const isNew = !existingByPath.has(path);
-    const action: ImportRowResult['action'] = isNew ? 'create' : row.notes !== undefined ? 'update' : 'skip';
+    // Treat blank/whitespace notes as "no update" — only mark 'update' when there is actual content
+    const hasNonBlankNotes = !blank(row.notes);
+    const action: ImportRowResult['action'] = isNew ? 'create' : hasNonBlankNotes ? 'update' : 'skip';
     if (action === 'create') willCreate++;
     else if (action === 'update') willUpdate++;
     else willSkip++;
@@ -105,10 +114,14 @@ export async function planParts(rows: Record<string, string>[]): Promise<ImportP
     if (!blank(row.mpn)) existingId = byMpn.get(row.mpn!.toLowerCase());
     if (!existingId) existingId = byNameCat.get(`${row.name.toLowerCase()}::${(row.category ?? '').toLowerCase()}`);
 
+    const warnings: ImportRowError[] = existingId
+      ? [{ message: 'Duplicate detected — existing record will be updated' }]
+      : [];
+
     const action: ImportRowResult['action'] = existingId ? 'update' : 'create';
     if (action === 'create') willCreate++; else willUpdate++;
 
-    rowResults.push({ rowIndex: i + 1, action, data: { ...rows[i], _existingId: existingId ?? '' }, errors: [] });
+    rowResults.push({ rowIndex: i + 1, action, data: { ...rows[i], _existingId: existingId ?? '' }, errors: [], warnings });
   }
 
   return { type: 'parts', willCreate, willUpdate, willSkip, errorCount, rows: rowResults };
@@ -158,6 +171,23 @@ export async function planLots(rows: Record<string, string>[]): Promise<ImportPl
       if (!locationId) errors.push(rowError('locationPath', `Location "${row.locationPath}" not found — import locations first`));
     }
 
+    // Validate quantity: must be a non-negative integer when provided
+    if (!blank(row.quantity)) {
+      const trimmed = row.quantity!.trim();
+      const qty = parseInt(trimmed, 10);
+      if (isNaN(qty) || qty < 0 || String(qty) !== trimmed) {
+        errors.push(rowError('quantity', 'quantity must be a non-negative integer'));
+      }
+    }
+
+    // Validate purchaseDate: must parse to a valid date when provided
+    if (!blank(row.purchaseDate)) {
+      const d = new Date(row.purchaseDate!.trim());
+      if (isNaN(d.getTime())) {
+        errors.push(rowError('purchaseDate', `"${row.purchaseDate}" is not a valid date`));
+      }
+    }
+
     if (errors.length > 0) { errorCount++; rowResults.push({ rowIndex: i + 1, action: 'error', data: rows[i], errors }); continue; }
 
     willCreate++;
@@ -171,10 +201,11 @@ export async function planLots(rows: Record<string, string>[]): Promise<ImportPl
 // EXECUTE LOCATIONS
 // ---------------------------------------------------------------------------
 
-export async function executeLocations(plan: ImportPlan): Promise<ImportSummary> {
+export async function executeLocations(plan: ImportPlan, tx?: TransactionClient): Promise<ImportSummary> {
+  const db = tx ?? prisma;
   let created = 0, updated = 0, skipped = 0, errors = 0;
 
-  const existingList = await prisma.location.findMany({ select: { id: true, path: true } });
+  const existingList = await db.location.findMany({ select: { id: true, path: true } });
   const existingByPath = new Map<string, string>(
     (existingList as Array<{ id: string; path: string }>).map((l) => [l.path, l.id] as [string, string])
   );
@@ -194,7 +225,7 @@ export async function executeLocations(plan: ImportPlan): Promise<ImportSummary>
       if (existingByPath.has(segPath)) {
         parentId = existingByPath.get(segPath)!;
       } else {
-        const loc = await prisma.location.create({
+        const loc = await db.location.create({
           data: { name: segName, path: segPath, parentId, notes: s === segments.length - 1 ? notes : null },
         }) as { id: string };
         existingByPath.set(segPath, loc.id);
@@ -205,7 +236,7 @@ export async function executeLocations(plan: ImportPlan): Promise<ImportSummary>
 
     const leafId = existingByPath.get(path);
     if (rowResult.action === 'create') created++;
-    else if (rowResult.action === 'update' && leafId) { await prisma.location.update({ where: { id: leafId }, data: { notes } }); updated++; }
+    else if (rowResult.action === 'update' && leafId) { await db.location.update({ where: { id: leafId }, data: { notes } }); updated++; }
     else skipped++;
   }
 
@@ -216,7 +247,8 @@ export async function executeLocations(plan: ImportPlan): Promise<ImportSummary>
 // EXECUTE PARTS
 // ---------------------------------------------------------------------------
 
-export async function executeParts(plan: ImportPlan): Promise<ImportSummary> {
+export async function executeParts(plan: ImportPlan, tx?: TransactionClient): Promise<ImportSummary> {
+  const db = tx ?? prisma;
   let created = 0, updated = 0, skipped = 0, errors = 0;
 
   for (const rowResult of plan.rows) {
@@ -233,10 +265,17 @@ export async function executeParts(plan: ImportPlan): Promise<ImportSummary> {
     const existingId = row['_existingId'] ? String(row['_existingId']) : null;
 
     if (rowResult.action === 'create') {
-      await prisma.part.create({ data: { name, category, manufacturer, mpn, notes, tags } });
+      await db.part.create({ data: { name, category, manufacturer, mpn, notes, tags } });
       created++;
     } else if (rowResult.action === 'update' && existingId) {
-      await prisma.part.update({ where: { id: existingId }, data: { name, category, manufacturer, mpn, notes, tags } });
+      // Only include non-blank fields in the update to avoid clearing existing DB values
+      const updateData: Record<string, unknown> = { name };
+      if (!blank(String(row['category'] ?? ''))) updateData.category = category;
+      if (!blank(String(row['manufacturer'] ?? ''))) updateData.manufacturer = manufacturer;
+      if (!blank(String(row['mpn'] ?? ''))) updateData.mpn = mpn;
+      if (!blank(String(row['notes'] ?? ''))) updateData.notes = notes;
+      if (rawTags) updateData.tags = tags;
+      await db.part.update({ where: { id: existingId }, data: updateData });
       updated++;
     } else skipped++;
   }
@@ -248,7 +287,8 @@ export async function executeParts(plan: ImportPlan): Promise<ImportSummary> {
 // EXECUTE LOTS
 // ---------------------------------------------------------------------------
 
-export async function executeLots(plan: ImportPlan): Promise<ImportSummary> {
+export async function executeLots(plan: ImportPlan, tx?: TransactionClient): Promise<ImportSummary> {
+  const db = tx ?? prisma;
   let created = 0, skipped = 0, errors = 0;
 
   for (const rowResult of plan.rows) {
@@ -261,21 +301,25 @@ export async function executeLots(plan: ImportPlan): Promise<ImportSummary> {
 
     const qtyStr = row['quantity'] ? String(row['quantity']).trim() : '';
     const quantityMode = qtyStr !== '' ? 'exact' : 'qualitative';
+    // quantity was validated as a non-negative integer during planning
     const quantity = quantityMode === 'exact' ? parseInt(qtyStr, 10) : null;
 
     const sourceObj: Record<string, unknown> = {};
-    const seller = row['seller'] ? String(row['seller']).trim() : '';
-    const sourceUrl = row['sourceUrl'] ? String(row['sourceUrl']).trim() : '';
-    const unitCost = row['unitCost'] ? String(row['unitCost']).trim() : '';
-    const currency = row['currency'] ? String(row['currency']).trim() : '';
-    const purchaseDate = row['purchaseDate'] ? String(row['purchaseDate']).trim() : '';
+    const seller = strField(row, 'seller');
+    const sourceUrl = strField(row, 'sourceUrl');
+    const unitCost = strField(row, 'unitCost');
+    const currency = strField(row, 'currency');
+    const purchaseDate = strField(row, 'purchaseDate');
     if (seller) sourceObj.seller = seller;
     if (sourceUrl) { sourceObj.url = sourceUrl; sourceObj.type = detectSourceType(sourceUrl); }
     if (unitCost) sourceObj.unitCost = parseFloat(unitCost);
     if (currency) sourceObj.currency = currency;
     if (purchaseDate) sourceObj.purchaseDate = purchaseDate;
 
-    const lot = await prisma.lot.create({
+    // purchaseDate was validated as a valid date during planning
+    const receivedAt = purchaseDate ? new Date(purchaseDate) : null;
+
+    const lot = await db.lot.create({
       data: {
         partId, quantity: quantity ?? null, quantityMode,
         qualitativeStatus: quantityMode === 'qualitative' ? 'plenty' : null,
@@ -283,11 +327,11 @@ export async function executeLots(plan: ImportPlan): Promise<ImportSummary> {
         locationId: locationId || null,
         source: JSON.stringify(sourceObj),
         notes: row['notes'] ? String(row['notes']).trim() || null : null,
-        receivedAt: purchaseDate ? new Date(purchaseDate) : null,
+        receivedAt,
       },
     }) as { id: string };
 
-    await createEvent({ lotId: lot.id, type: 'received' });
+    await db.event.create({ data: { lotId: lot.id, type: 'received' } });
     created++;
   }
 
@@ -306,8 +350,10 @@ export async function planImport(type: ImportType, rows: Record<string, string>[
 }
 
 export async function executeImport(plan: ImportPlan): Promise<ImportSummary> {
-  if (plan.type === 'locations') return executeLocations(plan);
-  if (plan.type === 'parts') return executeParts(plan);
-  if (plan.type === 'lots') return executeLots(plan);
-  throw new Error(`Unknown import type: ${plan.type}`);
+  return prisma.$transaction(async (tx: TransactionClient) => {
+    if (plan.type === 'locations') return executeLocations(plan, tx);
+    if (plan.type === 'parts') return executeParts(plan, tx);
+    if (plan.type === 'lots') return executeLots(plan, tx);
+    throw new Error(`Unknown import type: ${plan.type}`);
+  });
 }

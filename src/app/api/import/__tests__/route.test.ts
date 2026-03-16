@@ -11,6 +11,7 @@ jest.mock('@/lib/db', () => ({
     location: { findMany: jest.fn(), create: jest.fn(), update: jest.fn() },
     lot: { findMany: jest.fn(), create: jest.fn() },
     event: { create: jest.fn() },
+    $transaction: jest.fn(),
   },
 }));
 
@@ -21,6 +22,14 @@ jest.mock('@/lib/events', () => ({
 import prisma from '@/lib/db';
 
 const mockPrisma = prisma as jest.Mocked<typeof prisma>;
+
+beforeEach(() => {
+  jest.clearAllMocks();
+  // $transaction executes the callback with the same mock client
+  (mockPrisma.$transaction as jest.Mock).mockImplementation(
+    (fn: (tx: typeof mockPrisma) => Promise<unknown>) => fn(mockPrisma)
+  );
+});
 
 // ---------------------------------------------------------------------------
 // Helpers
