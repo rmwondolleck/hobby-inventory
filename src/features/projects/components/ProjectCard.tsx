@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
-import { Badge } from '@/components/ui/Badge';
+import { Badge } from '@/components/ui/badge';
 import type { ProjectListItem } from '../types';
 
 const STATUS_LABELS: Record<string, string> = {
