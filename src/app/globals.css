@@ -70,6 +70,8 @@
   --chart-3: oklch(0.769 0.188 70.08);
   --chart-4: oklch(0.627 0.265 303.9);
   --chart-5: oklch(0.645 0.246 16.439);
+  --input-background: #1e2130;
+  --switch-background: #3a3f52;
   --sidebar: #1A1D27;
   --sidebar-foreground: oklch(0.985 0 0);
   --sidebar-primary: #3B82F6;
