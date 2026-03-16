@@ -6,7 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint",
+    "lint": "eslint src/",
     "type-check": "tsc --noEmit",
     "test": "jest",
     "test:coverage": "jest --coverage",
@@ -40,6 +40,8 @@
     "typescript": "5.9.3"
   },
   "devDependencies": {
+    "@eslint/eslintrc": "^3.3.5",
+    "@eslint/eslintrc": "^3.3.5",
     "@tailwindcss/postcss": "^4.0.0",
     "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/react": "^16.2.0",

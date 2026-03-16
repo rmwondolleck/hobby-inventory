@@ -5,6 +5,7 @@ import { safeParseJson, formatDate, formatDateTime, cn } from '@/lib/utils';
 import { LotStatusBadge } from '@/features/lots/components/LotStatusBadge';
 import { LotActionsPanel } from '@/features/lots/components/LotActionsPanel';
 import { AllocationActions } from '@/features/lots/components/AllocationActions';
+import type { StockStatus, QuantityMode, QualitativeLevel, AllocationStatus } from '@/lib/types';
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -131,10 +132,10 @@ export default async function LotDetailPage({ params }: PageProps) {
           {/* Actions */}
           <LotActionsPanel
             lotId={lot.id}
-            status={lot.status}
-            quantityMode={lot.quantityMode}
+            status={lot.status as StockStatus}
+            quantityMode={lot.quantityMode as QuantityMode}
             quantity={lot.quantity}
-            qualitativeStatus={lot.qualitativeStatus}
+            qualitativeStatus={lot.qualitativeStatus as QualitativeLevel | null}
             unit={lot.unit}
             locationId={lot.locationId}
             notes={lot.notes}
@@ -279,7 +280,7 @@ export default async function LotDetailPage({ params }: PageProps) {
                     </div>
                     <AllocationActions
                       allocationId={alloc.id}
-                      status={alloc.status}
+                      status={alloc.status as AllocationStatus}
                       projectName={alloc.project.name}
                     />
                   </div>

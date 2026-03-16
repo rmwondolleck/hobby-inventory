@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { cn, detectSourceType } from '@/lib/utils';
 import { PartSearch } from './PartSearch';
 import { LocationPicker } from './LocationPicker';
@@ -223,12 +224,12 @@ export function IntakeForm() {
           >
             Add another
           </button>
-          <a
+          <Link
             href="/"
             className="rounded-lg border border-green-300 px-4 py-2 text-sm font-medium text-green-700 hover:bg-green-100"
           >
             Home
-          </a>
+          </Link>
         </div>
       </div>
     );

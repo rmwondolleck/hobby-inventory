@@ -32,7 +32,6 @@ function strField(row: Record<string, unknown>, key: string): string {
   return row[key] ? String(row[key]).trim() : '';
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 type TransactionClient = any;
 
 // ---------------------------------------------------------------------------

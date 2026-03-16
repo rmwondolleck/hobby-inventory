@@ -209,7 +209,7 @@ async function checkIsDescendant(ancestorId: string, candidateId: string): Promi
   return false;
 }
 
-type TransactionClient = any; // eslint-disable-line @typescript-eslint/no-explicit-any
+type TransactionClient = any;
 
 /** Update path of all descendants when a location's path changes */
 async function propagatePathUpdate(

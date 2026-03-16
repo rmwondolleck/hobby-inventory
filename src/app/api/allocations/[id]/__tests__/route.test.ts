@@ -206,7 +206,15 @@ describe('POST /api/allocations/[id]/scrap', () => {
       ...baseAllocation,
       lot: { quantity: 10, quantityMode: 'exact' },
     });
-    mockTransaction.mockResolvedValue([{ ...baseAllocation, status: 'recovered' }, {}, {}]);
+    // Interactive transaction: the callback receives a tx client and returns the result
+    mockTransaction.mockImplementation(async (cb: (tx: unknown) => Promise<unknown>) => {
+      const mockTx = {
+        allocation: { update: jest.fn().mockResolvedValue({ ...baseAllocation, status: 'recovered' }) },
+        event: { create: jest.fn().mockResolvedValue({}) },
+        lot: { update: jest.fn().mockResolvedValue({}) },
+      };
+      return cb(mockTx);
+    });
 
     const res = await SCRAP_POST(
       makeRequest('http://localhost/api/allocations/alloc001/scrap', { method: 'POST' }),
