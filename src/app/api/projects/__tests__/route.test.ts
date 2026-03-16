@@ -155,7 +155,7 @@ describe('GET /api/projects', () => {
     const json = await res.json();
 
     expect(json.data).toHaveLength(1);
-    expect(json.data[0].id).toBe('proj-1');
+    expect(json.data[0].id).toBe('proj001');
     expect(json.total).toBe(1);
   });
 
