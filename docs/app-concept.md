@@ -484,21 +484,30 @@ Terminal state: `scrapped` (no actions available; row is dimmed)
 
 ---
 
-## 8. API Summary (for wiring UI to backend)
+## 8. API Integration
 
-The application is backed by a Next.js REST API. All endpoints return and accept JSON.
+The backend is fully implemented — **connect Figma Make to the real endpoints, not mocks**. The Next.js dev server (`npm run dev`, default port 3000) serves both the UI and the API from the same origin, so no CORS configuration is needed.
+
+**Base URL:** `http://localhost:3000`  
+**Auth:** None required  
+**Content-Type:** `application/json` for all request bodies  
+**Seed data:** Run `npx prisma db seed` to populate realistic sample data before designing
+
+See **[docs/api-reference.md](./api-reference.md)** for the complete API contract — every endpoint with its exact request/response shapes, query parameters, status codes, and validation rules.
+
+### Endpoint overview
 
 | Resource | Endpoints |
 |----------|-----------|
-| Parts | `GET/POST /api/parts` · `GET/PATCH/DELETE /api/parts/[id]` |
-| Lots | `GET/POST /api/lots` · `GET/PATCH /api/lots/[id]` · `POST /api/lots/[id]/move` |
+| Parts | `GET/POST /api/parts` · `GET/PATCH/DELETE /api/parts/[id]` · `GET /api/parts/[id]/events` |
+| Lots | `GET/POST /api/lots` · `GET/PATCH /api/lots/[id]` · `POST /api/lots/[id]/move` · `GET /api/lots/[id]/events` |
 | Locations | `GET/POST /api/locations` · `GET/PATCH/DELETE /api/locations/[id]` |
-| Projects | `GET/POST /api/projects` · `GET/PATCH/DELETE /api/projects/[id]` |
-| Allocations | `GET/POST /api/allocations` · `PATCH /api/allocations/[id]` · `POST /api/allocations/[id]/return` · `POST /api/allocations/[id]/scrap` |
-| Events | `GET /api/events` · `GET /api/parts/[id]/events` · `GET /api/lots/[id]/events` |
+| Projects | `GET/POST /api/projects` · `GET/PATCH/DELETE /api/projects/[id]` · `GET /api/projects/[id]/events` |
+| Allocations | `GET/POST /api/allocations` · `GET/PATCH /api/allocations/[id]` · `POST /api/allocations/[id]/return` · `POST /api/allocations/[id]/scrap` |
+| Events | `GET /api/events` |
 | Categories | `GET/POST /api/categories` · `GET/PATCH /api/categories/[id]` |
 | Import | `POST /api/import/validate` · `POST /api/import/execute` · `GET /api/import/templates/[type]` |
-| Inventory | `POST /api/inventory/match` |
+| Inventory | `GET /api/inventory/match` |
 | Health | `GET /api/health` |
 
 ---
