@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from 'react';
 
+import type { QuantityMode } from '@/lib/types';
+
 interface ProjectOption {
   id: string;
   name: string;
@@ -10,7 +12,7 @@ interface ProjectOption {
 
 interface AllocateModalProps {
   lotId: string;
-  quantityMode: string;
+  quantityMode: QuantityMode;
   availableQuantity: number | null;
   unit: string | null;
   onClose: () => void;
@@ -58,7 +60,11 @@ export function AllocateModal({
       return;
     }
 
-    if (quantityMode === 'exact' && quantity !== '') {
+    if (quantityMode === 'exact') {
+      if (quantity === '') {
+        setError('Quantity is required');
+        return;
+      }
       const qty = parseInt(quantity, 10);
       if (isNaN(qty) || qty <= 0) {
         setError('Quantity must be a positive integer');
@@ -78,7 +84,7 @@ export function AllocateModal({
         projectId,
         notes: notes.trim() || null,
       };
-      if (quantityMode === 'exact' && quantity !== '') {
+      if (quantityMode === 'exact') {
         body.quantity = parseInt(quantity, 10);
       }
 
@@ -146,7 +152,8 @@ export function AllocateModal({
             {quantityMode === 'exact' && (
               <div>
                 <label className="mb-1 block text-sm font-medium text-gray-700">
-                  Quantity{unit ? ` (${unit})` : ''}
+                  Quantity{unit ? ` (${unit})` : ''}{' '}
+                  <span className="text-red-500">*</span>
                   {availableQuantity !== null && (
                     <span className="ml-1 font-normal text-gray-500">
                       — {availableQuantity} available
@@ -159,9 +166,9 @@ export function AllocateModal({
                   max={availableQuantity ?? undefined}
                   value={quantity}
                   onChange={(e) => setQuantity(e.target.value)}
-                  placeholder="Leave blank to allocate without quantity"
                   className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                   disabled={loading}
+                  required
                 />
               </div>
             )}

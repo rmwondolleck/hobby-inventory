@@ -17,11 +17,13 @@ interface MoveModalProps {
 
 export function MoveModal({ lotId, currentLocationId, onClose, onSuccess }: MoveModalProps) {
   const [locations, setLocations] = useState<LocationOption[]>([]);
-  const [locationId, setLocationId] = useState<string>('');
+  const [locationId, setLocationId] = useState<string>(currentLocationId ?? '');
   const [notes, setNotes] = useState('');
   const [fetching, setFetching] = useState(true);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const isUnchanged = locationId === (currentLocationId ?? '');
 
   useEffect(() => {
     async function fetchLocations() {
@@ -131,7 +133,7 @@ export function MoveModal({ lotId, currentLocationId, onClose, onSuccess }: Move
               <button
                 type="submit"
                 className="rounded-lg bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-700 disabled:opacity-50"
-                disabled={loading}
+                disabled={loading || isUnchanged}
               >
                 {loading ? 'Moving…' : 'Move Lot'}
               </button>
