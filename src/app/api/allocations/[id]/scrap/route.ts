@@ -33,27 +33,15 @@ export async function POST(_request: Request, { params }: RouteParams) {
     );
   }
 
-  // Permanently reduce lot quantity for exact-count lots (conditional third op)
-  const lotUpdateOp =
-    allocation.lot.quantityMode === 'exact' &&
-    allocation.lot.quantity !== null &&
-    allocation.quantity !== null
-      ? [
-          prisma.lot.update({
-            where: { id: allocation.lotId },
-            data: { quantity: Math.max(0, allocation.lot.quantity - allocation.quantity) },
-          }),
-        ]
-      : [];
-
-  const [updated] = await prisma.$transaction([
+  const updated = await prisma.$transaction(async (tx) => {
     // Mark allocation recovered (removes it from active count)
-    prisma.allocation.update({
+    const updatedAllocation = await tx.allocation.update({
       where: { id },
       data: { status: 'recovered' },
-    }),
+    });
+
     // Create scrap event
-    prisma.event.create({
+    await tx.event.create({
       data: {
         lotId: allocation.lotId,
         type: 'scrapped',
@@ -61,9 +49,22 @@ export async function POST(_request: Request, { params }: RouteParams) {
         projectId: allocation.projectId,
         notes: `Scrapped allocation ${id}`,
       },
-    }),
-    ...lotUpdateOp,
-  ]);
+    });
+
+    // Permanently reduce lot quantity for exact-count lots
+    if (
+      allocation.lot.quantityMode === 'exact' &&
+      allocation.lot.quantity !== null &&
+      allocation.quantity !== null
+    ) {
+      await tx.lot.update({
+        where: { id: allocation.lotId },
+        data: { quantity: Math.max(0, allocation.lot.quantity - allocation.quantity) },
+      });
+    }
+
+    return updatedAllocation;
+  });
 
   return NextResponse.json({ data: updated });
 }
