@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import type { Prisma } from '@prisma/client';
 import prisma from '@/lib/db';
 import type { AllocationStatus } from '@/lib/types';
 
@@ -33,14 +34,15 @@ export async function POST(_request: Request, { params }: RouteParams) {
     );
   }
 
-  const ops: Parameters<typeof prisma.$transaction>[0] = [
+  const updated = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
     // Mark allocation recovered (removes it from active count)
-    prisma.allocation.update({
+    const updatedAllocation = await tx.allocation.update({
       where: { id },
       data: { status: 'recovered' },
-    }),
+    });
+
     // Create scrap event
-    prisma.event.create({
+    await tx.event.create({
       data: {
         lotId: allocation.lotId,
         type: 'scrapped',
@@ -48,24 +50,22 @@ export async function POST(_request: Request, { params }: RouteParams) {
         projectId: allocation.projectId,
         notes: `Scrapped allocation ${id}`,
       },
-    }),
-  ];
+    });
 
-  // Permanently reduce lot quantity for exact-count lots
-  if (
-    allocation.lot.quantityMode === 'exact' &&
-    allocation.lot.quantity !== null &&
-    allocation.quantity !== null
-  ) {
-    ops.push(
-      prisma.lot.update({
+    // Permanently reduce lot quantity for exact-count lots
+    if (
+      allocation.lot.quantityMode === 'exact' &&
+      allocation.lot.quantity !== null &&
+      allocation.quantity !== null
+    ) {
+      await tx.lot.update({
         where: { id: allocation.lotId },
         data: { quantity: Math.max(0, allocation.lot.quantity - allocation.quantity) },
-      }),
-    );
-  }
+      });
+    }
 
-  const [updated] = await prisma.$transaction(ops);
+    return updatedAllocation;
+  });
 
   return NextResponse.json({ data: updated });
 }
