@@ -77,8 +77,8 @@ class ApiClient {
     archived?: boolean;
   }) {
     const query = new URLSearchParams();
-    if (params?.limit) query.append('limit', params.limit.toString());
-    if (params?.offset) query.append('offset', params.offset.toString());
+    if (params?.limit !== undefined) query.append('limit', params.limit.toString());
+    if (params?.offset !== undefined) query.append('offset', params.offset.toString());
     if (params?.search) query.append('search', params.search);
     if (params?.category) query.append('category', params.category);
     if (params?.archived !== undefined) query.append('archived', params.archived.toString());
@@ -121,8 +121,8 @@ class ApiClient {
     partId?: string;
   }) {
     const query = new URLSearchParams();
-    if (params?.limit) query.append('limit', params.limit.toString());
-    if (params?.offset) query.append('offset', params.offset.toString());
+    if (params?.limit !== undefined) query.append('limit', params.limit.toString());
+    if (params?.offset !== undefined) query.append('offset', params.offset.toString());
     if (params?.q) query.append('q', params.q);
     if (params?.status) query.append('status', params.status);
     if (params?.locationId) query.append('locationId', params.locationId);
@@ -167,8 +167,8 @@ class ApiClient {
     const query = new URLSearchParams();
     if (params?.tree) query.append('tree', 'true');
     if (params?.q) query.append('q', params.q);
-    if (params?.limit) query.append('limit', params.limit.toString());
-    if (params?.offset) query.append('offset', params.offset.toString());
+    if (params?.limit !== undefined) query.append('limit', params.limit.toString());
+    if (params?.offset !== undefined) query.append('offset', params.offset.toString());
 
     return this.request<ApiResponse<any[]>>(`/locations?${query}`);
   }
@@ -207,8 +207,8 @@ class ApiClient {
     includeArchived?: boolean;
   }) {
     const query = new URLSearchParams();
-    if (params?.limit) query.append('limit', params.limit.toString());
-    if (params?.offset) query.append('offset', params.offset.toString());
+    if (params?.limit !== undefined) query.append('limit', params.limit.toString());
+    if (params?.offset !== undefined) query.append('offset', params.offset.toString());
     if (params?.search) query.append('search', params.search);
     if (params?.status) query.append('status', params.status);
     if (params?.tags) query.append('tags', params.tags);
@@ -250,8 +250,8 @@ class ApiClient {
     status?: string;
   }) {
     const query = new URLSearchParams();
-    if (params?.limit) query.append('limit', params.limit.toString());
-    if (params?.offset) query.append('offset', params.offset.toString());
+    if (params?.limit !== undefined) query.append('limit', params.limit.toString());
+    if (params?.offset !== undefined) query.append('offset', params.offset.toString());
     if (params?.lotId) query.append('lotId', params.lotId);
     if (params?.projectId) query.append('projectId', params.projectId);
     if (params?.status) query.append('status', params.status);
@@ -297,8 +297,8 @@ class ApiClient {
     until?: string;
   }) {
     const query = new URLSearchParams();
-    if (params?.limit) query.append('limit', params.limit.toString());
-    if (params?.offset) query.append('offset', params.offset.toString());
+    if (params?.limit !== undefined) query.append('limit', params.limit.toString());
+    if (params?.offset !== undefined) query.append('offset', params.offset.toString());
     if (params?.lotId) query.append('lotId', params.lotId);
     if (params?.partId) query.append('partId', params.partId);
     if (params?.projectId) query.append('projectId', params.projectId);
@@ -316,8 +316,8 @@ class ApiClient {
     includeDefaults?: boolean;
   }) {
     const query = new URLSearchParams();
-    if (params?.limit) query.append('limit', params.limit.toString());
-    if (params?.offset) query.append('offset', params.offset.toString());
+    if (params?.limit !== undefined) query.append('limit', params.limit.toString());
+    if (params?.offset !== undefined) query.append('offset', params.offset.toString());
     if (params?.includeDefaults !== undefined) {
       query.append('includeDefaults', params.includeDefaults.toString());
     }
