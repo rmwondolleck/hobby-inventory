@@ -1,7 +1,9 @@
-import { ReactNode } from "react";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "./ui/table";
-import { Button } from "./ui/button";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ReactNode } from 'react';
+import {
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+} from '@/components/ui/table';
+import { Button } from '@/components/ui/button';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 interface Column<T> {
   key: string;
@@ -41,10 +43,8 @@ export function DataTable<T>({
         <Table>
           <TableHeader>
             <TableRow>
-              {columns.map((column) => (
-                <TableHead key={column.key} className={column.className}>
-                  {column.label}
-                </TableHead>
+              {columns.map((col) => (
+                <TableHead key={col.key} className={col.className}>{col.label}</TableHead>
               ))}
             </TableRow>
           </TableHeader>
@@ -66,11 +66,11 @@ export function DataTable<T>({
                 <TableRow
                   key={keyExtractor(item)}
                   onClick={() => onRowClick?.(item)}
-                  className={onRowClick ? "cursor-pointer hover:bg-accent" : ""}
+                  className={onRowClick ? 'cursor-pointer hover:bg-accent' : ''}
                 >
-                  {columns.map((column) => (
-                    <TableCell key={column.key} className={column.className}>
-                      {column.render ? column.render(item) : (item as any)[column.key]}
+                  {columns.map((col) => (
+                    <TableCell key={col.key} className={col.className}>
+                      {col.render ? col.render(item) : (item as any)[col.key]}
                     </TableCell>
                   ))}
                 </TableRow>
@@ -79,11 +79,10 @@ export function DataTable<T>({
           </TableBody>
         </Table>
       </div>
-
       {pagination && pagination.total > pagination.limit && (
         <div className="flex items-center justify-between">
           <p className="text-sm text-muted-foreground">
-            Showing {pagination.offset + 1} to {Math.min(pagination.offset + pagination.limit, pagination.total)} of {pagination.total} results
+            Showing {pagination.offset + 1}–{Math.min(pagination.offset + pagination.limit, pagination.total)} of {pagination.total}
           </p>
           <div className="flex items-center gap-2">
             <Button
@@ -92,20 +91,16 @@ export function DataTable<T>({
               onClick={() => pagination.onPageChange(pagination.offset - pagination.limit)}
               disabled={pagination.offset === 0}
             >
-              <ChevronLeft className="size-4 mr-1" />
-              Previous
+              <ChevronLeft className="size-4 mr-1" /> Previous
             </Button>
-            <span className="text-sm text-muted-foreground">
-              Page {currentPage} of {totalPages}
-            </span>
+            <span className="text-sm text-muted-foreground">Page {currentPage} of {totalPages}</span>
             <Button
               variant="outline"
               size="sm"
               onClick={() => pagination.onPageChange(pagination.offset + pagination.limit)}
               disabled={pagination.offset + pagination.limit >= pagination.total}
             >
-              Next
-              <ChevronRight className="size-4 ml-1" />
+              Next <ChevronRight className="size-4 ml-1" />
             </Button>
           </div>
         </div>
