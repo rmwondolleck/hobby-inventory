@@ -48,8 +48,14 @@ export default function RootLayout({
                     Projects
                   </Link>
                   <Link
+                    href="/import"
+                    className="px-3 py-1.5 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-md"
+                  >
+                    Import
+                  </Link>
+                  <Link
                     href="/intake"
-                    className="ml-4 rounded-lg bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700"
+                    className="ml-2 rounded-lg bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700"
                   >
                     + Add Items
                   </Link>
