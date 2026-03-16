@@ -6,26 +6,21 @@ import { MoveModal } from './MoveModal';
 import { AllocateModal } from './AllocateModal';
 import { ScrapLostModal } from './ScrapLostModal';
 import { AdjustQuantityModal } from './AdjustQuantityModal';
+import { getValidStockTransitions, isTerminalState } from '@/lib/state-transitions';
+import type { StockStatus, QuantityMode, QualitativeLevel } from '@/lib/types';
 
 type ActiveModal = 'move' | 'allocate' | 'scrap' | 'lost' | 'adjust' | null;
 
 export interface LotActionsPanelProps {
   lotId: string;
-  status: string;
-  quantityMode: string;
+  status: StockStatus;
+  quantityMode: QuantityMode;
   quantity: number | null;
-  qualitativeStatus: string | null;
+  qualitativeStatus: QualitativeLevel | null;
   unit: string | null;
   locationId: string | null;
   notes: string | null;
 }
-
-const CAN_MOVE = new Set(['in_stock', 'low', 'out', 'reserved', 'installed']);
-const CAN_ALLOCATE = new Set(['in_stock', 'low']);
-const CAN_ADJUST = new Set(['in_stock', 'low', 'out', 'reserved']);
-const CAN_MARK_LOST = new Set(['in_stock', 'low', 'reserved', 'installed']);
-const CAN_SCRAP = new Set(['in_stock', 'low', 'out', 'reserved', 'installed', 'lost']);
-const CAN_RESTORE = new Set(['lost']);
 
 export function LotActionsPanel({
   lotId,
@@ -41,6 +36,14 @@ export function LotActionsPanel({
   const [restoring, setRestoring] = useState(false);
   const [restoreError, setRestoreError] = useState<string | null>(null);
   const router = useRouter();
+
+  const validTransitions = getValidStockTransitions(status);
+  const canMove = !isTerminalState('stock', status) && status !== 'lost';
+  const canAllocate = validTransitions.includes('reserved');
+  const canAdjust = !isTerminalState('stock', status) && status !== 'lost' && status !== 'installed';
+  const canMarkLost = validTransitions.includes('lost');
+  const canRestore = status === 'lost';
+  const canScrap = validTransitions.includes('scrapped');
 
   const handleSuccess = () => {
     setActiveModal(null);
@@ -70,14 +73,14 @@ export function LotActionsPanel({
   };
 
   // Terminal state — no actions available
-  if (status === 'scrapped') return null;
+  if (isTerminalState('stock', status)) return null;
 
   return (
     <>
       <section className="rounded-lg bg-white p-6 shadow-sm">
         <h2 className="mb-4 text-base font-semibold text-gray-900">Actions</h2>
         <div className="flex flex-wrap gap-2">
-          {CAN_MOVE.has(status) && (
+          {canMove && (
             <button
               onClick={() => setActiveModal('move')}
               className="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
@@ -86,7 +89,7 @@ export function LotActionsPanel({
             </button>
           )}
 
-          {CAN_ALLOCATE.has(status) && (
+          {canAllocate && (
             <button
               onClick={() => setActiveModal('allocate')}
               className="inline-flex items-center gap-1.5 rounded-lg border border-blue-300 bg-blue-50 px-3 py-2 text-sm font-medium text-blue-700 hover:bg-blue-100"
@@ -95,7 +98,7 @@ export function LotActionsPanel({
             </button>
           )}
 
-          {CAN_ADJUST.has(status) && (
+          {canAdjust && (
             <button
               onClick={() => setActiveModal('adjust')}
               className="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
@@ -104,7 +107,7 @@ export function LotActionsPanel({
             </button>
           )}
 
-          {CAN_MARK_LOST.has(status) && (
+          {canMarkLost && (
             <button
               onClick={() => setActiveModal('lost')}
               className="inline-flex items-center gap-1.5 rounded-lg border border-yellow-300 bg-yellow-50 px-3 py-2 text-sm font-medium text-yellow-700 hover:bg-yellow-100"
@@ -113,7 +116,7 @@ export function LotActionsPanel({
             </button>
           )}
 
-          {CAN_RESTORE.has(status) && (
+          {canRestore && (
             <button
               onClick={handleRestoreToStock}
               disabled={restoring}
@@ -123,7 +126,7 @@ export function LotActionsPanel({
             </button>
           )}
 
-          {CAN_SCRAP.has(status) && (
+          {canScrap && (
             <button
               onClick={() => setActiveModal('scrap')}
               className="inline-flex items-center gap-1.5 rounded-lg border border-red-300 bg-red-50 px-3 py-2 text-sm font-medium text-red-700 hover:bg-red-100"

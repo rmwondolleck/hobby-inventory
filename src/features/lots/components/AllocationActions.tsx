@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import type { AllocationStatus } from '@/lib/types';
 
 type AllocationAction = 'return' | 'scrap' | null;
 
@@ -77,11 +78,11 @@ function ConfirmDialog({
 
 export interface AllocationActionsProps {
   allocationId: string;
-  status: string;
+  status: AllocationStatus;
   projectName: string;
 }
 
-const NEXT_STATUS_LABEL: Record<string, string> = {
+const NEXT_STATUS_LABEL: Partial<Record<AllocationStatus, string>> = {
   in_use: 'Mark In Use',
   deployed: 'Mark Deployed',
 };
