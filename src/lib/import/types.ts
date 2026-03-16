@@ -12,6 +12,7 @@ export interface ImportRowResult {
   action: RowAction;
   data: Record<string, unknown>;
   errors: ImportRowError[];
+  warnings?: ImportRowError[];
 }
 
 export interface ImportPlan {

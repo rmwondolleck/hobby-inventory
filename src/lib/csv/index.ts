@@ -7,6 +7,7 @@ export function parseCSV(content: string): string[][] {
   let current: string[] = [];
   let field = '';
   let inQuotes = false;
+  let wasQuoted = false;
   let i = 0;
 
   // Normalise line endings
@@ -31,12 +32,15 @@ export function parseCSV(content: string): string[][] {
     } else {
       if (ch === '"') {
         inQuotes = true;
+        wasQuoted = true;
       } else if (ch === ',') {
-        current.push(field.trim());
+        current.push(wasQuoted ? field : field.trim());
         field = '';
+        wasQuoted = false;
       } else if (ch === '\n') {
-        current.push(field.trim());
+        current.push(wasQuoted ? field : field.trim());
         field = '';
+        wasQuoted = false;
         if (current.length > 0 && current.some((f) => f !== '')) {
           rows.push(current);
         }
@@ -51,7 +55,7 @@ export function parseCSV(content: string): string[][] {
   }
 
   // Handle the last field / row
-  current.push(field.trim());
+  current.push(wasQuoted ? field : field.trim());
   if (current.some((f) => f !== '')) {
     rows.push(current);
   }

@@ -20,6 +20,7 @@ jest.mock('@/lib/db', () => ({
     location: { findMany: jest.fn(), create: jest.fn(), update: jest.fn() },
     lot: { findMany: jest.fn(), create: jest.fn() },
     event: { create: jest.fn() },
+    $transaction: jest.fn(),
   },
 }));
 
@@ -28,13 +29,15 @@ jest.mock('@/lib/events', () => ({
 }));
 
 import prisma from '@/lib/db';
-import { createEvent } from '@/lib/events';
 
 const mockPrisma = prisma as jest.Mocked<typeof prisma>;
-const mockCreateEvent = createEvent as jest.Mock;
 
 beforeEach(() => {
   jest.clearAllMocks();
+  // $transaction executes the callback with the same mock client
+  (mockPrisma.$transaction as jest.Mock).mockImplementation(
+    (fn: (tx: typeof mockPrisma) => Promise<unknown>) => fn(mockPrisma)
+  );
 });
 
 // ---------------------------------------------------------------------------
@@ -114,6 +117,17 @@ describe('planParts', () => {
     expect(plan.willUpdate).toBe(1);
   });
 
+  it('adds a warning (not an error) for duplicates detected by MPN', async () => {
+    (mockPrisma.part.findMany as jest.Mock).mockResolvedValue([
+      { id: 'p1', name: 'ESP32', category: 'MCU', mpn: 'ESP32-WROOM' },
+    ]);
+    const plan = await planParts([{ name: 'ESP32', category: 'MCU', mpn: 'ESP32-WROOM' }]);
+    expect(plan.errorCount).toBe(0);
+    expect(plan.rows[0].action).toBe('update');
+    expect(plan.rows[0].warnings).toHaveLength(1);
+    expect(plan.rows[0].warnings![0].message).toMatch(/duplicate/i);
+  });
+
   it('errors on rows missing name', async () => {
     (mockPrisma.part.findMany as jest.Mock).mockResolvedValue([]);
     const plan = await planParts([{ name: '', category: 'MCU' }]);
@@ -158,10 +172,37 @@ describe('planLots', () => {
     expect(plan.rows[0].action).toBe('error');
   });
 
-  it('skips lot when quantity is blank and part is already known', async () => {
-    // A lot with no quantity maps to qualitative; should still create
+  it('creates lot in qualitative mode when quantity is blank', async () => {
+    // A lot with no quantity maps to qualitative mode; should still create
     const plan = await planLots([{ partMpn: 'ESP32-WROOM', partName: '', quantity: '' }]);
     expect(plan.willCreate).toBe(1);
+  });
+
+  it('errors when quantity is not a valid integer', async () => {
+    const plan = await planLots([{ partMpn: 'ESP32-WROOM', partName: '', quantity: '1.5' }]);
+    expect(plan.errorCount).toBe(1);
+    expect(plan.rows[0].action).toBe('error');
+    expect(plan.rows[0].errors[0].field).toBe('quantity');
+  });
+
+  it('errors when quantity is negative', async () => {
+    const plan = await planLots([{ partMpn: 'ESP32-WROOM', partName: '', quantity: '-1' }]);
+    expect(plan.errorCount).toBe(1);
+    expect(plan.rows[0].action).toBe('error');
+    expect(plan.rows[0].errors[0].field).toBe('quantity');
+  });
+
+  it('errors when purchaseDate is not a valid date', async () => {
+    const plan = await planLots([{ partMpn: 'ESP32-WROOM', partName: '', quantity: '5', purchaseDate: 'not-a-date' }]);
+    expect(plan.errorCount).toBe(1);
+    expect(plan.rows[0].action).toBe('error');
+    expect(plan.rows[0].errors[0].field).toBe('purchaseDate');
+  });
+
+  it('accepts a valid ISO-8601 purchaseDate', async () => {
+    const plan = await planLots([{ partMpn: 'ESP32-WROOM', partName: '', quantity: '5', purchaseDate: '2024-01-15' }]);
+    expect(plan.willCreate).toBe(1);
+    expect(plan.rows[0].action).toBe('create');
   });
 });
 
@@ -236,6 +277,32 @@ describe('executeParts', () => {
     expect(mockPrisma.part.update).toHaveBeenCalledWith(
       expect.objectContaining({ where: { id: 'p1' } })
     );
+  });
+
+  it('does not clear existing fields when update row has blank cells', async () => {
+    (mockPrisma.part.update as jest.Mock).mockResolvedValue({ id: 'p1' });
+    const plan: ImportPlan = {
+      type: 'parts',
+      willCreate: 0, willUpdate: 1, willSkip: 0, errorCount: 0,
+      rows: [
+        {
+          rowIndex: 1,
+          action: 'update',
+          // category, manufacturer, mpn, notes, tags are all blank
+          data: { name: 'ESP32', category: '', manufacturer: '', mpn: '', notes: '', tags: '', _existingId: 'p1' },
+          errors: [],
+        },
+      ],
+    };
+    await executeParts(plan);
+    const updateCall = (mockPrisma.part.update as jest.Mock).mock.calls[0][0];
+    // Only name should be in the update payload; blank fields are omitted
+    expect(updateCall.data).toHaveProperty('name', 'ESP32');
+    expect(updateCall.data).not.toHaveProperty('category');
+    expect(updateCall.data).not.toHaveProperty('manufacturer');
+    expect(updateCall.data).not.toHaveProperty('mpn');
+    expect(updateCall.data).not.toHaveProperty('notes');
+    expect(updateCall.data).not.toHaveProperty('tags');
   });
 
   it('skips rows with skip action', async () => {
@@ -347,7 +414,7 @@ describe('executeLots', () => {
     const summary = await executeLots(plan);
     expect(summary.created).toBe(1);
     expect(mockPrisma.lot.create).toHaveBeenCalledTimes(1);
-    expect(mockCreateEvent).toHaveBeenCalledWith(expect.objectContaining({ lotId: 'lot-1', type: 'received' }));
+    expect(mockPrisma.event.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ lotId: 'lot-1', type: 'received' }) }));
   });
 
   it('uses qualitative mode when quantity is blank', async () => {
