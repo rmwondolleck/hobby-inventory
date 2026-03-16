@@ -1,4 +1,4 @@
-import { GET, POST } from '../route';
+import { GET } from '../route';
 
 jest.mock('@/lib/db', () => ({
   __esModule: true,
@@ -26,11 +26,16 @@ const baseProject = {
   name: 'Robot Arm',
   status: 'active',
   notes: null,
-  tags: '["robotics","hardware"]',
+  tags: '["robot","arduino"]',
   wishlistNotes: null,
   archivedAt: null,
   createdAt: new Date('2024-01-01'),
   updatedAt: new Date('2024-01-01'),
+  allocations: [
+    { status: 'in_use' },
+    { status: 'in_use' },
+    { status: 'reserved' },
+  ],
 };
 
 beforeEach(() => {

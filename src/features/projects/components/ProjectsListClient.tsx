@@ -2,9 +2,10 @@
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import type { ProjectListItem, ProjectFilters } from '../types';
+import type { ProjectStatus } from '@/lib/types';
 import { ProjectCard } from './ProjectCard';
 
-const PROJECT_STATUSES = [
+const PROJECT_STATUSES: Array<{ value: ProjectStatus; label: string }> = [
   { value: 'idea', label: 'Idea' },
   { value: 'planned', label: 'Planned' },
   { value: 'active', label: 'Active' },

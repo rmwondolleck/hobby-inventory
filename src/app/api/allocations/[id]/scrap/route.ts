@@ -33,7 +33,20 @@ export async function POST(_request: Request, { params }: RouteParams) {
     );
   }
 
-  const ops: Parameters<typeof prisma.$transaction>[0] = [
+  // Permanently reduce lot quantity for exact-count lots (conditional third op)
+  const lotUpdateOp =
+    allocation.lot.quantityMode === 'exact' &&
+    allocation.lot.quantity !== null &&
+    allocation.quantity !== null
+      ? [
+          prisma.lot.update({
+            where: { id: allocation.lotId },
+            data: { quantity: Math.max(0, allocation.lot.quantity - allocation.quantity) },
+          }),
+        ]
+      : [];
+
+  const [updated] = await prisma.$transaction([
     // Mark allocation recovered (removes it from active count)
     prisma.allocation.update({
       where: { id },
@@ -49,23 +62,8 @@ export async function POST(_request: Request, { params }: RouteParams) {
         notes: `Scrapped allocation ${id}`,
       },
     }),
-  ];
-
-  // Permanently reduce lot quantity for exact-count lots
-  if (
-    allocation.lot.quantityMode === 'exact' &&
-    allocation.lot.quantity !== null &&
-    allocation.quantity !== null
-  ) {
-    ops.push(
-      prisma.lot.update({
-        where: { id: allocation.lotId },
-        data: { quantity: Math.max(0, allocation.lot.quantity - allocation.quantity) },
-      }),
-    );
-  }
-
-  const [updated] = await prisma.$transaction(ops);
+    ...lotUpdateOp,
+  ]);
 
   return NextResponse.json({ data: updated });
 }
