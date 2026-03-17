@@ -98,6 +98,52 @@ describe('GET /api/projects/[id]', () => {
     expect(json.data.allocationsByStatus.in_use).toHaveLength(1);
   });
 
+  it('returns events with correct shape when events exist', async () => {
+    const baseEvent = {
+      id: 'evt001',
+      lotId: 'lot001',
+      type: 'stock_in',
+      delta: 5,
+      notes: 'Received batch',
+      createdAt: new Date('2024-06-01'),
+      lot: {
+        id: 'lot001',
+        part: { id: 'part001', name: 'ESP32' },
+      },
+    };
+    mockFindUnique.mockResolvedValue({ ...baseProject, allocations: [] });
+    mockEventFindMany.mockResolvedValue([baseEvent]);
+
+    const res = await GET(makeRequest('http://localhost/api/projects/proj001'), makeParams('proj001'));
+    expect(res.status).toBe(200);
+
+    const json = await res.json();
+    expect(json.data.events).toHaveLength(1);
+    expect(json.data.events[0].id).toBe('evt001');
+    expect(json.data.events[0].type).toBe('stock_in');
+    expect(json.data.events[0].lot.part.name).toBe('ESP32');
+  });
+
+  it('queries events using the correct projectId', async () => {
+    mockFindUnique.mockResolvedValue({ ...baseProject, allocations: [] });
+
+    await GET(makeRequest('http://localhost/api/projects/proj001'), makeParams('proj001'));
+
+    expect(mockEventFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { projectId: 'proj001' } })
+    );
+  });
+
+  it('queries events ordered by createdAt desc', async () => {
+    mockFindUnique.mockResolvedValue({ ...baseProject, allocations: [] });
+
+    await GET(makeRequest('http://localhost/api/projects/proj001'), makeParams('proj001'));
+
+    expect(mockEventFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({ orderBy: { createdAt: 'desc' } })
+    );
+  });
+
   it('returns 404 when project not found', async () => {
     mockFindUnique.mockResolvedValue(null);
 
