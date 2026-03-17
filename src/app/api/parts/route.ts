@@ -2,6 +2,28 @@ import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { safeParseJson } from '@/lib/utils';
 
+type LotRow = {
+  quantity: number | null;
+  quantityMode: string;
+  qualitativeStatus: string | null;
+  status: string;
+};
+
+function computeStockFields(lots: LotRow[]) {
+  const inStockLots = lots.filter((l) => l.status === 'in_stock');
+  const totalQuantity = inStockLots
+    .filter((l) => l.quantityMode === 'exact')
+    .reduce((sum, l) => sum + (l.quantity ?? 0), 0);
+  const qualitativeStatuses = Array.from(
+    new Set(
+      inStockLots
+        .filter((l) => l.quantityMode === 'qualitative' && l.qualitativeStatus !== null && l.qualitativeStatus !== undefined)
+        .map((l) => l.qualitativeStatus as string)
+    )
+  );
+  return { totalQuantity, qualitativeStatuses, lotCount: lots.length };
+}
+
 const DEFAULT_LIMIT = 50;
 const MAX_LIMIT = 500;
 
@@ -75,10 +97,12 @@ export async function GET(request: Request) {
         : {}),
     };
 
+    const lotInclude = { lots: { select: { quantity: true, quantityMode: true, qualitativeStatus: true, status: true } } };
+
     // When parameter filters are present, fetch all matching (without pagination)
     // and apply in-memory filtering, then paginate manually.
     if (hasParamFilters) {
-      const all = await prisma.part.findMany({ where, orderBy: { createdAt: 'desc' } });
+      const all = await prisma.part.findMany({ where, orderBy: { createdAt: 'desc' }, include: lotInclude });
 
       const filtered = all.filter((part: { parameters: string }) => {
         const params = safeParseJson<Record<string, unknown>>(part.parameters, {});
@@ -89,11 +113,15 @@ export async function GET(request: Request) {
       const page = filtered.slice(offset, offset + limit);
 
       return NextResponse.json({
-        data: page.map((p: { tags: string; parameters: string }) => ({
-          ...p,
-          tags: safeParseJson<string[]>(p.tags, []),
-          parameters: safeParseJson<Record<string, unknown>>(p.parameters, {}),
-        })),
+        data: page.map((p: { tags: string; parameters: string; lots: LotRow[] }) => {
+          const { lots, ...rest } = p;
+          return {
+            ...rest,
+            tags: safeParseJson<string[]>(p.tags, []),
+            parameters: safeParseJson<Record<string, unknown>>(p.parameters, {}),
+            ...computeStockFields(lots),
+          };
+        }),
         total,
         limit,
         offset,
@@ -101,16 +129,20 @@ export async function GET(request: Request) {
     }
 
     const [parts, total] = await prisma.$transaction([
-      prisma.part.findMany({ where, take: limit, skip: offset, orderBy: { createdAt: 'desc' } }),
+      prisma.part.findMany({ where, take: limit, skip: offset, orderBy: { createdAt: 'desc' }, include: lotInclude }),
       prisma.part.count({ where }),
     ]);
 
     return NextResponse.json({
-      data: parts.map((p: { tags: string; parameters: string }) => ({
-        ...p,
-        tags: safeParseJson<string[]>(p.tags, []),
-        parameters: safeParseJson<Record<string, unknown>>(p.parameters, {}),
-      })),
+      data: parts.map((p: { tags: string; parameters: string; lots: LotRow[] }) => {
+        const { lots, ...rest } = p;
+        return {
+          ...rest,
+          tags: safeParseJson<string[]>(p.tags, []),
+          parameters: safeParseJson<Record<string, unknown>>(p.parameters, {}),
+          ...computeStockFields(lots),
+        };
+      }),
       total,
       limit,
       offset,

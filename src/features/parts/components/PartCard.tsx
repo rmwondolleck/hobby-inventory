@@ -9,11 +9,11 @@ interface PartCardProps {
 
 export function PartCard({ part }: PartCardProps) {
   const isArchived = !!part.archivedAt;
-  const hasExactStock = part.totalQuantity > 0;
-  const hasQualitativeStock = part.qualitativeStatuses.length > 0;
+  const hasExactStock = (part.totalQuantity ?? 0) > 0;
+  const hasQualitativeStock = (part.qualitativeStatuses ?? []).length > 0;
 
   function QualitativeDisplay() {
-    const status = part.qualitativeStatuses[0];
+    const status = (part.qualitativeStatuses ?? [])[0];
     const colorClass =
       status === 'plenty'
         ? 'text-green-600'

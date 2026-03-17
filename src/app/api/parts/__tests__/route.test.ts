@@ -35,6 +35,7 @@ const basePart = {
   archivedAt: null,
   createdAt: new Date('2024-01-01'),
   updatedAt: new Date('2024-01-01'),
+  lots: [],
 };
 
 beforeEach(() => {
@@ -155,6 +156,57 @@ describe('GET /api/parts', () => {
 
     const json = await res.json();
     expect(json.error).toBe('internal_error');
+  });
+
+  it('computes totalQuantity from in_stock exact lots', async () => {
+    const partWithLots = {
+      ...basePart,
+      lots: [
+        { quantity: 10, quantityMode: 'exact', qualitativeStatus: null, status: 'in_stock' },
+        { quantity: 5, quantityMode: 'exact', qualitativeStatus: null, status: 'in_stock' },
+        { quantity: 3, quantityMode: 'exact', qualitativeStatus: null, status: 'used_up' },
+      ],
+    };
+    mockFindMany.mockResolvedValue([partWithLots]);
+    mockCount.mockResolvedValue(1);
+
+    const res = await GET(makeRequest('http://localhost/api/parts'));
+    const json = await res.json();
+
+    expect(json.data[0].totalQuantity).toBe(15);
+    expect(json.data[0].lotCount).toBe(3);
+  });
+
+  it('computes qualitativeStatuses from in_stock qualitative lots (deduped)', async () => {
+    const partWithLots = {
+      ...basePart,
+      lots: [
+        { quantity: null, quantityMode: 'qualitative', qualitativeStatus: 'plenty', status: 'in_stock' },
+        { quantity: null, quantityMode: 'qualitative', qualitativeStatus: 'low', status: 'in_stock' },
+        { quantity: null, quantityMode: 'qualitative', qualitativeStatus: 'plenty', status: 'in_stock' },
+        { quantity: null, quantityMode: 'qualitative', qualitativeStatus: 'out', status: 'used_up' },
+      ],
+    };
+    mockFindMany.mockResolvedValue([partWithLots]);
+    mockCount.mockResolvedValue(1);
+
+    const res = await GET(makeRequest('http://localhost/api/parts'));
+    const json = await res.json();
+
+    expect(json.data[0].qualitativeStatuses).toEqual(expect.arrayContaining(['plenty', 'low']));
+    expect(json.data[0].qualitativeStatuses).toHaveLength(2);
+  });
+
+  it('returns totalQuantity=0, qualitativeStatuses=[], lotCount=0 for parts with no lots', async () => {
+    mockFindMany.mockResolvedValue([basePart]);
+    mockCount.mockResolvedValue(1);
+
+    const res = await GET(makeRequest('http://localhost/api/parts'));
+    const json = await res.json();
+
+    expect(json.data[0].totalQuantity).toBe(0);
+    expect(json.data[0].qualitativeStatuses).toEqual([]);
+    expect(json.data[0].lotCount).toBe(0);
   });
 });
 
