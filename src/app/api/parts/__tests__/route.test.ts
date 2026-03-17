@@ -208,6 +208,26 @@ describe('GET /api/parts', () => {
     expect(json.data[0].qualitativeStatuses).toEqual([]);
     expect(json.data[0].lotCount).toBe(0);
   });
+
+  it('handles mixed exact and qualitative in_stock lots independently', async () => {
+    const partWithLots = {
+      ...basePart,
+      lots: [
+        { quantity: 20, quantityMode: 'exact', qualitativeStatus: null, status: 'in_stock' },
+        { quantity: null, quantityMode: 'qualitative', qualitativeStatus: 'low', status: 'in_stock' },
+        { quantity: null, quantityMode: 'qualitative', qualitativeStatus: 'low', status: 'in_stock' },
+      ],
+    };
+    mockFindMany.mockResolvedValue([partWithLots]);
+    mockCount.mockResolvedValue(1);
+
+    const res = await GET(makeRequest('http://localhost/api/parts'));
+    const json = await res.json();
+
+    expect(json.data[0].totalQuantity).toBe(20);
+    expect(json.data[0].qualitativeStatuses).toEqual(['low']);
+    expect(json.data[0].lotCount).toBe(3);
+  });
 });
 
 // ─── GET /api/parts with parameter filters ───────────────────────────────────
@@ -293,6 +313,24 @@ describe('GET /api/parts (parameter filters)', () => {
 
     expect(mockTransaction).not.toHaveBeenCalled();
     expect(mockFindMany).toHaveBeenCalledTimes(1);
+  });
+
+  it('computes stock fields via parameter-filter path', async () => {
+    const partWithLots = {
+      ...basePart,
+      parameters: '{"ble":true}',
+      lots: [
+        { quantity: 7, quantityMode: 'exact', qualitativeStatus: null, status: 'in_stock' },
+      ],
+    };
+    mockFindMany.mockResolvedValue([partWithLots]);
+
+    const res = await GET(makeRequest('http://localhost/api/parts?parameters.ble=true'));
+    const json = await res.json();
+
+    expect(json.data[0].totalQuantity).toBe(7);
+    expect(json.data[0].lotCount).toBe(1);
+    expect(json.data[0].qualitativeStatuses).toEqual([]);
   });
 });
 
