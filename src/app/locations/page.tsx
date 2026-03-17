@@ -87,7 +87,9 @@ export default function LocationsPage() {
               {locations.map((location) => (
                 <tr key={location.id} style={{ verticalAlign: 'middle' }}>
                   <td style={{ border: '1px solid #e5e7eb', padding: '8px 12px', fontWeight: 500 }}>
-                    {location.name}
+                    <Link href={`/locations/${location.id}`} style={{ color: '#2563eb', textDecoration: 'none' }}>
+                      {location.name}
+                    </Link>
                   </td>
                   <td style={{ border: '1px solid #e5e7eb', padding: '8px 12px', color: '#6b7280', fontFamily: 'monospace', fontSize: 12 }}>
                     {location.path}
