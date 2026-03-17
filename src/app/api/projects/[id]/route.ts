@@ -41,6 +41,25 @@ export async function GET(_request: Request, { params }: RouteParams) {
     );
   }
 
+  const events = await prisma.event.findMany({
+    where: { projectId: id },
+    orderBy: { createdAt: 'desc' },
+    select: {
+      id: true,
+      lotId: true,
+      type: true,
+      delta: true,
+      notes: true,
+      createdAt: true,
+      lot: {
+        select: {
+          id: true,
+          part: { select: { id: true, name: true } },
+        },
+      },
+    },
+  });
+
   // Group allocations by status
   const allocationsByStatus = project.allocations.reduce<
     Record<string, typeof project.allocations>
@@ -56,6 +75,7 @@ export async function GET(_request: Request, { params }: RouteParams) {
       ...project,
       tags: safeParseJson<string[]>(project.tags, []),
       allocationsByStatus,
+      events,
     },
   });
 }

@@ -7,6 +7,9 @@ jest.mock('@/lib/db', () => ({
       findUnique: jest.fn(),
       update: jest.fn(),
     },
+    event: {
+      findMany: jest.fn(),
+    },
   },
 }));
 
@@ -14,6 +17,7 @@ import prisma from '@/lib/db';
 
 const mockFindUnique = prisma.project.findUnique as jest.Mock;
 const mockUpdate = prisma.project.update as jest.Mock;
+const mockEventFindMany = prisma.event.findMany as jest.Mock;
 
 function makeRequest(url: string, options?: RequestInit): Request {
   return new Request(url, options);
@@ -56,16 +60,18 @@ const makeParams = (id: string) => ({ params: Promise.resolve({ id }) });
 
 beforeEach(() => {
   jest.clearAllMocks();
+  mockEventFindMany.mockResolvedValue([]);
 });
 
 // ─── GET /api/projects/[id] ───────────────────────────────────────────────────
 
 describe('GET /api/projects/[id]', () => {
-  it('returns 200 with project data and allocations', async () => {
+  it('returns 200 with project data, allocations, and events', async () => {
     mockFindUnique.mockResolvedValue({
       ...baseProject,
       allocations: [baseAllocation],
     });
+    mockEventFindMany.mockResolvedValue([]);
 
     const res = await GET(makeRequest('http://localhost/api/projects/proj001'), makeParams('proj001'));
     expect(res.status).toBe(200);
@@ -73,6 +79,7 @@ describe('GET /api/projects/[id]', () => {
     const json = await res.json();
     expect(json.data.id).toBe('proj001');
     expect(json.data.tags).toEqual(['robotics']);
+    expect(json.data.events).toEqual([]);
   });
 
   it('groups allocations by status', async () => {
