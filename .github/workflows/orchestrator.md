@@ -36,12 +36,6 @@ safe-outputs:
   dispatch-workflow:
     workflows: [coding-agent, test-agent, build-agent, integration-agent]
     max: 10
-  assign-to-agent:
-    name: "copilot"
-    allowed: [copilot]
-    max: 10
-    target: "*"
-    ignore-if-error: true
   add-reviewer:
     reviewers: [copilot]
     max: 10
@@ -290,7 +284,6 @@ The coding-agent's AGENT_REPORT may NOT contain `pr_number` because the PR is cr
 
 **Building → Review**: When build-agent reports `result: "passed"`:
 - Use `add-reviewer` safe output to request Copilot review on PR #<pr_number>. The agent output must specify `item_number` (the PR number) and `reviewer: "copilot"`.
-- As a fallback, also use `assign-to-agent` with `item_number` set to the issue number (not the PR number).
 
 **Building → Needs-Work**: When build-agent reports `result: "failed"`:
 ```json
