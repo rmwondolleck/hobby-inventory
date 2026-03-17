@@ -62,6 +62,9 @@ network:
     - "binaries.prisma.sh"
     - "checkpoint.prisma.io"
     - fonts
+concurrency:
+  group: integration-agent-epic-${{ github.event.inputs.epic_number }}
+  cancel-in-progress: false
 ---
 
 # Integration Agent (Epic Synthesis)
@@ -408,3 +411,4 @@ add-comment:
 - Validate all inputs
 - Only modify code you fully understand
 - Preserve all security-related code unchanged
+
