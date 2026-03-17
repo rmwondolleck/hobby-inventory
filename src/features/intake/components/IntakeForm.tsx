@@ -291,10 +291,11 @@ export function IntakeForm() {
         {showPartForm && (
           <div className="space-y-3">
             <div>
-              <label className="mb-1 block text-xs font-medium text-gray-700">
+              <label htmlFor="part-name" className="mb-1 block text-xs font-medium text-gray-700">
                 Name <span className="text-red-500">*</span>
               </label>
               <input
+                id="part-name"
                 type="text"
                 required
                 autoFocus
@@ -307,8 +308,9 @@ export function IntakeForm() {
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="mb-1 block text-xs font-medium text-gray-700">Category</label>
+                <label htmlFor="part-category" className="mb-1 block text-xs font-medium text-gray-700">Category</label>
                 <input
+                  id="part-category"
                   type="text"
                   list="categories-list"
                   value={part.category}
@@ -323,8 +325,9 @@ export function IntakeForm() {
                 </datalist>
               </div>
               <div>
-                <label className="mb-1 block text-xs font-medium text-gray-700">Manufacturer</label>
+                <label htmlFor="part-manufacturer" className="mb-1 block text-xs font-medium text-gray-700">Manufacturer</label>
                 <input
+                  id="part-manufacturer"
                   type="text"
                   value={part.manufacturer}
                   onChange={(e) => handlePartChange('manufacturer', e.target.value)}
@@ -335,8 +338,9 @@ export function IntakeForm() {
             </div>
 
             <div>
-              <label className="mb-1 block text-xs font-medium text-gray-700">MPN</label>
+              <label htmlFor="part-mpn" className="mb-1 block text-xs font-medium text-gray-700">MPN</label>
               <input
+                id="part-mpn"
                 type="text"
                 value={part.mpn}
                 onChange={(e) => handlePartChange('mpn', e.target.value)}
@@ -346,8 +350,9 @@ export function IntakeForm() {
             </div>
 
             <div>
-              <label className="mb-1 block text-xs font-medium text-gray-700">Notes</label>
+              <label htmlFor="part-notes" className="mb-1 block text-xs font-medium text-gray-700">Notes</label>
               <textarea
+                id="part-notes"
                 value={part.notes}
                 onChange={(e) => handlePartChange('notes', e.target.value)}
                 placeholder="Optional part notes"
@@ -388,8 +393,9 @@ export function IntakeForm() {
           {lot.quantityMode === 'exact' ? (
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="mb-1 block text-xs font-medium text-gray-700">Quantity</label>
+                <label htmlFor="lot-quantity" className="mb-1 block text-xs font-medium text-gray-700">Quantity</label>
                 <input
+                  id="lot-quantity"
                   type="number"
                   min="0"
                   value={lot.quantity}
@@ -399,8 +405,9 @@ export function IntakeForm() {
                 />
               </div>
               <div>
-                <label className="mb-1 block text-xs font-medium text-gray-700">Unit</label>
+                <label htmlFor="lot-unit" className="mb-1 block text-xs font-medium text-gray-700">Unit</label>
                 <input
+                  id="lot-unit"
                   type="text"
                   value={lot.unit}
                   onChange={(e) => handleLotChange('unit', e.target.value)}
@@ -438,7 +445,7 @@ export function IntakeForm() {
 
           {/* Source URL */}
           <div>
-            <label className="mb-1 block text-xs font-medium text-gray-700">
+            <label htmlFor="lot-source-url" className="mb-1 block text-xs font-medium text-gray-700">
               Source URL
               {detectedSource && detectedSource !== 'manual' && (
                 <span className="ml-2 rounded-full bg-blue-100 px-2 py-0.5 text-xs text-blue-700 capitalize">
@@ -447,6 +454,7 @@ export function IntakeForm() {
               )}
             </label>
             <input
+              id="lot-source-url"
               type="url"
               value={lot.sourceUrl}
               onChange={(e) => handleLotChange('sourceUrl', e.target.value)}
@@ -457,8 +465,9 @@ export function IntakeForm() {
 
           {/* Received date */}
           <div>
-            <label className="mb-1 block text-xs font-medium text-gray-700">Received date</label>
+            <label htmlFor="lot-received-at" className="mb-1 block text-xs font-medium text-gray-700">Received date</label>
             <input
+              id="lot-received-at"
               type="date"
               value={lot.receivedAt}
               onChange={(e) => handleLotChange('receivedAt', e.target.value)}
@@ -468,8 +477,9 @@ export function IntakeForm() {
 
           {!isQuickRestock && (
             <div>
-              <label className="mb-1 block text-xs font-medium text-gray-700">Lot notes</label>
+              <label htmlFor="lot-notes" className="mb-1 block text-xs font-medium text-gray-700">Lot notes</label>
               <textarea
+                id="lot-notes"
                 value={lot.notes}
                 onChange={(e) => handleLotChange('notes', e.target.value)}
                 placeholder="Optional notes for this batch"
