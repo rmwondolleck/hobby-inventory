@@ -205,7 +205,7 @@ export function ProjectDetailClient({ id }: ProjectDetailClientProps) {
   }));
 
   const hasAllocations = project.allocations.length > 0;
-  const hasEvents = project.events.length > 0;
+  const hasEvents = (project.events ?? []).length > 0;
 
   return (
     <div>
@@ -300,7 +300,7 @@ export function ProjectDetailClient({ id }: ProjectDetailClientProps) {
                 </tr>
               </thead>
               <tbody>
-                {project.events.map((event) => (
+                {(project.events ?? []).map((event) => (
                   <EventRow key={event.id} event={event} />
                 ))}
               </tbody>

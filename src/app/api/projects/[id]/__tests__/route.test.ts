@@ -7,6 +7,9 @@ jest.mock('@/lib/db', () => ({
       findUnique: jest.fn(),
       update: jest.fn(),
     },
+    event: {
+      findMany: jest.fn(),
+    },
   },
 }));
 
@@ -14,6 +17,7 @@ import prisma from '@/lib/db';
 
 const mockFindUnique = prisma.project.findUnique as jest.Mock;
 const mockUpdate = prisma.project.update as jest.Mock;
+const mockEventFindMany = prisma.event.findMany as jest.Mock;
 
 function makeRequest(url: string, options?: RequestInit): Request {
   return new Request(url, options);
@@ -56,16 +60,18 @@ const makeParams = (id: string) => ({ params: Promise.resolve({ id }) });
 
 beforeEach(() => {
   jest.clearAllMocks();
+  mockEventFindMany.mockResolvedValue([]);
 });
 
 // ─── GET /api/projects/[id] ───────────────────────────────────────────────────
 
 describe('GET /api/projects/[id]', () => {
-  it('returns 200 with project data and allocations', async () => {
+  it('returns 200 with project data, allocations, and events', async () => {
     mockFindUnique.mockResolvedValue({
       ...baseProject,
       allocations: [baseAllocation],
     });
+    mockEventFindMany.mockResolvedValue([]);
 
     const res = await GET(makeRequest('http://localhost/api/projects/proj001'), makeParams('proj001'));
     expect(res.status).toBe(200);
@@ -73,6 +79,7 @@ describe('GET /api/projects/[id]', () => {
     const json = await res.json();
     expect(json.data.id).toBe('proj001');
     expect(json.data.tags).toEqual(['robotics']);
+    expect(json.data.events).toEqual([]);
   });
 
   it('groups allocations by status', async () => {
@@ -89,6 +96,52 @@ describe('GET /api/projects/[id]', () => {
     expect(json.data.allocationsByStatus).toHaveProperty('in_use');
     expect(json.data.allocationsByStatus.reserved).toHaveLength(1);
     expect(json.data.allocationsByStatus.in_use).toHaveLength(1);
+  });
+
+  it('returns events with correct shape when events exist', async () => {
+    const baseEvent = {
+      id: 'evt001',
+      lotId: 'lot001',
+      type: 'stock_in',
+      delta: 5,
+      notes: 'Received batch',
+      createdAt: new Date('2024-06-01'),
+      lot: {
+        id: 'lot001',
+        part: { id: 'part001', name: 'ESP32' },
+      },
+    };
+    mockFindUnique.mockResolvedValue({ ...baseProject, allocations: [] });
+    mockEventFindMany.mockResolvedValue([baseEvent]);
+
+    const res = await GET(makeRequest('http://localhost/api/projects/proj001'), makeParams('proj001'));
+    expect(res.status).toBe(200);
+
+    const json = await res.json();
+    expect(json.data.events).toHaveLength(1);
+    expect(json.data.events[0].id).toBe('evt001');
+    expect(json.data.events[0].type).toBe('stock_in');
+    expect(json.data.events[0].lot.part.name).toBe('ESP32');
+  });
+
+  it('queries events using the correct projectId', async () => {
+    mockFindUnique.mockResolvedValue({ ...baseProject, allocations: [] });
+
+    await GET(makeRequest('http://localhost/api/projects/proj001'), makeParams('proj001'));
+
+    expect(mockEventFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { projectId: 'proj001' } })
+    );
+  });
+
+  it('queries events ordered by createdAt desc', async () => {
+    mockFindUnique.mockResolvedValue({ ...baseProject, allocations: [] });
+
+    await GET(makeRequest('http://localhost/api/projects/proj001'), makeParams('proj001'));
+
+    expect(mockEventFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({ orderBy: { createdAt: 'desc' } })
+    );
   });
 
   it('returns 404 when project not found', async () => {
