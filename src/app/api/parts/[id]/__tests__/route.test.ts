@@ -41,6 +41,63 @@ beforeEach(() => {
 // ─── GET /api/parts/[id] ──────────────────────────────────────────────────────
 
 describe('GET /api/parts/[id]', () => {
+  it('returns computed stock fields for the part (available/reserved/inUse/scrapped)', async () => {
+    mockFindUnique.mockResolvedValue({
+      ...basePart,
+      lots: [
+        {
+          id: 'lot001',
+          partId: 'cltest001',
+          source: '{}',
+          quantity: 15,
+          quantityMode: 'exact',
+          qualitativeStatus: null,
+          status: 'in_stock',
+          location: null,
+          allocations: [
+            { quantity: 4, status: 'reserved', project: { id: 'proj1', name: 'Project A', status: 'active' } },
+            { quantity: 2, status: 'in_use', project: { id: 'proj2', name: 'Project B', status: 'active' } },
+          ],
+        },
+        {
+          id: 'lot002',
+          partId: 'cltest001',
+          source: '{}',
+          quantity: 5,
+          quantityMode: 'exact',
+          qualitativeStatus: null,
+          status: 'scrapped',
+          location: null,
+          allocations: [],
+        },
+      ],
+    });
+
+    const res = await GET(new Request('http://localhost/api/parts/cltest001'), makeParams('cltest001'));
+    expect(res.status).toBe(200);
+
+    const json = await res.json();
+    expect(json.data.totalQuantity).toBe(15);
+    expect(json.data.availableQuantity).toBe(9); // 15 - 4 - 2
+    expect(json.data.reservedQuantity).toBe(4);
+    expect(json.data.inUseQuantity).toBe(2);
+    expect(json.data.scrappedQuantity).toBe(5);
+    expect(json.data.lotCount).toBe(2);
+  });
+
+  it('returns zero stock fields for a part with no lots', async () => {
+    mockFindUnique.mockResolvedValue({ ...basePart, lots: [] });
+
+    const res = await GET(new Request('http://localhost/api/parts/cltest001'), makeParams('cltest001'));
+    const json = await res.json();
+
+    expect(json.data.totalQuantity).toBe(0);
+    expect(json.data.availableQuantity).toBe(0);
+    expect(json.data.reservedQuantity).toBe(0);
+    expect(json.data.inUseQuantity).toBe(0);
+    expect(json.data.scrappedQuantity).toBe(0);
+  });
+
   it('returns 200 with part data including parsed tags/parameters', async () => {
     mockFindUnique.mockResolvedValue({
       ...basePart,
