@@ -2,8 +2,29 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
 import { formatDate, formatDateTime } from '@/lib/utils';
+import { getValidProjectTransitions } from '@/lib/state-transitions';
+import type { ProjectStatus } from '@/lib/types';
 import type { ProjectDetail, AllocationWithDetails, ProjectEvent } from '../types';
 
 const STATUS_LABELS: Record<string, string> = {
@@ -139,15 +160,184 @@ function EventRow({ event }: { event: ProjectEvent }) {
   );
 }
 
+const ALL_PROJECT_STATUSES: ProjectStatus[] = [
+  'idea',
+  'planned',
+  'active',
+  'deployed',
+  'retired',
+];
+
+interface EditProjectDialogProps {
+  project: ProjectDetail;
+  open: boolean;
+  onClose: () => void;
+  onSaved: (updated: ProjectDetail) => void;
+}
+
+function EditProjectDialog({ project, open, onClose, onSaved }: EditProjectDialogProps) {
+  const [name, setName] = useState(project.name);
+  const [status, setStatus] = useState<ProjectStatus>(project.status);
+  const [tagsInput, setTagsInput] = useState(project.tags.join(', '));
+  const [notes, setNotes] = useState(project.notes ?? '');
+  const [wishlistNotes, setWishlistNotes] = useState(project.wishlistNotes ?? '');
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+
+  // Reset form when project changes or dialog opens
+  useEffect(() => {
+    if (open) {
+      setName(project.name);
+      setStatus(project.status);
+      setTagsInput(project.tags.join(', '));
+      setNotes(project.notes ?? '');
+      setWishlistNotes(project.wishlistNotes ?? '');
+      setSaveError(null);
+    }
+  }, [open, project]);
+
+  const validNextStatuses: ProjectStatus[] = [
+    project.status,
+    ...getValidProjectTransitions(project.status),
+  ];
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setSaving(true);
+    setSaveError(null);
+
+    const tags = tagsInput
+      .split(',')
+      .map((t) => t.trim())
+      .filter(Boolean);
+
+    const body: Record<string, unknown> = {};
+    if (name !== project.name) body.name = name;
+    if (status !== project.status) body.status = status;
+    if (JSON.stringify(tags) !== JSON.stringify(project.tags)) body.tags = tags;
+    if (notes !== (project.notes ?? '')) body.notes = notes || null;
+    if (wishlistNotes !== (project.wishlistNotes ?? ''))
+      body.wishlistNotes = wishlistNotes || null;
+
+    try {
+      const res = await fetch(`/api/projects/${project.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) {
+        const json = (await res.json().catch(() => ({}))) as { error?: string };
+        throw new Error(json.error ?? 'Failed to save changes');
+      }
+      const json = (await res.json()) as { data: ProjectDetail };
+      onSaved(json.data);
+      onClose();
+    } catch (err) {
+      setSaveError(err instanceof Error ? err.message : 'Unknown error');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={(v) => { if (!v) onClose(); }}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader>
+          <DialogTitle>Edit Project</DialogTitle>
+        </DialogHeader>
+        <form onSubmit={handleSubmit} className="space-y-4 pt-2">
+          <div className="space-y-1">
+            <Label htmlFor="edit-project-name">Name</Label>
+            <Input
+              id="edit-project-name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              required
+            />
+          </div>
+
+          <div className="space-y-1">
+            <Label htmlFor="edit-project-status">Status</Label>
+            <Select
+              value={status}
+              onValueChange={(v) => setStatus(v as ProjectStatus)}
+            >
+              <SelectTrigger id="edit-project-status">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {ALL_PROJECT_STATUSES.filter((s) =>
+                  validNextStatuses.includes(s)
+                ).map((s) => (
+                  <SelectItem key={s} value={s}>
+                    {STATUS_LABELS[s] ?? s}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-1">
+            <Label htmlFor="edit-project-tags">Tags</Label>
+            <Input
+              id="edit-project-tags"
+              value={tagsInput}
+              onChange={(e) => setTagsInput(e.target.value)}
+              placeholder="comma-separated, e.g. arduino, led"
+            />
+          </div>
+
+          <div className="space-y-1">
+            <Label htmlFor="edit-project-notes">Notes</Label>
+            <Textarea
+              id="edit-project-notes"
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              rows={3}
+            />
+          </div>
+
+          <div className="space-y-1">
+            <Label htmlFor="edit-project-wishlist">Wishlist / Parts Needed</Label>
+            <Textarea
+              id="edit-project-wishlist"
+              value={wishlistNotes}
+              onChange={(e) => setWishlistNotes(e.target.value)}
+              rows={3}
+            />
+          </div>
+
+          {saveError && (
+            <p className="text-sm text-red-600">{saveError}</p>
+          )}
+
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={onClose} disabled={saving}>
+              Cancel
+            </Button>
+            <Button type="submit" disabled={saving}>
+              {saving ? 'Saving…' : 'Save Changes'}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 interface ProjectDetailClientProps {
   id: string;
 }
 
 export function ProjectDetailClient({ id }: ProjectDetailClientProps) {
+  const router = useRouter();
   const [project, setProject] = useState<ProjectDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [notFound, setNotFound] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
+  const [archiving, setArchiving] = useState(false);
+  const [archiveError, setArchiveError] = useState<string | null>(null);
 
   useEffect(() => {
     async function fetchProject() {
@@ -168,6 +358,23 @@ export function ProjectDetailClient({ id }: ProjectDetailClientProps) {
     }
     fetchProject();
   }, [id]);
+
+  async function handleArchive() {
+    if (!project) return;
+    setArchiving(true);
+    setArchiveError(null);
+    try {
+      const res = await fetch(`/api/projects/${project.id}`, { method: 'DELETE' });
+      if (!res.ok) {
+        const json = (await res.json().catch(() => ({}))) as { error?: string };
+        throw new Error(json.error ?? 'Failed to archive project');
+      }
+      router.push('/projects');
+    } catch (err) {
+      setArchiveError(err instanceof Error ? err.message : 'Unknown error');
+      setArchiving(false);
+    }
+  }
 
   if (loading) {
     return (
@@ -209,6 +416,15 @@ export function ProjectDetailClient({ id }: ProjectDetailClientProps) {
 
   return (
     <div>
+      {project && (
+        <EditProjectDialog
+          project={project}
+          open={editOpen}
+          onClose={() => setEditOpen(false)}
+          onSaved={(updated) => setProject({ ...project, ...updated })}
+        />
+      )}
+
       {/* Header */}
       <div className="mb-6 flex items-start justify-between gap-4">
         <div>
@@ -229,13 +445,38 @@ export function ProjectDetailClient({ id }: ProjectDetailClientProps) {
             </div>
           )}
         </div>
-        <Link
-          href="/projects"
-          className="shrink-0 text-sm text-blue-600 hover:underline"
-        >
-          ← Back to projects
-        </Link>
+        <div className="flex shrink-0 items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setEditOpen(true)}
+            disabled={!!project.archivedAt}
+          >
+            Edit Project
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleArchive}
+            disabled={archiving || !!project.archivedAt}
+            className="text-red-600 hover:text-red-700 border-red-200 hover:border-red-300"
+          >
+            {archiving ? 'Archiving…' : 'Archive Project'}
+          </Button>
+          <Link
+            href="/projects"
+            className="text-sm text-blue-600 hover:underline"
+          >
+            ← Back to projects
+          </Link>
+        </div>
       </div>
+
+      {archiveError && (
+        <div className="mb-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+          {archiveError}
+        </div>
+      )}
 
       {/* Notes */}
       {project.notes && (
