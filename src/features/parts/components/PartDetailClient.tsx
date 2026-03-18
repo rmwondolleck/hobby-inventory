@@ -4,8 +4,10 @@ import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { formatDate } from '@/lib/utils';
 import type { PartDetail, LotWithDetails } from '../types';
+import { DuplicatePartDialog } from './DuplicatePartDialog';
 
 function QuantityDisplay({ lot }: { lot: LotWithDetails }) {
   if (lot.quantityMode === 'qualitative') {
@@ -46,6 +48,7 @@ export function PartDetailClient() {
   const [part, setPart] = useState<PartDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [duplicateOpen, setDuplicateOpen] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -120,11 +123,24 @@ export function PartDetailClient() {
             {part.mpn && <span>· MPN: {part.mpn}</span>}
           </div>
         </div>
-        <div className="shrink-0 text-right">
-          <div className="text-3xl font-bold text-gray-900">{totalQuantity}</div>
-          <div className="text-sm text-gray-500">in stock</div>
+        <div className="flex shrink-0 flex-col items-end gap-2">
+          <div className="text-right">
+            <div className="text-3xl font-bold text-gray-900">{totalQuantity}</div>
+            <div className="text-sm text-gray-500">in stock</div>
+          </div>
+          <Button variant="outline" size="sm" onClick={() => setDuplicateOpen(true)}>
+            Duplicate
+          </Button>
         </div>
       </div>
+
+      {duplicateOpen && (
+        <DuplicatePartDialog
+          part={part}
+          open={duplicateOpen}
+          onOpenChange={setDuplicateOpen}
+        />
+      )}
 
       {/* Tags */}
       {part.tags.length > 0 && (
