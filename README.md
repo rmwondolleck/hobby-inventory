@@ -20,6 +20,7 @@ A Next.js-based inventory management system for tracking electronic components, 
 
 ### 1. Install dependencies
 
+
 ```bash
 npm install
 ```
