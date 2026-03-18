@@ -1,11 +1,23 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
+import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 import { formatDate } from '@/lib/utils';
+import { AllocateModal } from '@/features/lots/components/AllocateModal';
 import type { PartDetail, LotWithDetails } from '../types';
+
+const ACTIVE_ALLOCATION_STATUSES = ['reserved', 'in_use', 'deployed'] as const;
+
+function getAvailableQuantity(lot: LotWithDetails): number | null {
+  if (lot.quantityMode !== 'exact' || lot.quantity == null) return null;
+  const allocated = lot.allocations
+    .filter((a) => (ACTIVE_ALLOCATION_STATUSES as readonly string[]).includes(a.status))
+    .reduce((sum, a) => sum + (a.quantity ?? 0), 0);
+  return Math.max(0, lot.quantity - allocated);
+}
 
 function QuantityDisplay({ lot }: { lot: LotWithDetails }) {
   if (lot.quantityMode === 'qualitative') {
@@ -46,8 +58,10 @@ export function PartDetailClient() {
   const [part, setPart] = useState<PartDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [refreshKey, setRefreshKey] = useState(0);
+  const [allocatingLot, setAllocatingLot] = useState<LotWithDetails | null>(null);
 
-  useEffect(() => {
+  const loadPart = useCallback(() => {
     if (!id) return;
     setLoading(true);
     setError(null);
@@ -60,6 +74,10 @@ export function PartDetailClient() {
       .catch((err: Error) => setError(err.message))
       .finally(() => setLoading(false));
   }, [id]);
+
+  useEffect(() => {
+    loadPart();
+  }, [loadPart, refreshKey]);
 
   if (loading) {
     return (
@@ -190,32 +208,51 @@ export function PartDetailClient() {
                   <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-gray-500">
                     Notes
                   </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-gray-500">
+                    Actions
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {part.lots.map((lot) => (
-                  <tr key={lot.id} className="hover:bg-gray-50">
-                    <td className="px-4 py-3 font-medium">
-                      <QuantityDisplay lot={lot} />
-                    </td>
-                    <td className="px-4 py-3 text-gray-600">
-                      {lot.location ? (
-                        lot.location.path
-                      ) : (
-                        <span className="italic text-gray-400">Unassigned</span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3">
-                      <StatusBadge status={lot.status} />
-                    </td>
-                    <td className="px-4 py-3 text-gray-500">
-                      {lot.receivedAt ? formatDate(lot.receivedAt) : '—'}
-                    </td>
-                    <td className="max-w-xs truncate px-4 py-3 text-gray-500">
-                      {lot.notes ?? '—'}
-                    </td>
-                  </tr>
-                ))}
+                {part.lots.map((lot) => {
+                  const availableQty = getAvailableQuantity(lot);
+                  const canAllocate =
+                    (lot.status === 'in_stock' || lot.status === 'low') &&
+                    (lot.quantityMode === 'qualitative' || (availableQty !== null && availableQty > 0));
+                  return (
+                    <tr key={lot.id} className="hover:bg-gray-50">
+                      <td className="px-4 py-3 font-medium">
+                        <QuantityDisplay lot={lot} />
+                      </td>
+                      <td className="px-4 py-3 text-gray-600">
+                        {lot.location ? (
+                          lot.location.path
+                        ) : (
+                          <span className="italic text-gray-400">Unassigned</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3">
+                        <StatusBadge status={lot.status} />
+                      </td>
+                      <td className="px-4 py-3 text-gray-500">
+                        {lot.receivedAt ? formatDate(lot.receivedAt) : '—'}
+                      </td>
+                      <td className="max-w-xs truncate px-4 py-3 text-gray-500">
+                        {lot.notes ?? '—'}
+                      </td>
+                      <td className="px-4 py-3">
+                        {canAllocate && (
+                          <button
+                            onClick={() => setAllocatingLot(lot)}
+                            className="rounded-md bg-blue-50 px-2.5 py-1 text-xs font-medium text-blue-700 hover:bg-blue-100"
+                          >
+                            Allocate
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -270,6 +307,21 @@ export function PartDetailClient() {
       >
         ← Back to Parts
       </Link>
+
+      {allocatingLot && (
+        <AllocateModal
+          lotId={allocatingLot.id}
+          quantityMode={allocatingLot.quantityMode}
+          availableQuantity={getAvailableQuantity(allocatingLot)}
+          unit={allocatingLot.unit ?? null}
+          onClose={() => setAllocatingLot(null)}
+          onSuccess={() => {
+            setAllocatingLot(null);
+            toast.success('Lot allocated successfully');
+            setRefreshKey((k) => k + 1);
+          }}
+        />
+      )}
     </div>
   );
 }
