@@ -65,6 +65,8 @@ network:
 concurrency:
   group: integration-agent-epic-${{ github.event.inputs.epic_number }}
   cancel-in-progress: false
+checkout:
+  ref: ${{ github.event.inputs.epic_branch }}
 ---
 
 # Integration Agent (Epic Synthesis)
@@ -96,6 +98,14 @@ The orchestrator handles all workflow coordination. Your only responsibilities:
 
 ## Your Task
 
+### Step 0: Validate Feature PRs
+Before reading any code, verify the inputs are sound:
+1. **Parse** `${{ github.event.inputs.feature_prs }}` into individual PR numbers
+2. **For each PR**, call `get_pull_request` to confirm:
+   - The PR exists and is **open** (not closed or already merged)
+   - The PR targets `${{ github.event.inputs.epic_branch }}` as its base branch
+   - Note whether it is still in draft state (the orchestrator should have already marked it ready — if still draft, log a warning but continue, as the code is still readable via diff)
+3. **If any PR is missing or closed**: post a failure `AGENT_REPORT` to Work Queue (see Step 6 failure format) and stop immediately. Do NOT attempt synthesis with incomplete data.
 ### Step 1: Read All Feature PRs
 
 For each PR number in `${{ github.event.inputs.feature_prs }}`:
@@ -336,6 +346,17 @@ create-pull-request:
 ---
 ```
 
+### Step 5b: Cross-link Feature PRs to Epic PR
+After the epic PR is created, add a brief comment to each feature PR so anyone looking at it knows where the work landed:
+```yaml
+add-comment:
+  target: <feature_pr_number>
+  body: |
+    🎯 This feature has been synthesized into the epic PR: #[EPIC_PR_NUMBER]
+    **No action needed on this PR.** Review and merge the epic PR to complete this epic.
+    This PR will be closed automatically when the epic branch is merged into main.
+```
+Repeat for each PR number in `${{ github.event.inputs.feature_prs }}`.
 ### Step 6: Report to Orchestrator (CRITICAL)
 
 Add a comment to the **Work Queue issue** (#${{ github.event.inputs.state_issue_number }}):
@@ -411,4 +432,6 @@ add-comment:
 - Validate all inputs
 - Only modify code you fully understand
 - Preserve all security-related code unchanged
+
+
 
