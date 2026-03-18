@@ -35,9 +35,9 @@ export function FilterSidebar({
 
   return (
     <aside className="w-56 shrink-0">
-      <div className="rounded-lg border bg-white p-4 shadow-sm">
+      <div className="rounded-lg border bg-card p-4 shadow-sm">
         <div className="flex items-center justify-between">
-          <h2 className="font-semibold text-gray-900">Filters</h2>
+          <h2 className="font-semibold text-foreground">Filters</h2>
           {hasActiveFilters && (
             <button
               onClick={() =>
@@ -52,7 +52,7 @@ export function FilterSidebar({
 
         {categories.length > 0 && (
           <div className="mt-4">
-            <h3 className="text-xs font-medium uppercase tracking-wide text-gray-500">
+            <h3 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
               Category
             </h3>
             <ul className="mt-2 space-y-1">
@@ -64,7 +64,7 @@ export function FilterSidebar({
                       'w-full rounded px-2 py-1 text-left text-sm transition-colors',
                       filters.category === cat
                         ? 'bg-blue-50 font-medium text-blue-700'
-                        : 'text-gray-700 hover:bg-gray-50'
+                        : 'text-foreground hover:bg-muted'
                     )}
                   >
                     {cat}
@@ -77,7 +77,7 @@ export function FilterSidebar({
 
         {availableTags.length > 0 && (
           <div className="mt-4">
-            <h3 className="text-xs font-medium uppercase tracking-wide text-gray-500">
+            <h3 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
               Tags
             </h3>
             <div className="mt-2 flex flex-wrap gap-1">
@@ -89,7 +89,7 @@ export function FilterSidebar({
                     'rounded-full px-2 py-0.5 text-xs transition-colors',
                     filters.tags.includes(tag)
                       ? 'bg-blue-600 text-white'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                      : 'bg-muted text-foreground hover:bg-accent'
                   )}
                 >
                   {tag}
@@ -107,9 +107,9 @@ export function FilterSidebar({
               onChange={() =>
                 onChange({ ...filters, includeArchived: !filters.includeArchived })
               }
-              className="rounded border-gray-300"
+              className="rounded border-border"
             />
-            <span className="text-sm text-gray-700">Show archived</span>
+            <span className="text-sm text-foreground">Show archived</span>
           </label>
         </div>
       </div>

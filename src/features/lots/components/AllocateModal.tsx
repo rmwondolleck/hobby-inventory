@@ -108,12 +108,12 @@ export function AllocateModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-      <div className="mx-4 w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
+      <div className="mx-4 w-full max-w-md rounded-xl bg-card p-6 shadow-xl">
         <div className="mb-4 flex items-center justify-between">
-          <h3 className="text-lg font-semibold text-gray-900">Allocate to Project</h3>
+          <h3 className="text-lg font-semibold text-foreground">Allocate to Project</h3>
           <button
             onClick={onClose}
-            className="text-xl leading-none text-gray-400 hover:text-gray-600"
+            className="text-xl leading-none text-muted-foreground hover:text-muted-foreground"
             aria-label="Close"
           >
             ✕
@@ -121,17 +121,17 @@ export function AllocateModal({
         </div>
 
         {fetching ? (
-          <p className="py-4 text-center text-sm text-gray-500">Loading projects…</p>
+          <p className="py-4 text-center text-sm text-muted-foreground">Loading projects…</p>
         ) : (
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="mb-1 block text-sm font-medium text-gray-700">
+              <label className="mb-1 block text-sm font-medium text-foreground">
                 Project <span className="text-red-500">*</span>
               </label>
               <select
                 value={projectId}
                 onChange={(e) => setProjectId(e.target.value)}
-                className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full rounded-lg border border-border bg-card px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
                 disabled={loading}
                 required
               >
@@ -143,7 +143,7 @@ export function AllocateModal({
                 ))}
               </select>
               {projects.length === 0 && (
-                <p className="mt-1 text-xs text-gray-500">
+                <p className="mt-1 text-xs text-muted-foreground">
                   No active or planned projects found.
                 </p>
               )}
@@ -151,11 +151,11 @@ export function AllocateModal({
 
             {quantityMode === 'exact' && (
               <div>
-                <label className="mb-1 block text-sm font-medium text-gray-700">
+                <label className="mb-1 block text-sm font-medium text-foreground">
                   Quantity{unit ? ` (${unit})` : ''}{' '}
                   <span className="text-red-500">*</span>
                   {availableQuantity !== null && (
-                    <span className="ml-1 font-normal text-gray-500">
+                    <span className="ml-1 font-normal text-muted-foreground">
                       — {availableQuantity} available
                     </span>
                   )}
@@ -166,7 +166,7 @@ export function AllocateModal({
                   max={availableQuantity ?? undefined}
                   value={quantity}
                   onChange={(e) => setQuantity(e.target.value)}
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full rounded-lg border border-border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
                   disabled={loading}
                   required
                 />
@@ -174,13 +174,13 @@ export function AllocateModal({
             )}
 
             <div>
-              <label className="mb-1 block text-sm font-medium text-gray-700">Notes</label>
+              <label className="mb-1 block text-sm font-medium text-foreground">Notes</label>
               <textarea
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
                 placeholder="Optional notes…"
                 rows={2}
-                className="w-full resize-none rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full resize-none rounded-lg border border-border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
                 disabled={loading}
               />
             </div>
@@ -191,7 +191,7 @@ export function AllocateModal({
               <button
                 type="button"
                 onClick={onClose}
-                className="rounded-lg border border-gray-300 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                className="rounded-lg border border-border px-4 py-2 text-sm text-foreground hover:bg-muted"
                 disabled={loading}
               >
                 Cancel
