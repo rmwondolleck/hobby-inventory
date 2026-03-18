@@ -542,9 +542,83 @@ Before dispatching a coding-agent for ANY issue:
 
 ## Output Requirements
 
-After each run, update the Work Queue issue body with current state.
+**Every run MUST do two things: (1) rewrite the issue body, (2) post a run-summary comment.**
 
-**Comment on Work Queue issue with run summary:**
+### Step A: Rewrite the Work Queue Issue Body
+
+Call `update-issue` with a completely rebuilt body on **every single run** — even if nothing changed. Do not append or patch. Replace the entire body.
+
+**Algorithm for building each section:**
+
+#### Section 1 — Active Work Table
+List every issue currently in stages: `coding`, `testing`, `building`, `review`, `ready-to-merge`, `awaiting-integration`.
+One row per issue. Columns: Issue #, Title (truncated), Stage (backtick-wrapped), Agent (current agent name or `-`), PR (`#N` or `-`), Started (date).
+
+#### Section 2 — Epic Integration Status Table
+Compute this table fresh from the Active Work data on **every run**. **Do not copy-paste from the previous body.**
+
+For each active epic (epics not yet in Completed Epics):
+1. List all sub-issues belonging to that epic
+2. Count `ready_count` = number of sub-issues whose stage is `ready-to-merge` OR `awaiting-integration`
+3. Count `total` = total sub-issues in that epic
+4. Determine **Status**:
+   - Any sub-issue in `awaiting-integration` → `⏳ Integration agent running`
+   - `ready_count == total` → `🎯 All issues ready — awaiting integration dispatch`
+   - Otherwise → `🚀 In progress` followed by a parenthetical listing each sub-issue and its current stage, e.g. `(#136 review, #137 building, #138 blocked on #136+#137 merge)`
+5. Determine **Action**:
+   - `awaiting-integration` present → `Integration agent dispatched`
+   - `ready_count == total` → `Dispatch integration-agent`
+   - Otherwise → `-`
+
+#### Section 3 — Completed Epics Table
+List every epic whose epic PR has been merged to `main`.
+Include: Epic issue #, title, date integrated, PR #.
+
+#### Section 4 — Blocked Issues Table
+List every issue in `blocked` stage with its blocker.
+
+#### Full Body Template
+
+```markdown
+## 📋 Active Work
+
+| Issue | Title | Stage | Agent | PR | Started |
+|-------|-------|-------|-------|-----|---------|
+[rows]
+
+## 🎯 Epic Integration Status
+
+| Epic | Total | Ready-to-Merge | Status | Action |
+|------|-------|----------------|--------|--------|
+[rows — computed fresh per algorithm above]
+
+## ✅ Completed Epics
+
+| Epic | Integrated | PR |
+|------|------------|-----|
+[rows]
+
+## 🚫 Blocked Issues
+
+| Issue | Title | Blocked By |
+|-------|-------|------------|
+[rows]
+
+---
+
+### Coding Concurrency Tracker
+| Issue | Dispatch # | Dispatched At |
+|-------|-----------|--------------| 
+[rows or (none active)]
+
+---
+*Last updated: [ISO timestamp] UTC by orchestrator run #${{ github.run_number }}*
+```
+
+### Step B: Post Run-Summary Comment
+
+After updating the body, post a comment:
+
 ```markdown
 ## 🤖 Orchestrator Run #${{ github.run_number }}
 
