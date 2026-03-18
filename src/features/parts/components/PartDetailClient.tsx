@@ -1,9 +1,20 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, FormEvent } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+  DialogClose,
+} from '@/components/ui/dialog';
 import { formatDate } from '@/lib/utils';
 import type { PartDetail, LotWithDetails } from '../types';
 
@@ -41,11 +52,170 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
+interface AdjustLotDialogProps {
+  lot: LotWithDetails;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onQuantityUpdated: (lotId: string, newQuantity: number) => void;
+}
+
+function AdjustLotDialog({ lot, open, onOpenChange, onQuantityUpdated }: AdjustLotDialogProps) {
+  const [consumeAmount, setConsumeAmount] = useState('');
+  const [addAmount, setAddAmount] = useState('');
+  const [notes, setNotes] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
+
+  const currentQty = lot.quantity ?? 0;
+  const unitLabel = lot.unit ? ` ${lot.unit}` : '';
+
+  function reset() {
+    setConsumeAmount('');
+    setAddAmount('');
+    setNotes('');
+    setFormError(null);
+  }
+
+  async function handleSubmit(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const consume = consumeAmount ? parseInt(consumeAmount, 10) : 0;
+    const add = addAmount ? parseInt(addAmount, 10) : 0;
+    const delta = add - consume;
+
+    if (delta === 0) {
+      setFormError('No change: enter a consume or add amount.');
+      return;
+    }
+
+    const newQty = currentQty + delta;
+    if (newQty < 0) {
+      setFormError(`Cannot consume more than current quantity (${currentQty}${unitLabel}).`);
+      return;
+    }
+
+    setSubmitting(true);
+    setFormError(null);
+
+    try {
+      const patchRes = await fetch(`/api/lots/${lot.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ quantity: newQty }),
+      });
+      if (!patchRes.ok) {
+        const errData = (await patchRes.json()) as { message?: string };
+        throw new Error(errData.message ?? 'Failed to update lot quantity');
+      }
+
+      await fetch(`/api/lots/${lot.id}/events`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: 'edited',
+          delta,
+          notes: notes || undefined,
+        }),
+      });
+
+      onQuantityUpdated(lot.id, newQty);
+      reset();
+      onOpenChange(false);
+    } catch (err) {
+      setFormError(err instanceof Error ? err.message : 'An unexpected error occurred');
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <Dialog
+      open={open}
+      onOpenChange={(o) => {
+        if (!o) reset();
+        onOpenChange(o);
+      }}
+    >
+      <DialogContent className="sm:max-w-sm">
+        <DialogHeader>
+          <DialogTitle>Adjust Quantity</DialogTitle>
+          <DialogDescription>
+            Current:{' '}
+            <strong>
+              {currentQty}
+              {unitLabel}
+            </strong>
+          </DialogDescription>
+        </DialogHeader>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-1.5">
+            <label htmlFor="consume-amount" className="text-sm font-medium text-gray-700">
+              Consume (subtract)
+            </label>
+            <Input
+              id="consume-amount"
+              type="number"
+              min={0}
+              max={currentQty}
+              placeholder={`e.g. 50${unitLabel}`}
+              value={consumeAmount}
+              onChange={(e) => {
+                setConsumeAmount(e.target.value);
+                setAddAmount('');
+                setFormError(null);
+              }}
+            />
+          </div>
+          <div className="space-y-1.5">
+            <label htmlFor="add-amount" className="text-sm font-medium text-gray-700">
+              Add stock (receive more)
+            </label>
+            <Input
+              id="add-amount"
+              type="number"
+              min={0}
+              placeholder={`e.g. 100${unitLabel}`}
+              value={addAmount}
+              onChange={(e) => {
+                setAddAmount(e.target.value);
+                setConsumeAmount('');
+                setFormError(null);
+              }}
+            />
+          </div>
+          <div className="space-y-1.5">
+            <label htmlFor="adjust-notes" className="text-sm font-medium text-gray-700">
+              Notes <span className="font-normal text-gray-400">(optional)</span>
+            </label>
+            <Input
+              id="adjust-notes"
+              placeholder="Reason or reference"
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+            />
+          </div>
+          {formError && <p className="text-sm text-red-600">{formError}</p>}
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button type="button" variant="outline">
+                Cancel
+              </Button>
+            </DialogClose>
+            <Button type="submit" disabled={submitting}>
+              {submitting ? 'Saving…' : 'Save'}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 export function PartDetailClient() {
   const { id } = useParams<{ id: string }>();
   const [part, setPart] = useState<PartDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [adjustLotId, setAdjustLotId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!id) return;
@@ -60,6 +230,16 @@ export function PartDetailClient() {
       .catch((err: Error) => setError(err.message))
       .finally(() => setLoading(false));
   }, [id]);
+
+  function updateLotQuantity(lotId: string, newQuantity: number) {
+    setPart((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        lots: prev.lots.map((l) => (l.id === lotId ? { ...l, quantity: newQuantity } : l)),
+      };
+    });
+  }
 
   if (loading) {
     return (
@@ -190,6 +370,9 @@ export function PartDetailClient() {
                   <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-gray-500">
                     Notes
                   </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-gray-500">
+                    Actions
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
@@ -213,6 +396,17 @@ export function PartDetailClient() {
                     </td>
                     <td className="max-w-xs truncate px-4 py-3 text-gray-500">
                       {lot.notes ?? '—'}
+                    </td>
+                    <td className="px-4 py-3">
+                      {lot.quantityMode === 'exact' && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => setAdjustLotId(lot.id)}
+                        >
+                          Adjust
+                        </Button>
+                      )}
                     </td>
                   </tr>
                 ))}
@@ -270,6 +464,15 @@ export function PartDetailClient() {
       >
         ← Back to Parts
       </Link>
+
+      {adjustLotId && (
+        <AdjustLotDialog
+          lot={part.lots.find((l) => l.id === adjustLotId)!}
+          open={!!adjustLotId}
+          onOpenChange={(open) => { if (!open) setAdjustLotId(null); }}
+          onQuantityUpdated={updateLotQuantity}
+        />
+      )}
     </div>
   );
 }
