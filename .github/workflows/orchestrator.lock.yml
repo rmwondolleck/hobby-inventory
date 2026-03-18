@@ -23,7 +23,7 @@
 #
 # Central coordinator that manages work queue, dispatches agents, and tracks state via a dedicated tracking issue
 #
-# gh-aw-metadata: {"schema_version":"v2","frontmatter_hash":"30cf409e50841f285c0dce29ac737a88cec84ef40c9f5fc6ad1c00d743e809bf","compiler_version":"v0.57.2","strict":true}
+# gh-aw-metadata: {"schema_version":"v2","frontmatter_hash":"4cf01c436ca7b9505e6b989e1a0fc1614d4fdf596a0776816b958792bd0684b2","compiler_version":"v0.57.2","strict":true}
 
 name: "Development Orchestrator"
 "on":
@@ -149,7 +149,7 @@ jobs:
           cat "/opt/gh-aw/prompts/safe_outputs_prompt.md"
           cat << 'GH_AW_PROMPT_EOF'
           <safe-output-tools>
-          Tools: add_comment, create_issue, update_issue, add_labels, add_reviewer, dispatch_workflow, missing_tool, missing_data, noop
+          Tools: add_comment, create_issue, update_issue, update_pull_request, add_labels, add_reviewer, dispatch_workflow, missing_tool, missing_data, noop
           </safe-output-tools>
           <github-context>
           The following GitHub context information is available for this workflow:
@@ -346,7 +346,7 @@ jobs:
           mkdir -p /tmp/gh-aw/safeoutputs
           mkdir -p /tmp/gh-aw/mcp-logs/safeoutputs
           cat > /opt/gh-aw/safeoutputs/config.json << 'GH_AW_SAFE_OUTPUTS_CONFIG_EOF'
-          {"add_comment":{"max":10,"target":"*"},"add_labels":{"allowed":["ready","in-progress","blocked","needs-work","ready-to-merge","awaiting-integration"],"max":20},"add_reviewer":{"max":10,"reviewers":["copilot"]},"create_issue":{"max":1},"dispatch_workflow":{"max":10,"workflow_files":{"build-agent":".lock.yml","coding-agent":".lock.yml","integration-agent":".lock.yml","test-agent":".lock.yml"},"workflows":["coding-agent","test-agent","build-agent","integration-agent"]},"missing_data":{},"missing_tool":{},"noop":{"max":1},"update_issue":{"max":1}}
+          {"add_comment":{"max":10,"target":"*"},"add_labels":{"allowed":["ready","in-progress","blocked","needs-work","ready-to-merge","awaiting-integration"],"max":20},"add_reviewer":{"max":10,"reviewers":["copilot"]},"create_issue":{"max":1},"dispatch_workflow":{"max":10,"workflow_files":{"build-agent":".lock.yml","coding-agent":".lock.yml","integration-agent":".lock.yml","test-agent":".lock.yml"},"workflows":["coding-agent","test-agent","build-agent","integration-agent"]},"missing_data":{},"missing_tool":{},"noop":{"max":1},"update_issue":{"max":1},"update_pull_request":{"max":10}}
           GH_AW_SAFE_OUTPUTS_CONFIG_EOF
           cat > /opt/gh-aw/safeoutputs/tools.json << 'GH_AW_SAFE_OUTPUTS_TOOLS_EOF'
           [
@@ -571,6 +571,52 @@ jobs:
                 "type": "object"
               },
               "name": "update_issue"
+            },
+            {
+              "description": "Update an existing GitHub pull request's title or body. Supports replacing, appending to, or prepending content to the body. Title is always replaced. Only the fields you specify will be updated; other fields remain unchanged. CONSTRAINTS: Maximum 10 pull request(s) can be updated. Target: *.",
+              "inputSchema": {
+                "additionalProperties": false,
+                "properties": {
+                  "body": {
+                    "description": "Pull request body content in Markdown. For 'replace', this becomes the entire body. For 'append'/'prepend', this is added with a separator.",
+                    "type": "string"
+                  },
+                  "draft": {
+                    "description": "Whether the PR should be a draft (true) or ready for review (false). Use to convert between draft and ready states.",
+                    "type": "boolean"
+                  },
+                  "integrity": {
+                    "description": "Trustworthiness level of the message source (e.g., \"low\", \"medium\", \"high\").",
+                    "type": "string"
+                  },
+                  "operation": {
+                    "description": "How to update the PR body: 'replace' (default - completely overwrite), 'append' (add to end with separator), or 'prepend' (add to start with separator). Title is always replaced.",
+                    "enum": [
+                      "replace",
+                      "append",
+                      "prepend"
+                    ],
+                    "type": "string"
+                  },
+                  "pull_request_number": {
+                    "description": "Pull request number to update. This is the numeric ID from the GitHub URL (e.g., 234 in github.com/owner/repo/pull/234). Required when the workflow target is '*' (any PR).",
+                    "type": [
+                      "number",
+                      "string"
+                    ]
+                  },
+                  "secrecy": {
+                    "description": "Confidentiality level of the message content (e.g., \"public\", \"internal\", \"private\").",
+                    "type": "string"
+                  },
+                  "title": {
+                    "description": "New pull request title to replace the existing title.",
+                    "type": "string"
+                  }
+                },
+                "type": "object"
+              },
+              "name": "update_pull_request"
             },
             {
               "description": "Report that a tool or capability needed to complete the task is not available, or share any information you deem important about missing functionality or limitations. Use this when you cannot accomplish what was requested because the required functionality is missing or access is restricted.",
@@ -994,6 +1040,40 @@ jobs:
                 }
               },
               "customValidation": "requiresOneOf:status,title,body"
+            },
+            "update_pull_request": {
+              "defaultMax": 1,
+              "fields": {
+                "body": {
+                  "type": "string",
+                  "sanitize": true,
+                  "maxLength": 65000
+                },
+                "draft": {
+                  "type": "boolean"
+                },
+                "operation": {
+                  "type": "string",
+                  "enum": [
+                    "replace",
+                    "append",
+                    "prepend"
+                  ]
+                },
+                "pull_request_number": {
+                  "issueOrPRNumber": true
+                },
+                "repo": {
+                  "type": "string",
+                  "maxLength": 256
+                },
+                "title": {
+                  "type": "string",
+                  "sanitize": true,
+                  "maxLength": 256
+                }
+              },
+              "customValidation": "requiresOneOf:title,body"
             }
           }
           GH_AW_SAFE_OUTPUTS_VALIDATION_EOF
@@ -1583,7 +1663,7 @@ jobs:
           GH_AW_ALLOWED_DOMAINS: "api.business.githubcopilot.com,api.enterprise.githubcopilot.com,api.github.com,api.githubcopilot.com,api.individual.githubcopilot.com,api.snapcraft.io,archive.ubuntu.com,azure.archive.ubuntu.com,crl.geotrust.com,crl.globalsign.com,crl.identrust.com,crl.sectigo.com,crl.thawte.com,crl.usertrust.com,crl.verisign.com,crl3.digicert.com,crl4.digicert.com,crls.ssl.com,github.com,host.docker.internal,json-schema.org,json.schemastore.org,keyserver.ubuntu.com,ocsp.digicert.com,ocsp.geotrust.com,ocsp.globalsign.com,ocsp.identrust.com,ocsp.sectigo.com,ocsp.ssl.com,ocsp.thawte.com,ocsp.usertrust.com,ocsp.verisign.com,packagecloud.io,packages.cloud.google.com,packages.microsoft.com,ppa.launchpad.net,raw.githubusercontent.com,registry.npmjs.org,s.symcb.com,s.symcd.com,security.ubuntu.com,telemetry.enterprise.githubcopilot.com,ts-crl.ws.symantec.com,ts-ocsp.ws.symantec.com"
           GITHUB_SERVER_URL: ${{ github.server_url }}
           GITHUB_API_URL: ${{ github.api_url }}
-          GH_AW_SAFE_OUTPUTS_HANDLER_CONFIG: "{\"add_comment\":{\"max\":10,\"target\":\"*\"},\"add_labels\":{\"allowed\":[\"ready\",\"in-progress\",\"blocked\",\"needs-work\",\"ready-to-merge\",\"awaiting-integration\"],\"max\":20},\"add_reviewer\":{\"allowed\":[\"copilot\"],\"max\":10,\"target\":\"*\"},\"create_issue\":{\"labels\":[\"orchestrator\",\"tracking\"],\"max\":1,\"title_prefix\":\"[Orchestrator] \"},\"dispatch_workflow\":{\"max\":10,\"workflow_files\":{\"build-agent\":\".lock.yml\",\"coding-agent\":\".lock.yml\",\"integration-agent\":\".lock.yml\",\"test-agent\":\".lock.yml\"},\"workflows\":[\"coding-agent\",\"test-agent\",\"build-agent\",\"integration-agent\"]},\"missing_data\":{},\"missing_tool\":{},\"update_issue\":{\"allow_body\":true,\"max\":1,\"target\":\"*\"}}"
+          GH_AW_SAFE_OUTPUTS_HANDLER_CONFIG: "{\"add_comment\":{\"max\":10,\"target\":\"*\"},\"add_labels\":{\"allowed\":[\"ready\",\"in-progress\",\"blocked\",\"needs-work\",\"ready-to-merge\",\"awaiting-integration\"],\"max\":20},\"add_reviewer\":{\"allowed\":[\"copilot\"],\"max\":10,\"target\":\"*\"},\"create_issue\":{\"labels\":[\"orchestrator\",\"tracking\"],\"max\":1,\"title_prefix\":\"[Orchestrator] \"},\"dispatch_workflow\":{\"max\":10,\"workflow_files\":{\"build-agent\":\".lock.yml\",\"coding-agent\":\".lock.yml\",\"integration-agent\":\".lock.yml\",\"test-agent\":\".lock.yml\"},\"workflows\":[\"coding-agent\",\"test-agent\",\"build-agent\",\"integration-agent\"]},\"missing_data\":{},\"missing_tool\":{},\"update_issue\":{\"allow_body\":true,\"max\":1,\"target\":\"*\"},\"update_pull_request\":{\"allow_body\":true,\"allow_title\":true,\"max\":10,\"target\":\"*\"}}"
         with:
           github-token: ${{ secrets.GH_AW_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
           script: |
