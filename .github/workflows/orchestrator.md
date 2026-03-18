@@ -6,7 +6,7 @@ on:
   # Secondary: React to completions reported by agents
   issue_comment:
     types: [created]
-  # React immediately when Copilot submits a PR review (approved or changes requested)
+  # React immediately when Copilot submits a PR review
   pull_request_review:
     types: [submitted]
   # Manual trigger for immediate orchestration
@@ -347,13 +347,16 @@ For each issue in `review` stage in the Active Work table:
 #### Decision Logic
 
 ```
-Latest Copilot review state = APPROVED?
+Latest Copilot review state = APPROVED or COMMENTED?
   → Transition to ready-to-merge (see below)
+  Note: GitHub Copilot typically submits `COMMENTED` reviews (not `APPROVED`)
+  when leaving inline suggestions. Treat `COMMENTED` as approval — Copilot
+  uses `CHANGES_REQUESTED` only for blocking issues.
 
 Latest Copilot review state = CHANGES_REQUESTED?
   → Transition to needs-work, dispatch remediation (see below)
 
-No Copilot review yet, OR state = COMMENTED?
+No Copilot review yet?
   → No action. Review is pending. Next run will catch it.
 ```
 
@@ -396,7 +399,7 @@ If PR `#${{ github.event.pull_request.number }}` matches a PR currently in `revi
 - Call `get_reviews` on that PR to read the review state
 - Look for a review from `github-copilot[bot]` and check its `state` field (`approved`, `changes_requested`, or `commented`)
 - Process it immediately using the logic above
-- Only act on `approved` or `changes_requested` — ignore `commented`
+- Act on `approved` or `commented` (both transition to ready-to-merge) — only `changes_requested` triggers needs-work remediation
 
 ### Task 6: Check Epic Completion (TRIGGER INTEGRATION)
 

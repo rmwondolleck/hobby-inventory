@@ -23,7 +23,7 @@
 #
 # Central coordinator that manages work queue, dispatches agents, and tracks state via a dedicated tracking issue
 #
-# gh-aw-metadata: {"schema_version":"v2","frontmatter_hash":"4cf01c436ca7b9505e6b989e1a0fc1614d4fdf596a0776816b958792bd0684b2","compiler_version":"v0.57.2","strict":true}
+# gh-aw-metadata: {"schema_version":"v2","frontmatter_hash":"5c2b28a0e9ed2ae3f5305b58bcf8e27e87e0539398032633cddb3d9a54483488","compiler_version":"v0.57.2","strict":true}
 
 name: "Development Orchestrator"
 "on":
