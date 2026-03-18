@@ -3,8 +3,11 @@
 import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
+import { PencilIcon } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { formatDate } from '@/lib/utils';
+import { EditPartDialog } from './EditPartDialog';
 import type { PartDetail, LotWithDetails } from '../types';
 
 function QuantityDisplay({ lot }: { lot: LotWithDetails }) {
@@ -46,6 +49,7 @@ export function PartDetailClient() {
   const [part, setPart] = useState<PartDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [editOpen, setEditOpen] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -107,12 +111,29 @@ export function PartDetailClient() {
 
   return (
     <div className="space-y-6">
+      {/* Edit dialog */}
+      <EditPartDialog
+        open={editOpen}
+        onOpenChange={setEditOpen}
+        part={part}
+        onSave={setPart}
+      />
+
       {/* Header */}
       <div className="flex items-start justify-between gap-4">
         <div>
           <div className="flex flex-wrap items-center gap-3">
             <h1 className="text-2xl font-bold text-gray-900">{part.name}</h1>
             {part.archivedAt && <Badge variant="secondary">Archived</Badge>}
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setEditOpen(true)}
+            >
+              <PencilIcon className="size-3.5" />
+              Edit Part
+            </Button>
           </div>
           <div className="mt-1 flex flex-wrap items-center gap-x-2 text-sm text-gray-500">
             {part.category && <span>{part.category}</span>}
