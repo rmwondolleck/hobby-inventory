@@ -2,6 +2,15 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { Button } from '@/components/ui/button';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 
 interface LocationData {
   id: string;
@@ -39,99 +48,109 @@ export default function LocationsPage() {
   };
 
   if (loading) {
-    return <div style={{ padding: 32, color: '#9ca3af' }}>Loading locations…</div>;
+    return (
+      <div className="min-h-screen bg-background">
+        <div className="mx-auto max-w-7xl px-4 py-8">
+          <p className="text-muted-foreground">Loading locations…</p>
+        </div>
+      </div>
+    );
   }
+
   if (error) {
-    return <div style={{ padding: 32, color: '#dc2626' }}>{error}</div>;
+    return (
+      <div className="min-h-screen bg-background">
+        <div className="mx-auto max-w-7xl px-4 py-8">
+          <p className="text-destructive">{error}</p>
+        </div>
+      </div>
+    );
   }
 
   return (
-    <div style={{ padding: 24 }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
-        <h1 style={{ fontSize: 24, fontWeight: 700, margin: 0 }}>Locations</h1>
-        <button
-          onClick={() => openPrintLabel(locations.map((l) => l.id))}
-          disabled={locations.length === 0}
-          style={{
-            background: '#2563eb',
-            color: '#fff',
-            border: 'none',
-            borderRadius: 6,
-            padding: '8px 16px',
-            fontSize: 14,
-            fontWeight: 500,
-            cursor: 'pointer',
-            opacity: locations.length === 0 ? 0.5 : 1,
-          }}
-        >
-          🖨️ Print All Labels
-        </button>
-      </div>
-
-      {locations.length === 0 ? (
-        <div style={{ textAlign: 'center', color: '#9ca3af', padding: '48px 0' }}>
-          No locations found.
+    <div className="min-h-screen bg-background">
+      <div className="mx-auto max-w-7xl px-4 py-8">
+        <div className="flex items-center justify-between mb-6">
+          <h1 className="text-2xl font-bold text-foreground">Locations</h1>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => openPrintLabel(locations.map((l) => l.id))}
+            disabled={locations.length === 0}
+          >
+            🖨️ Print All Labels
+          </Button>
         </div>
-      ) : (
-        <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
-            <thead>
-              <tr style={{ background: '#f9fafb', textAlign: 'left' }}>
-                <th style={{ border: '1px solid #e5e7eb', padding: '8px 12px', fontWeight: 600 }}>Name</th>
-                <th style={{ border: '1px solid #e5e7eb', padding: '8px 12px', fontWeight: 600 }}>Path</th>
-                <th style={{ border: '1px solid #e5e7eb', padding: '8px 12px', fontWeight: 600 }}>Notes</th>
-                <th style={{ border: '1px solid #e5e7eb', padding: '8px 12px', fontWeight: 600 }}>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
+
+        {locations.length === 0 ? (
+          <div className="text-center text-muted-foreground py-12">
+            No locations found.
+          </div>
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Name</TableHead>
+                <TableHead>Path</TableHead>
+                <TableHead>Notes</TableHead>
+                <TableHead>Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               {locations.map((location) => (
-                <tr key={location.id} style={{ verticalAlign: 'middle' }}>
-                  <td style={{ border: '1px solid #e5e7eb', padding: '8px 12px', fontWeight: 500 }}>
-                    <Link href={`/locations/${location.id}`} style={{ color: '#2563eb', textDecoration: 'none' }}>
+                <TableRow key={location.id}>
+                  <TableCell className="font-medium">
+                    <Link
+                      href={`/locations/${location.id}`}
+                      className="text-primary hover:underline"
+                    >
                       {location.name}
                     </Link>
-                  </td>
-                  <td style={{ border: '1px solid #e5e7eb', padding: '8px 12px', color: '#6b7280', fontFamily: 'monospace', fontSize: 12 }}>
+                  </TableCell>
+                  <TableCell className="text-muted-foreground font-mono text-xs">
                     {location.path}
-                  </td>
-                  <td style={{ border: '1px solid #e5e7eb', padding: '8px 12px', color: '#6b7280' }}>
+                  </TableCell>
+                  <TableCell className="text-muted-foreground">
                     {location.notes ?? '—'}
-                  </td>
-                  <td style={{ border: '1px solid #e5e7eb', padding: '8px 12px' }}>
-                    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                      <button
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex gap-1.5 flex-wrap">
+                      <Button
+                        variant="outline"
+                        size="sm"
                         onClick={() => openPrintLabel([location.id])}
                         title="Print label for this location"
-                        style={{ fontSize: 12, background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, padding: '3px 8px', cursor: 'pointer' }}
                       >
                         🏷️ Label
-                      </button>
+                      </Button>
                       {(location.children?.length ?? 0) > 0 && (
-                        <button
+                        <Button
+                          variant="outline"
+                          size="sm"
                           onClick={() => openPrintLabel((location.children ?? []).map((c) => c.id))}
                           title="Print labels for all child locations"
-                          style={{ fontSize: 12, background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, padding: '3px 8px', cursor: 'pointer' }}
                         >
                           🏷️ Children
-                        </button>
+                        </Button>
                       )}
-                      <Link
-                        href={`/print/labels?type=lot&locationId=${encodeURIComponent(location.id)}&size=medium`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        title="Print labels for all lots at this location"
-                        style={{ fontSize: 12, background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, padding: '3px 8px', cursor: 'pointer', textDecoration: 'none', color: 'inherit' }}
-                      >
-                        🏷️ Lots
-                      </Link>
+                      <Button variant="outline" size="sm" asChild>
+                        <Link
+                          href={`/print/labels?type=lot&locationId=${encodeURIComponent(location.id)}&size=medium`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          title="Print labels for all lots at this location"
+                        >
+                          🏷️ Lots
+                        </Link>
+                      </Button>
                     </div>
-                  </td>
-                </tr>
+                  </TableCell>
+                </TableRow>
               ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+            </TableBody>
+          </Table>
+        )}
+      </div>
     </div>
   );
 }
