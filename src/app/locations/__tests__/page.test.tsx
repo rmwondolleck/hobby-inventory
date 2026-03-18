@@ -165,16 +165,12 @@ describe('LocationsPage — Print All Labels button', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /print all labels/i }));
 
-    expect(window.open).toHaveBeenCalledWith(
-      expect.stringContaining('loc-1'),
-      '_blank',
-      'noopener,noreferrer'
-    );
-    expect(window.open).toHaveBeenCalledWith(
-      expect.stringContaining('loc-2'),
-      '_blank',
-      'noopener,noreferrer'
-    );
+    expect(window.open).toHaveBeenCalledTimes(1);
+    const [url] = (window.open as jest.Mock).mock.calls[0];
+    const parsed = new URL(url, 'http://localhost');
+    const ids = parsed.searchParams.get('ids') ?? '';
+    expect(ids).toContain('loc-1');
+    expect(ids).toContain('loc-2');
   });
 });
 
