@@ -64,23 +64,23 @@ export function ScrapLostModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-      <div className="mx-4 w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
+      <div className="mx-4 w-full max-w-md rounded-xl bg-card p-6 shadow-xl">
         <div className="mb-4 flex items-center justify-between">
-          <h3 className="text-lg font-semibold text-gray-900">{title}</h3>
+          <h3 className="text-lg font-semibold text-foreground">{title}</h3>
           <button
             onClick={onClose}
-            className="text-xl leading-none text-gray-400 hover:text-gray-600"
+            className="text-xl leading-none text-muted-foreground hover:text-muted-foreground"
             aria-label="Close"
           >
             ✕
           </button>
         </div>
 
-        <p className="mb-4 text-sm text-gray-600">{description}</p>
+        <p className="mb-4 text-sm text-muted-foreground">{description}</p>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">
+            <label className="mb-1 block text-sm font-medium text-foreground">
               Reason / Notes
             </label>
             <textarea
@@ -88,7 +88,7 @@ export function ScrapLostModal({
               onChange={(e) => setReason(e.target.value)}
               placeholder="Optional reason…"
               rows={3}
-              className="w-full resize-none rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
+              className="w-full resize-none rounded-lg border border-border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
               disabled={loading}
             />
           </div>
@@ -99,7 +99,7 @@ export function ScrapLostModal({
             <button
               type="button"
               onClick={onClose}
-              className="rounded-lg border border-gray-300 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+              className="rounded-lg border border-border px-4 py-2 text-sm text-foreground hover:bg-muted"
               disabled={loading}
             >
               Cancel

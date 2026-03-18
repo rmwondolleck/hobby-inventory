@@ -155,4 +155,27 @@ describe('ProjectCard', () => {
     const link = container.firstChild as HTMLElement;
     expect(link.className).not.toContain('opacity-60');
   });
+
+  describe('theme classes (CSS variable substitution)', () => {
+    it('uses bg-card on the card container instead of bg-white', () => {
+      const { container } = render(<ProjectCard project={baseProject} />);
+      const link = container.firstChild as HTMLElement;
+      expect(link.className).toContain('bg-card');
+      expect(link.className).not.toContain('bg-white');
+    });
+
+    it('uses text-foreground for project name instead of text-gray-900', () => {
+      render(<ProjectCard project={baseProject} />);
+      const heading = screen.getByText('Robot Arm');
+      expect(heading.className).toContain('text-foreground');
+      expect(heading.className).not.toContain('text-gray-900');
+    });
+
+    it('uses text-muted-foreground for notes instead of hardcoded gray', () => {
+      render(<ProjectCard project={baseProject} />);
+      const notes = screen.getByText('Building a robotic arm');
+      expect(notes.className).toContain('text-muted-foreground');
+      expect(notes.className).not.toContain('text-gray-600');
+    });
+  });
 });

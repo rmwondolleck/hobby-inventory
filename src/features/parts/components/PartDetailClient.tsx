@@ -64,9 +64,9 @@ export function PartDetailClient() {
   if (loading) {
     return (
       <div className="space-y-4">
-        <div className="h-8 w-64 animate-pulse rounded bg-gray-200" />
-        <div className="h-4 w-48 animate-pulse rounded bg-gray-100" />
-        <div className="h-40 animate-pulse rounded-lg bg-gray-100" />
+        <div className="h-8 w-64 animate-pulse rounded bg-muted" />
+        <div className="h-4 w-48 animate-pulse rounded bg-muted" />
+        <div className="h-40 animate-pulse rounded-lg bg-muted" />
       </div>
     );
   }
@@ -111,18 +111,18 @@ export function PartDetailClient() {
       <div className="flex items-start justify-between gap-4">
         <div>
           <div className="flex flex-wrap items-center gap-3">
-            <h1 className="text-2xl font-bold text-gray-900">{part.name}</h1>
+            <h1 className="text-2xl font-bold text-foreground">{part.name}</h1>
             {part.archivedAt && <Badge variant="secondary">Archived</Badge>}
           </div>
-          <div className="mt-1 flex flex-wrap items-center gap-x-2 text-sm text-gray-500">
+          <div className="mt-1 flex flex-wrap items-center gap-x-2 text-sm text-muted-foreground">
             {part.category && <span>{part.category}</span>}
             {part.manufacturer && <span>· {part.manufacturer}</span>}
             {part.mpn && <span>· MPN: {part.mpn}</span>}
           </div>
         </div>
         <div className="shrink-0 text-right">
-          <div className="text-3xl font-bold text-gray-900">{totalQuantity}</div>
-          <div className="text-sm text-gray-500">in stock</div>
+          <div className="text-3xl font-bold text-foreground">{totalQuantity}</div>
+          <div className="text-sm text-muted-foreground">in stock</div>
         </div>
       </div>
 
@@ -139,7 +139,7 @@ export function PartDetailClient() {
 
       {/* Notes */}
       {part.notes && (
-        <div className="rounded-lg bg-gray-50 p-4 text-sm text-gray-700">
+        <div className="rounded-lg bg-muted p-4 text-sm text-foreground">
           {part.notes}
         </div>
       )}
@@ -147,14 +147,14 @@ export function PartDetailClient() {
       {/* Parameters */}
       {paramEntries.length > 0 && (
         <section>
-          <h2 className="mb-3 text-lg font-semibold text-gray-900">Parameters</h2>
-          <dl className="grid gap-3 rounded-lg border bg-white p-4 sm:grid-cols-2 lg:grid-cols-3">
+          <h2 className="mb-3 text-lg font-semibold text-foreground">Parameters</h2>
+          <dl className="grid gap-3 rounded-lg border bg-card p-4 sm:grid-cols-2 lg:grid-cols-3">
             {paramEntries.map(([key, value]) => (
               <div key={key}>
-                <dt className="text-xs font-medium uppercase tracking-wide text-gray-500">
+                <dt className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
                   {key}
                 </dt>
-                <dd className="mt-0.5 text-sm text-gray-900">{String(value)}</dd>
+                <dd className="mt-0.5 text-sm text-foreground">{String(value)}</dd>
               </div>
             ))}
           </dl>
@@ -163,55 +163,55 @@ export function PartDetailClient() {
 
       {/* Lots */}
       <section>
-        <h2 className="mb-3 text-lg font-semibold text-gray-900">
+        <h2 className="mb-3 text-lg font-semibold text-foreground">
           Lots ({part.lots.length})
         </h2>
         {part.lots.length === 0 ? (
-          <div className="rounded-lg border border-dashed border-gray-300 p-4 text-center text-sm text-gray-500">
+          <div className="rounded-lg border border-dashed border-border p-4 text-center text-sm text-muted-foreground">
             No lots yet.
           </div>
         ) : (
-          <div className="overflow-x-auto rounded-lg border bg-white">
+          <div className="overflow-x-auto rounded-lg border bg-card">
             <table className="min-w-full divide-y divide-gray-200 text-sm">
-              <thead className="bg-gray-50">
+              <thead className="bg-muted">
                 <tr>
-                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-gray-500">
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">
                     Quantity
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-gray-500">
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">
                     Location
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-gray-500">
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">
                     Status
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-gray-500">
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">
                     Received
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-gray-500">
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">
                     Notes
                   </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {part.lots.map((lot) => (
-                  <tr key={lot.id} className="hover:bg-gray-50">
+                  <tr key={lot.id} className="hover:bg-muted">
                     <td className="px-4 py-3 font-medium">
                       <QuantityDisplay lot={lot} />
                     </td>
-                    <td className="px-4 py-3 text-gray-600">
+                    <td className="px-4 py-3 text-muted-foreground">
                       {lot.location ? (
                         lot.location.path
                       ) : (
-                        <span className="italic text-gray-400">Unassigned</span>
+                        <span className="italic text-muted-foreground">Unassigned</span>
                       )}
                     </td>
                     <td className="px-4 py-3">
                       <StatusBadge status={lot.status} />
                     </td>
-                    <td className="px-4 py-3 text-gray-500">
+                    <td className="px-4 py-3 text-muted-foreground">
                       {lot.receivedAt ? formatDate(lot.receivedAt) : '—'}
                     </td>
-                    <td className="max-w-xs truncate px-4 py-3 text-gray-500">
+                    <td className="max-w-xs truncate px-4 py-3 text-muted-foreground">
                       {lot.notes ?? '—'}
                     </td>
                   </tr>
@@ -225,32 +225,32 @@ export function PartDetailClient() {
       {/* Project Allocations */}
       {projectAllocations.size > 0 && (
         <section>
-          <h2 className="mb-3 text-lg font-semibold text-gray-900">
+          <h2 className="mb-3 text-lg font-semibold text-foreground">
             Allocations by Project
           </h2>
-          <div className="overflow-x-auto rounded-lg border bg-white">
+          <div className="overflow-x-auto rounded-lg border bg-card">
             <table className="min-w-full divide-y divide-gray-200 text-sm">
-              <thead className="bg-gray-50">
+              <thead className="bg-muted">
                 <tr>
-                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-gray-500">
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">
                     Project
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-gray-500">
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">
                     Status
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-gray-500">
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">
                     Allocated
                   </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {Array.from(projectAllocations.entries()).map(([projId, data]) => (
-                  <tr key={projId} className="hover:bg-gray-50">
-                    <td className="px-4 py-3 font-medium text-gray-900">{data.name}</td>
+                  <tr key={projId} className="hover:bg-muted">
+                    <td className="px-4 py-3 font-medium text-foreground">{data.name}</td>
                     <td className="px-4 py-3">
                       <Badge variant="secondary">{data.status}</Badge>
                     </td>
-                    <td className="px-4 py-3 text-gray-600">{data.allocated}</td>
+                    <td className="px-4 py-3 text-muted-foreground">{data.allocated}</td>
                   </tr>
                 ))}
               </tbody>
@@ -260,7 +260,7 @@ export function PartDetailClient() {
       )}
 
       {/* Metadata footer */}
-      <div className="border-t pt-4 text-xs text-gray-400">
+      <div className="border-t pt-4 text-xs text-muted-foreground">
         Created {formatDate(part.createdAt)} · Updated {formatDate(part.updatedAt)}
       </div>
 

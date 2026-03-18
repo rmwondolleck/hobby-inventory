@@ -77,13 +77,13 @@ export function LotActionsPanel({
 
   return (
     <>
-      <section className="rounded-lg bg-white p-6 shadow-sm">
-        <h2 className="mb-4 text-base font-semibold text-gray-900">Actions</h2>
+      <section className="rounded-lg bg-card p-6 shadow-sm">
+        <h2 className="mb-4 text-base font-semibold text-foreground">Actions</h2>
         <div className="flex flex-wrap gap-2">
           {canMove && (
             <button
               onClick={() => setActiveModal('move')}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-2 text-sm font-medium text-foreground hover:bg-muted"
             >
               📦 Move
             </button>
@@ -101,7 +101,7 @@ export function LotActionsPanel({
           {canAdjust && (
             <button
               onClick={() => setActiveModal('adjust')}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-2 text-sm font-medium text-foreground hover:bg-muted"
             >
               ✏️ {quantityMode === 'exact' ? 'Adjust Quantity' : 'Update Stock Level'}
             </button>
