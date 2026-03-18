@@ -23,7 +23,7 @@
 #
 # Reviews PRs, adds tests, and reports completion to orchestrator
 #
-# gh-aw-metadata: {"schema_version":"v2","frontmatter_hash":"b1cd3eb5b4799fd7bb5c6b3930379020648ef691fd6819fad6528dba6712ed38","compiler_version":"v0.57.2","strict":true}
+# gh-aw-metadata: {"schema_version":"v2","frontmatter_hash":"8ee8e4e5058b431c7b63047f17241996e0bf94af76b6b163aedd169343e8d2da","compiler_version":"v0.57.2","strict":true}
 
 name: "Test Agent"
 "on":
@@ -45,7 +45,8 @@ name: "Test Agent"
 permissions: {}
 
 concurrency:
-  group: "gh-aw-${{ github.workflow }}"
+  cancel-in-progress: false
+  group: test-agent-pr-${{ github.event.inputs.pr_number }}
 
 run-name: "Test Agent"
 

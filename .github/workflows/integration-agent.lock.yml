@@ -23,7 +23,7 @@
 #
 # Synthesizes all feature PRs in an epic into one polished PR for human review
 #
-# gh-aw-metadata: {"schema_version":"v2","frontmatter_hash":"96c81604268ce6d0a833d820c92ba9cae6898ccf1be93f0058bbd45ad8ff61aa","compiler_version":"v0.57.2","strict":true}
+# gh-aw-metadata: {"schema_version":"v2","frontmatter_hash":"6e1af9d9fcc8bbaa4bd361b7be7a745310830e64f9a56c2826b24961b72d10f5","compiler_version":"v0.57.2","strict":true}
 
 name: "Integration Agent (Epic Synthesis)"
 "on":
@@ -49,7 +49,8 @@ name: "Integration Agent (Epic Synthesis)"
 permissions: {}
 
 concurrency:
-  group: "gh-aw-${{ github.workflow }}"
+  cancel-in-progress: false
+  group: integration-agent-epic-${{ github.event.inputs.epic_number }}
 
 run-name: "Integration Agent (Epic Synthesis)"
 

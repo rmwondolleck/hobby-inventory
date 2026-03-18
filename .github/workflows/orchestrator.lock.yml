@@ -23,7 +23,7 @@
 #
 # Central coordinator that manages work queue, dispatches agents, and tracks state via a dedicated tracking issue
 #
-# gh-aw-metadata: {"schema_version":"v2","frontmatter_hash":"fa04cc13bfb9d098e3a1d93f1f3fb53297f3eaaaa73839d599cb96c885782798","compiler_version":"v0.57.2","strict":true}
+# gh-aw-metadata: {"schema_version":"v2","frontmatter_hash":"30cf409e50841f285c0dce29ac737a88cec84ef40c9f5fc6ad1c00d743e809bf","compiler_version":"v0.57.2","strict":true}
 
 name: "Development Orchestrator"
 "on":
@@ -41,8 +41,8 @@ name: "Development Orchestrator"
 permissions: {}
 
 concurrency:
-  group: "gh-aw-${{ github.workflow }}-${{ github.event.issue.number || github.event.pull_request.number || github.run_id }}"
-  cancel-in-progress: true
+  cancel-in-progress: false
+  group: orchestrator
 
 run-name: "Development Orchestrator"
 
