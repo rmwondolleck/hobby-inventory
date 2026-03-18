@@ -6,7 +6,7 @@ on:
   # Secondary: React to completions reported by agents
   issue_comment:
     types: [created]
-  # React immediately when Copilot submits a PR review (approved or changes requested)
+  # React immediately when Copilot submits a PR review
   pull_request_review:
     types: [submitted]
   # Manual trigger for immediate orchestration
@@ -187,7 +187,8 @@ If not found, create it with the template above.
 
 - **If triggered by `pull_request_review`:**
   - A review was submitted on PR `#${{ github.event.pull_request.number }}`
-  - Skip directly to **Task 5a** to process the review. Do not parse AGENT_REPORTs in this task.
+  - First, find the Work Queue issue (Task 1) and check whether that PR number appears in the Active Work table's PR column. If it does NOT appear, this is not a tracked pipeline PR (e.g. a review on a bot-generated fix PR or a doc PR). Use `noop` and **stop immediately**.
+  - If the PR IS in the Active Work table, skip directly to **Task 5a** to process the review. Do not parse AGENT_REPORTs in this task.
 
 If triggered by `issue_comment`:
 - Check if comment is on the Work Queue issue
@@ -347,13 +348,16 @@ For each issue in `review` stage in the Active Work table:
 #### Decision Logic
 
 ```
-Latest Copilot review state = APPROVED?
+Latest Copilot review state = APPROVED or COMMENTED?
   → Transition to ready-to-merge (see below)
+  Note: GitHub Copilot typically submits `COMMENTED` reviews (not `APPROVED`)
+  when leaving inline suggestions. Treat `COMMENTED` as approval — Copilot
+  uses `CHANGES_REQUESTED` only for blocking issues.
 
 Latest Copilot review state = CHANGES_REQUESTED?
   → Transition to needs-work, dispatch remediation (see below)
 
-No Copilot review yet, OR state = COMMENTED?
+No Copilot review yet?
   → No action. Review is pending. Next run will catch it.
 ```
 
@@ -371,7 +375,7 @@ No Copilot review yet, OR state = COMMENTED?
 #### On CHANGES_REQUESTED — Transition to `needs-work`
 
 1. Update Work Queue: stage `review` → `needs-work`
-2. Dispatch coding-agent in remediation mode:
+2. **If triggered by `schedule`, `workflow_dispatch`, or `issue_comment`**: Dispatch coding-agent in remediation mode:
    ```json
    {
      "workflow_name": "coding-agent",
@@ -384,6 +388,7 @@ No Copilot review yet, OR state = COMMENTED?
      }
    }
    ```
+   **If triggered by `pull_request_review`**: Do NOT dispatch — record the `needs-work` state transition only. The dispatch will happen on the next scheduled run.
 3. Add comment to Work Queue:
    ```
    🔧 Issue #X: Copilot requested changes on PR #Y. Dispatching remediation agent.
@@ -396,11 +401,15 @@ If PR `#${{ github.event.pull_request.number }}` matches a PR currently in `revi
 - Call `get_reviews` on that PR to read the review state
 - Look for a review from `github-copilot[bot]` and check its `state` field (`approved`, `changes_requested`, or `commented`)
 - Process it immediately using the logic above
-- Only act on `approved` or `changes_requested` — ignore `commented`
+- Act on `approved` or `commented` (both transition to ready-to-merge) — only `changes_requested` triggers needs-work remediation
+
+> ⚠️ **NO DISPATCHES from `pull_request_review` context.** When running in a `pull_request_review` context, GitHub Actions checks out the PR branch and all `dispatch_workflow` calls will fail with a `No ref found for: refs/pull/<pr_number>/merge` error. Do **NOT** attempt to dispatch any workflow (coding-agent, test-agent, build-agent, integration-agent) when triggered by `pull_request_review`. Record stage transitions in the work queue only — dispatches will fire on the next `schedule` or `workflow_dispatch` or `issue_comment` run.
 
 ### Task 6: Check Epic Completion (TRIGGER INTEGRATION)
 
-**On every run, check each epic:**
+> ⚠️ **Skip this entire task when triggered by `pull_request_review`.** Dispatching integration-agent from a PR review context always fails (see no-dispatch rule above). Epic completion checks and integration dispatch must only run during `schedule`, `workflow_dispatch`, or `issue_comment` triggers.
+
+**On every `schedule`, `workflow_dispatch`, or `issue_comment` run, check each epic:**
 
 ```
 For Epic #1 (Foundation):
@@ -416,7 +425,9 @@ For Epic #1 (Foundation):
 **When ALL issues in an epic reach `ready-to-merge`:**
 
 **Guard (check FIRST — skip this epic if integration is already running):**
-If ANY issue in this epic is already in `awaiting-integration` stage, **skip this epic entirely**. Integration has already been dispatched. Do not re-dispatch.
+If ANY issue in this epic is already in `awaiting-integration` stage, check whether a dispatch actually succeeded:
+- Search the Work Queue comments for an integration-agent AGENT_REPORT with `"agent": "integration-agent"` and matching `"epic_number"`. If one exists and was posted AFTER the `awaiting-integration` stage was set, integration is running — **skip this epic**.
+- If NO integration-agent AGENT_REPORT exists for this epic, the previous dispatch failed silently (this can happen when dispatching from a PR review context). **Recover**: reset all `awaiting-integration` issues in this epic back to `ready-to-merge` in the Work Queue, add a recovery comment, and proceed with the dispatch steps below as if the epic just became ready.
 
 **Pre-flight check (REQUIRED before dispatch):**
 Collect PR numbers from the `PR` column of the Active Work table for every issue in this epic:
