@@ -48,6 +48,32 @@ The human should receive ONE weekly issue that answers:
 3. What test coverage gaps exist?
 4. What has improved or regressed since last week?
 
+## Project Contract
+
+Before designing test scenarios or evaluating agent output, you MUST understand what this application does. Read these documents at the start of every run — they are the source of truth for what "correct" looks like:
+
+1. **Domain Model** (`docs/domain-model.md`) — 6 core entities: Part (catalog entry), Lot (physical stock), Location (storage hierarchy), Project (build goal), Allocation (project↔lot link), Event (immutable audit trail). Understand their relationships, required/optional fields, enums, and validation rules.
+
+2. **App Concept** (`docs/app-concept.md`) — Full UI/UX specification including: target user persona (solo maker/hobbyist), design principles (speed-first, data-dense, dark mode), information architecture (8 nav sections), 6 key user flows (Quick Intake, Find a Part, Allocate to Project, Move a Lot, CSV Import, Print Labels), component inventory, and 3 state machines.
+
+3. **State Transitions** (`docs/state-transitions.md`) — Three state machines that the codebase must enforce:
+   - **Stock status**: `in_stock → low → out`, plus `reserved`, `installed`, `lost`, `scrapped` (terminal)
+   - **Project status**: `idea → planned → active → deployed → retired`
+   - **Allocation status**: `reserved → in_use → deployed → recovered` (terminal)
+
+4. **API Reference** (`docs/api-reference.md`) — Complete endpoint contracts for 10 resource groups (Parts, Lots, Locations, Projects, Allocations, Events, Categories, Import, Inventory Match, Health) with request/response shapes, query parameters, status codes, and validation rules.
+
+5. **Prisma Schema** (`prisma/schema.prisma`) — The actual database models. Cross-reference against the domain model doc to detect drift.
+
+6. **README** (`README.md`) — Epic roadmap (4 epics: Foundation, Inventory Core, Projects & Compatibility, Intake & Usability), project structure, and available npm scripts.
+
+**Use this knowledge to:**
+- Generate test scenarios that target **real gaps** in the existing implementation (not generic features)
+- Validate that coding-agent output follows **existing project patterns** (TypeScript strict, Prisma for DB, Next.js App Router conventions)
+- Score code quality against the **actual domain model and validation rules**, not generic standards
+- Ensure test-agent output validates **real acceptance criteria** from the domain (e.g., state transition rules, required fields, relationship constraints)
+- Verify build-agent catches **domain-specific issues** (e.g., invalid state transitions, missing Prisma validations)
+
 ## Architecture Overview
 
 You are validating this agent ecosystem:
@@ -603,6 +629,3 @@ These can be safely closed without merging.
 - Do not dispatch agents with inputs that could modify production branches
 - Use `main` as epic_branch for simulation (coding-agent creates feature branches off it, which are disposable)
 - Do not expose secrets, tokens, or credentials in the report
-
-
-
