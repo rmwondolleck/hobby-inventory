@@ -27,6 +27,11 @@ import { getValidProjectTransitions } from '@/lib/state-transitions';
 import type { ProjectStatus } from '@/lib/types';
 import type { ProjectDetail, AllocationWithDetails, ProjectEvent } from '../types';
 
+type PatchedProject = Pick<
+  ProjectDetail,
+  'id' | 'name' | 'status' | 'tags' | 'notes' | 'wishlistNotes' | 'createdAt' | 'updatedAt' | 'archivedAt'
+>;
+
 const STATUS_LABELS: Record<string, string> = {
   idea: 'Idea',
   planned: 'Planned',
@@ -172,7 +177,7 @@ interface EditProjectDialogProps {
   project: ProjectDetail;
   open: boolean;
   onClose: () => void;
-  onSaved: (updated: ProjectDetail) => void;
+  onSaved: (updated: PatchedProject) => void;
 }
 
 function EditProjectDialog({ project, open, onClose, onSaved }: EditProjectDialogProps) {
@@ -226,10 +231,10 @@ function EditProjectDialog({ project, open, onClose, onSaved }: EditProjectDialo
         body: JSON.stringify(body),
       });
       if (!res.ok) {
-        const json = (await res.json().catch(() => ({}))) as { error?: string };
-        throw new Error(json.error ?? 'Failed to save changes');
+        const json = (await res.json().catch(() => ({}))) as { error?: string; message?: string };
+        throw new Error(json.message ?? json.error ?? 'Failed to save changes');
       }
-      const json = (await res.json()) as { data: ProjectDetail };
+      const json = (await res.json()) as { data: PatchedProject };
       onSaved(json.data);
       onClose();
     } catch (err) {
@@ -366,8 +371,8 @@ export function ProjectDetailClient({ id }: ProjectDetailClientProps) {
     try {
       const res = await fetch(`/api/projects/${project.id}`, { method: 'DELETE' });
       if (!res.ok) {
-        const json = (await res.json().catch(() => ({}))) as { error?: string };
-        throw new Error(json.error ?? 'Failed to archive project');
+        const json = (await res.json().catch(() => ({}))) as { error?: string; message?: string };
+        throw new Error(json.message ?? json.error ?? 'Failed to archive project');
       }
       router.push('/projects');
     } catch (err) {
@@ -421,7 +426,7 @@ export function ProjectDetailClient({ id }: ProjectDetailClientProps) {
           project={project}
           open={editOpen}
           onClose={() => setEditOpen(false)}
-          onSaved={(updated) => setProject({ ...project, ...updated })}
+          onSaved={(updated) => setProject((prev) => prev ? { ...prev, ...updated } : prev)}
         />
       )}
 
