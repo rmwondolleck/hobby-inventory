@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
 import { formatDate, formatDateTime } from '@/lib/utils';
 import type { ProjectDetail, AllocationWithDetails, ProjectEvent } from '../types';
+import type { AllocationStatus } from '@/lib/types';
 
 const STATUS_LABELS: Record<string, string> = {
   idea: 'Idea',
@@ -34,7 +35,20 @@ const ALLOCATION_STATUS_LABELS: Record<string, string> = {
 
 const ALLOCATION_STATUS_ORDER = ['in_use', 'deployed', 'reserved', 'recovered'];
 
-function AllocationRow({ allocation }: { allocation: AllocationWithDetails }) {
+const ALLOCATION_TRANSITIONS: Partial<Record<AllocationStatus, { label: string; nextStatus: AllocationStatus }>> = {
+  reserved: { label: 'Mark In-Use', nextStatus: 'in_use' },
+  in_use: { label: 'Mark Deployed', nextStatus: 'deployed' },
+  deployed: { label: 'Recover', nextStatus: 'recovered' },
+};
+
+function AllocationRow({
+  allocation,
+  onStatusChange,
+}: {
+  allocation: AllocationWithDetails;
+  onStatusChange: (id: string, newStatus: AllocationStatus) => void;
+}) {
+  const [transitioning, setTransitioning] = useState(false);
   const { lot } = allocation;
   const qtyDisplay =
     lot.quantityMode === 'qualitative'
@@ -44,6 +58,27 @@ function AllocationRow({ allocation }: { allocation: AllocationWithDetails }) {
       : lot.quantity != null
       ? `${lot.quantity}${lot.unit ? ' ' + lot.unit : ''}`
       : '—';
+
+  const transition = ALLOCATION_TRANSITIONS[allocation.status as AllocationStatus];
+
+  async function handleTransition() {
+    if (!transition) return;
+    setTransitioning(true);
+    try {
+      const res = await fetch(`/api/allocations/${allocation.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: transition.nextStatus }),
+      });
+      if (!res.ok) throw new Error('Failed to update status');
+      const json = (await res.json()) as { data: { status: string } };
+      onStatusChange(allocation.id, json.data.status as AllocationStatus);
+    } catch {
+      // silent failure — could surface a toast here
+    } finally {
+      setTransitioning(false);
+    }
+  }
 
   return (
     <tr className="border-t border-gray-100 hover:bg-gray-50">
@@ -73,7 +108,18 @@ function AllocationRow({ allocation }: { allocation: AllocationWithDetails }) {
         )}
       </td>
       <td className="py-2 pr-4 text-sm text-gray-700">{qtyDisplay}</td>
-      <td className="py-2 text-sm text-gray-500">{allocation.notes ?? '—'}</td>
+      <td className="py-2 pr-4 text-sm text-gray-500">{allocation.notes ?? '—'}</td>
+      <td className="py-2 text-sm">
+        {transition && (
+          <button
+            onClick={handleTransition}
+            disabled={transitioning}
+            className="rounded bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700 hover:bg-blue-100 disabled:opacity-50"
+          >
+            {transitioning ? '…' : transition.label}
+          </button>
+        )}
+      </td>
     </tr>
   );
 }
@@ -81,9 +127,11 @@ function AllocationRow({ allocation }: { allocation: AllocationWithDetails }) {
 function AllocationGroup({
   status,
   allocations,
+  onStatusChange,
 }: {
   status: string;
   allocations: AllocationWithDetails[];
+  onStatusChange: (id: string, newStatus: AllocationStatus) => void;
 }) {
   if (allocations.length === 0) return null;
 
@@ -102,12 +150,13 @@ function AllocationGroup({
               <th className="py-2 pr-4 text-left text-xs font-medium text-gray-500">Part</th>
               <th className="py-2 pr-4 text-left text-xs font-medium text-gray-500">Location</th>
               <th className="py-2 pr-4 text-left text-xs font-medium text-gray-500">Quantity</th>
-              <th className="py-2 text-left text-xs font-medium text-gray-500">Notes</th>
+              <th className="py-2 pr-4 text-left text-xs font-medium text-gray-500">Notes</th>
+              <th className="py-2 text-left text-xs font-medium text-gray-500">Actions</th>
             </tr>
           </thead>
           <tbody>
             {allocations.map((a) => (
-              <AllocationRow key={a.id} allocation={a} />
+              <AllocationRow key={a.id} allocation={a} onStatusChange={onStatusChange} />
             ))}
           </tbody>
         </table>
@@ -204,6 +253,18 @@ export function ProjectDetailClient({ id }: ProjectDetailClientProps) {
     allocations: project.allocations.filter((a) => a.status === status),
   }));
 
+  function handleAllocationStatusChange(id: string, newStatus: AllocationStatus) {
+    setProject((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        allocations: prev.allocations.map((a) =>
+          a.id === id ? { ...a, status: newStatus } : a,
+        ),
+      };
+    });
+  }
+
   const hasAllocations = project.allocations.length > 0;
   const hasEvents = (project.events ?? []).length > 0;
 
@@ -274,7 +335,12 @@ export function ProjectDetailClient({ id }: ProjectDetailClientProps) {
           </div>
         ) : (
           allocationGroups.map(({ status, allocations }) => (
-            <AllocationGroup key={status} status={status} allocations={allocations} />
+            <AllocationGroup
+              key={status}
+              status={status}
+              allocations={allocations}
+              onStatusChange={handleAllocationStatusChange}
+            />
           ))
         )}
       </div>

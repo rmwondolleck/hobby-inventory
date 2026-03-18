@@ -79,11 +79,9 @@ export function PartDetailClient() {
     );
   }
 
-  const totalQuantity = part.lots
-    .filter((l) => l.quantityMode === 'exact' && l.status === 'in_stock')
-    .reduce((sum, l) => sum + (l.quantity ?? 0), 0);
+  const paramEntries = Object.entries(part.parameters);
 
-  // Aggregate allocations by project across all lots
+  const { availableQuantity, reservedQuantity, inUseQuantity, scrappedQuantity } = part;
   const projectAllocations = new Map<
     string,
     { name: string; status: string; allocated: number }
@@ -103,8 +101,6 @@ export function PartDetailClient() {
     }
   }
 
-  const paramEntries = Object.entries(part.parameters);
-
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -121,12 +117,30 @@ export function PartDetailClient() {
           </div>
         </div>
         <div className="shrink-0 text-right">
-          <div className="text-3xl font-bold text-gray-900">{totalQuantity}</div>
-          <div className="text-sm text-gray-500">in stock</div>
+          <div className="text-3xl font-bold text-gray-900">{availableQuantity}</div>
+          <div className="text-sm text-gray-500">available</div>
         </div>
       </div>
 
-      {/* Tags */}
+      {/* Quantity breakdown stat cards */}
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <div className="rounded-lg border border-green-200 bg-green-50 p-3 text-center">
+          <div className="text-2xl font-bold text-green-700">{availableQuantity}</div>
+          <div className="text-xs font-medium text-green-600">Available</div>
+        </div>
+        <div className="rounded-lg border border-yellow-200 bg-yellow-50 p-3 text-center">
+          <div className="text-2xl font-bold text-yellow-700">{reservedQuantity}</div>
+          <div className="text-xs font-medium text-yellow-600">Reserved</div>
+        </div>
+        <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-center">
+          <div className="text-2xl font-bold text-blue-700">{inUseQuantity}</div>
+          <div className="text-xs font-medium text-blue-600">In-Use</div>
+        </div>
+        <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-center">
+          <div className="text-2xl font-bold text-red-700">{scrappedQuantity}</div>
+          <div className="text-xs font-medium text-red-600">Scrapped</div>
+        </div>
+      </div>
       {part.tags.length > 0 && (
         <div className="flex flex-wrap gap-1.5">
           {part.tags.map((tag) => (

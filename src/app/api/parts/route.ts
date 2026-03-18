@@ -1,28 +1,7 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { safeParseJson } from '@/lib/utils';
-
-type LotRow = {
-  quantity: number | null;
-  quantityMode: string;
-  qualitativeStatus: string | null;
-  status: string;
-};
-
-function computeStockFields(lots: LotRow[]) {
-  const inStockLots = lots.filter((l) => l.status === 'in_stock');
-  const totalQuantity = inStockLots
-    .filter((l) => l.quantityMode === 'exact')
-    .reduce((sum, l) => sum + (l.quantity ?? 0), 0);
-  const qualitativeStatuses = Array.from(
-    new Set(
-      inStockLots
-        .filter((l) => l.quantityMode === 'qualitative' && l.qualitativeStatus !== null && l.qualitativeStatus !== undefined)
-        .map((l) => l.qualitativeStatus as string)
-    )
-  );
-  return { totalQuantity, qualitativeStatuses, lotCount: lots.length };
-}
+import { computeStockFields, type LotForStock } from './_stock';
 
 const DEFAULT_LIMIT = 50;
 const MAX_LIMIT = 500;
@@ -97,7 +76,20 @@ export async function GET(request: Request) {
         : {}),
     };
 
-    const lotInclude = { lots: { select: { quantity: true, quantityMode: true, qualitativeStatus: true, status: true } } };
+    const lotInclude = {
+      lots: {
+        select: {
+          quantity: true,
+          quantityMode: true,
+          qualitativeStatus: true,
+          status: true,
+          allocations: {
+            where: { status: { in: ['reserved', 'in_use'] } },
+            select: { quantity: true, status: true },
+          },
+        },
+      },
+    };
 
     // When parameter filters are present, fetch all matching (without pagination)
     // and apply in-memory filtering, then paginate manually.
@@ -113,7 +105,7 @@ export async function GET(request: Request) {
       const page = filtered.slice(offset, offset + limit);
 
       return NextResponse.json({
-        data: page.map((p: { tags: string; parameters: string; lots: LotRow[] }) => {
+        data: page.map((p: { tags: string; parameters: string; lots: LotForStock[] }) => {
           const { lots, ...rest } = p;
           return {
             ...rest,
@@ -134,7 +126,7 @@ export async function GET(request: Request) {
     ]);
 
     return NextResponse.json({
-      data: parts.map((p: { tags: string; parameters: string; lots: LotRow[] }) => {
+      data: parts.map((p: { tags: string; parameters: string; lots: LotForStock[] }) => {
         const { lots, ...rest } = p;
         return {
           ...rest,
