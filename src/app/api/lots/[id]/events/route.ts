@@ -49,7 +49,18 @@ export async function POST(request: Request, { params }: RouteParams) {
 
   let body: Record<string, unknown>;
   try {
-    body = (await request.json()) as Record<string, unknown>;
+    const parsed: unknown = await request.json();
+    if (
+      parsed === null ||
+      typeof parsed !== 'object' ||
+      Array.isArray(parsed)
+    ) {
+      return NextResponse.json(
+        { error: 'invalid_body', message: 'Request body must be a JSON object' },
+        { status: 400 },
+      );
+    }
+    body = parsed as Record<string, unknown>;
   } catch {
     return NextResponse.json(
       { error: 'invalid_json', message: 'Request body must be valid JSON' },
@@ -68,11 +79,13 @@ export async function POST(request: Request, { params }: RouteParams) {
     );
   }
 
-  if ('delta' in body && body.delta !== undefined && typeof body.delta !== 'number') {
-    return NextResponse.json(
-      { error: 'validation_error', message: 'delta must be a number' },
-      { status: 400 },
-    );
+  if ('delta' in body && body.delta !== undefined) {
+    if (typeof body.delta !== 'number' || !Number.isFinite(body.delta) || !Number.isInteger(body.delta)) {
+      return NextResponse.json(
+        { error: 'validation_error', message: 'delta must be a finite integer' },
+        { status: 400 },
+      );
+    }
   }
 
   const event = await createEvent({

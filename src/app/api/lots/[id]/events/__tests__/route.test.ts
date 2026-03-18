@@ -228,6 +228,49 @@ describe('POST /api/lots/[id]/events', () => {
     expect(body.error).toBe('validation_error');
   });
 
+  it('returns 400 when delta is a non-integer number', async () => {
+    (mockPrisma.lot.findUnique as jest.Mock).mockResolvedValue({ id: 'lot-1' });
+
+    const res = await POST(makePostRequest('lot-1', { type: 'edited', delta: 1.5 }), {
+      params: Promise.resolve({ id: 'lot-1' }),
+    });
+    const body = await res.json();
+
+    expect(res.status).toBe(400);
+    expect(body.error).toBe('validation_error');
+    expect(body.message).toContain('integer');
+  });
+
+  it('returns 400 when body is a JSON array instead of object', async () => {
+    (mockPrisma.lot.findUnique as jest.Mock).mockResolvedValue({ id: 'lot-1' });
+
+    const req = new Request('http://localhost/api/lots/lot-1/events', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify([{ type: 'edited' }]),
+    });
+    const res = await POST(req, { params: Promise.resolve({ id: 'lot-1' }) });
+    const body = await res.json();
+
+    expect(res.status).toBe(400);
+    expect(body.error).toBe('invalid_body');
+  });
+
+  it('returns 400 when body is a JSON primitive instead of object', async () => {
+    (mockPrisma.lot.findUnique as jest.Mock).mockResolvedValue({ id: 'lot-1' });
+
+    const req = new Request('http://localhost/api/lots/lot-1/events', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(42),
+    });
+    const res = await POST(req, { params: Promise.resolve({ id: 'lot-1' }) });
+    const body = await res.json();
+
+    expect(res.status).toBe(400);
+    expect(body.error).toBe('invalid_body');
+  });
+
   it('accepts all valid event types', async () => {
     const validTypes = ['created', 'received', 'moved', 'allocated', 'installed', 'returned', 'lost', 'scrapped', 'edited'];
 
