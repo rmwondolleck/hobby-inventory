@@ -1,13 +1,14 @@
-import Link from 'next/link'
+import Link from 'next/link';
+import { PageHeader } from '@/components/PageHeader';
 
 export default function Home() {
   return (
     <main className="min-h-screen bg-gray-50">
       <div className="mx-auto max-w-5xl px-4 py-10">
-        <h1 className="text-3xl font-bold text-gray-900">Welcome to Hobby Inventory</h1>
-        <p className="mt-2 text-gray-500">
-          Track parts, lots, and locations for all your hobby projects.
-        </p>
+        <PageHeader
+          title="Welcome to Hobby Inventory"
+          description="Track parts, lots, and locations for all your hobby projects."
+        />
 
         <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <Link

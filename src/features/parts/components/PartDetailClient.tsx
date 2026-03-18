@@ -5,6 +5,7 @@ import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
 import { formatDate } from '@/lib/utils';
+import { PageHeader } from '@/components/PageHeader';
 import type { PartDetail, LotWithDetails } from '../types';
 
 function QuantityDisplay({ lot }: { lot: LotWithDetails }) {
@@ -105,26 +106,29 @@ export function PartDetailClient() {
 
   const paramEntries = Object.entries(part.parameters);
 
+  const metaDescription = [
+    part.category,
+    part.manufacturer,
+    part.mpn ? `MPN: ${part.mpn}` : null,
+  ]
+    .filter(Boolean)
+    .join(' · ');
+
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <div className="flex flex-wrap items-center gap-3">
-            <h1 className="text-2xl font-bold text-gray-900">{part.name}</h1>
+      <PageHeader
+        title={part.name}
+        description={metaDescription || undefined}
+        actions={
+          <div className="flex items-center gap-4">
             {part.archivedAt && <Badge variant="secondary">Archived</Badge>}
+            <div className="text-right">
+              <div className="text-3xl font-bold text-gray-900">{totalQuantity}</div>
+              <div className="text-sm text-gray-500">in stock</div>
+            </div>
           </div>
-          <div className="mt-1 flex flex-wrap items-center gap-x-2 text-sm text-gray-500">
-            {part.category && <span>{part.category}</span>}
-            {part.manufacturer && <span>· {part.manufacturer}</span>}
-            {part.mpn && <span>· MPN: {part.mpn}</span>}
-          </div>
-        </div>
-        <div className="shrink-0 text-right">
-          <div className="text-3xl font-bold text-gray-900">{totalQuantity}</div>
-          <div className="text-sm text-gray-500">in stock</div>
-        </div>
-      </div>
+        }
+      />
 
       {/* Tags */}
       {part.tags.length > 0 && (

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { PageHeader } from '@/components/PageHeader';
 
 interface LocationData {
   id: string;
@@ -46,27 +47,19 @@ export default function LocationsPage() {
   }
 
   return (
-    <div style={{ padding: 24 }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
-        <h1 style={{ fontSize: 24, fontWeight: 700, margin: 0 }}>Locations</h1>
-        <button
-          onClick={() => openPrintLabel(locations.map((l) => l.id))}
-          disabled={locations.length === 0}
-          style={{
-            background: '#2563eb',
-            color: '#fff',
-            border: 'none',
-            borderRadius: 6,
-            padding: '8px 16px',
-            fontSize: 14,
-            fontWeight: 500,
-            cursor: 'pointer',
-            opacity: locations.length === 0 ? 0.5 : 1,
-          }}
-        >
-          🖨️ Print All Labels
-        </button>
-      </div>
+    <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6">
+      <PageHeader
+        title="Locations"
+        actions={
+          <button
+            onClick={() => openPrintLabel(locations.map((l) => l.id))}
+            disabled={locations.length === 0}
+            className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50 hover:bg-blue-700"
+          >
+            🖨️ Print All Labels
+          </button>
+        }
+      />
 
       {locations.length === 0 ? (
         <div style={{ textAlign: 'center', color: '#9ca3af', padding: '48px 0' }}>
