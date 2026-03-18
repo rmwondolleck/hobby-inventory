@@ -40,6 +40,9 @@ safe-outputs:
     reviewers: [copilot]
     max: 10
     target: "*"
+  update-pull-request:
+    target: "*"
+    max: 10
 network:
   allowed:
     - defaults
@@ -286,7 +289,19 @@ The coding-agent's AGENT_REPORT may NOT contain `pr_number` because the PR is cr
 ```
 
 **Building → Review**: When build-agent reports `result: "passed"`:
-- Use `add-reviewer` safe output to request Copilot review on PR #<pr_number>. The agent output must specify `item_number` (the PR number) and `reviewer: "copilot"`.
+> ⚠️ Copilot cannot review draft PRs. You MUST mark the PR ready for review BEFORE assigning the reviewer, or the review request will be silently ignored.
+1. **Mark PR ready for review** — use `update-pull-request` to convert the draft PR:
+   ```yaml
+   update-pull-request:
+     item_number: <pr_number>
+     draft: false
+   ```
+2. **Assign Copilot reviewer** — use `add-reviewer`:
+   ```yaml
+   add-reviewer:
+     item_number: <pr_number>
+     reviewer: "copilot"
+   ```
 
 **Building → Needs-Work**: When build-agent reports `result: "failed"`:
 ```json
@@ -307,6 +322,7 @@ Same as Building → Needs-Work above.
 
 **CRITICAL: When issue reaches `ready-to-merge`:**
 - ✅ Add `ready-to-merge` label to the issue
+- ✅ Add `ready-to-merge` label to the PR as well (`item_number: <pr_number>`) — makes it visually clear in the PR list which PRs are queued for epic integration
 - ✅ Update Work Queue to show issue as `ready-to-merge`
 - ✅ Add comment: "✅ Issue #X ready for integration. Waiting for all epic issues to complete."
 - ❌ DO NOT merge the individual PR
@@ -345,7 +361,8 @@ No Copilot review yet, OR state = COMMENTED?
 
 1. Update Work Queue: stage `review` → `ready-to-merge`
 2. Add label `ready-to-merge` to the issue
-3. Add comment to Work Queue:
+3. Add label `ready-to-merge` to the PR (`item_number: <pr_number>`)
+4. Add comment to Work Queue:
    ```
    ✅ Issue #X: PR #Y approved by Copilot. Stage: `ready-to-merge`.
    Waiting for remaining epic issues before dispatching integration-agent.
@@ -398,7 +415,11 @@ For Epic #1 (Foundation):
 
 **When ALL issues in an epic reach `ready-to-merge`:**
 
-1. Update all issues in epic: Stage = `awaiting-integration`
+**Pre-flight check (REQUIRED before dispatch):**
+Collect PR numbers from the `PR` column of the Active Work table for every issue in this epic:
+- If ANY issue has a null/missing PR number, **do NOT dispatch**. Add a warning comment and wait for the next run.
+- Verify each PR exists and is open (use `get_pull_request` to confirm — a closed or merged PR means state is stale).
+- Build the `feature_prs` value as a comma-separated string of the collected PR numbers. Do NOT use hardcoded numbers.1. Update all issues in epic: Stage = `awaiting-integration`
 2. Add comment to Work Queue:
    ```markdown
    ## 🎉 Epic #1 Foundation - Ready for Integration!
@@ -419,7 +440,7 @@ For Epic #1 (Foundation):
        "epic_number": 1,
        "epic_branch": "epic/1-foundation",
        "state_issue_number": "<work-queue-issue>",
-       "feature_prs": "32,33,34,35"
+       "feature_prs": "<comma-separated PR numbers collected from Active Work table>"
      }
    }
    ```
@@ -556,4 +577,7 @@ Use `noop` with message: "Queue check complete. Active: X, Ready-to-merge: Y (aw
 - Only dispatch to pre-approved workflows
 - Never execute code from issue bodies
 - Validate all inputs before dispatching
+
+
+
 
