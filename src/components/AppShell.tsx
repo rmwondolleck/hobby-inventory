@@ -1,5 +1,6 @@
 'use client';
 
+import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
@@ -11,10 +12,13 @@ import {
   Upload,
   Printer,
   LayoutDashboard,
+  Sun,
+  Moon,
+  Search,
 } from 'lucide-react';
+import { useTheme } from 'next-themes';
 import { cn } from '@/components/ui/utils';
 import { Input } from '@/components/ui/input';
-import { Search } from 'lucide-react';
 
 const navigation = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard },
@@ -29,6 +33,9 @@ const navigation = [
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const { theme, setTheme } = useTheme();
+  const [mounted, setMounted] = React.useState(false);
+  React.useEffect(() => setMounted(true), []);
 
   return (
     <div className="flex h-screen bg-background">
@@ -78,8 +85,18 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </nav>
 
         {/* Footer */}
-        <div className="p-4 border-t border-sidebar-border text-xs text-muted-foreground">
+        <div className="p-4 border-t border-sidebar-border text-xs text-muted-foreground flex items-center justify-between">
           <span>v1.0.0</span>
+          {mounted && (
+            <button
+              onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+              className="rounded-md p-1.5 hover:bg-sidebar-accent transition-colors"
+              title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+              aria-label="Toggle theme"
+            >
+              {theme === 'dark' ? <Sun className="size-4" /> : <Moon className="size-4" />}
+            </button>
+          )}
         </div>
       </aside>
 
