@@ -415,11 +415,16 @@ For Epic #1 (Foundation):
 
 **When ALL issues in an epic reach `ready-to-merge`:**
 
+**Guard (check FIRST — skip this epic if integration is already running):**
+If ANY issue in this epic is already in `awaiting-integration` stage, **skip this epic entirely**. Integration has already been dispatched. Do not re-dispatch.
+
 **Pre-flight check (REQUIRED before dispatch):**
 Collect PR numbers from the `PR` column of the Active Work table for every issue in this epic:
 - If ANY issue has a null/missing PR number, **do NOT dispatch**. Add a warning comment and wait for the next run.
 - Verify each PR exists and is open (use `get_pull_request` to confirm — a closed or merged PR means state is stale).
-- Build the `feature_prs` value as a comma-separated string of the collected PR numbers. Do NOT use hardcoded numbers.1. Update all issues in epic: Stage = `awaiting-integration`
+- Build the `feature_prs` value as a comma-separated string of the collected PR numbers. Do NOT use hardcoded numbers.
+
+1. Update all issues in epic: Stage = `awaiting-integration`
 2. Add comment to Work Queue:
    ```markdown
    ## 🎉 Epic #1 Foundation - Ready for Integration!
@@ -558,9 +563,9 @@ One row per issue. Columns: Issue #, Title (truncated), Stage (backtick-wrapped)
 Compute this table fresh from the Active Work data on **every run**. **Do not copy-paste from the previous body.**
 
 For each active epic (epics not yet in Completed Epics):
-1. List all sub-issues belonging to that epic
-2. Count `ready_count` = number of sub-issues whose stage is `ready-to-merge` OR `awaiting-integration`
-3. Count `total` = total sub-issues in that epic
+1. From the Active Work table, identify all issues belonging to this epic (by reading each issue's body or label to confirm epic membership — do **not** query GitHub's sub-issues API, which may include closed or externally-added issues that inflate the count)
+2. Count `ready_count` = number of those issues whose stage is `ready-to-merge` OR `awaiting-integration`
+3. Count `total` = number of those issues in the Active Work table (open, pipeline-tracked issues only)
 4. Determine **Status**:
    - Any sub-issue in `awaiting-integration` → `⏳ Integration agent running`
    - `ready_count == total` → `🎯 All issues ready — awaiting integration dispatch`
