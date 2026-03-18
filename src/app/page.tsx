@@ -1,7 +1,102 @@
+'use client';
+
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { PageHeader } from '@/components/PageHeader';
+import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
+import type { LotListItem } from '@/features/lots/types';
+
+const DEFAULT_THRESHOLD = 5;
+const THRESHOLDS_KEY = 'stock-thresholds';
+
+interface PartStockSummary {
+  partId: string;
+  partName: string;
+  totalQuantity: number;
+}
+
+function loadThresholds(): Record<string, number> {
+  try {
+    const raw = localStorage.getItem(THRESHOLDS_KEY);
+    return raw ? (JSON.parse(raw) as Record<string, number>) : {};
+  } catch {
+    return {};
+  }
+}
+
+function saveThresholds(thresholds: Record<string, number>): void {
+  localStorage.setItem(THRESHOLDS_KEY, JSON.stringify(thresholds));
+}
 
 export default function Home() {
+  const [lowStockParts, setLowStockParts] = useState<PartStockSummary[]>([]);
+  const [thresholds, setThresholds] = useState<Record<string, number>>({});
+  const [thresholdInputs, setThresholdInputs] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    setThresholds(loadThresholds());
+
+    async function fetchLowStock() {
+      try {
+        const [lowRes, outRes] = await Promise.all([
+          fetch('/api/lots?status=low&limit=100'),
+          fetch('/api/lots?status=out&limit=100'),
+        ]);
+
+        const [lowData, outData] = await Promise.all([
+          lowRes.ok ? (lowRes.json() as Promise<{ data: LotListItem[] }>) : Promise.resolve({ data: [] }),
+          outRes.ok ? (outRes.json() as Promise<{ data: LotListItem[] }>) : Promise.resolve({ data: [] }),
+        ]);
+
+        const allLots: LotListItem[] = [...lowData.data, ...outData.data];
+
+        const partMap = new Map<string, PartStockSummary>();
+        for (const lot of allLots) {
+          const existing = partMap.get(lot.partId);
+          const qty = lot.quantity ?? 0;
+          if (existing) {
+            existing.totalQuantity += qty;
+          } else {
+            partMap.set(lot.partId, {
+              partId: lot.partId,
+              partName: lot.part.name,
+              totalQuantity: qty,
+            });
+          }
+        }
+
+        setLowStockParts(Array.from(partMap.values()));
+      } catch {
+        // silently ignore fetch errors on dashboard
+      }
+    }
+
+    fetchLowStock();
+  }, []);
+
+  function handleThresholdBlur(partId: string) {
+    const raw = thresholdInputs[partId];
+    if (raw === undefined) return;
+    const parsed = parseInt(raw, 10);
+    const value = Number.isFinite(parsed) && parsed >= 0 ? parsed : DEFAULT_THRESHOLD;
+    const updated = { ...thresholds, [partId]: value };
+    setThresholds(updated);
+    saveThresholds(updated);
+    setThresholdInputs((prev) => {
+      const next = { ...prev };
+      delete next[partId];
+      return next;
+    });
+  }
+
+  function getThreshold(partId: string): number {
+    return thresholds[partId] ?? DEFAULT_THRESHOLD;
+  }
+
+  function getThresholdDisplayValue(partId: string): string {
+    return thresholdInputs[partId] ?? String(getThreshold(partId));
+  }
+
   return (
     <main className="min-h-screen bg-gray-50">
       <div className="mx-auto max-w-5xl px-4 py-10">
@@ -9,6 +104,46 @@ export default function Home() {
           title="Welcome to Hobby Inventory"
           description="Track parts, lots, and locations for all your hobby projects."
         />
+
+        {lowStockParts.length > 0 && (
+          <section className="mt-8">
+            <h2 className="mb-3 flex items-center gap-2 text-lg font-semibold text-gray-800">
+              ⚠️ Low Stock Warnings
+            </h2>
+            <div className="flex flex-col gap-3">
+              {lowStockParts.map((part) => (
+                <Alert key={part.partId} variant="default" className="border-yellow-300 bg-yellow-50">
+                  <AlertTitle className="text-yellow-800">{part.partName}</AlertTitle>
+                  <AlertDescription>
+                    <div className="flex flex-wrap items-center gap-4 text-yellow-700">
+                      <span>Qty: {part.totalQuantity}</span>
+                      <span className="flex items-center gap-1">
+                        Threshold:
+                        <input
+                          type="number"
+                          min={0}
+                          value={getThresholdDisplayValue(part.partId)}
+                          onChange={(e) =>
+                            setThresholdInputs((prev) => ({ ...prev, [part.partId]: e.target.value }))
+                          }
+                          onBlur={() => handleThresholdBlur(part.partId)}
+                          className="ml-1 w-16 rounded border border-yellow-300 bg-white px-1 py-0.5 text-sm text-gray-800 focus:outline-none focus:ring-1 focus:ring-yellow-400"
+                          aria-label={`Stock threshold for ${part.partName}`}
+                        />
+                      </span>
+                      <Link
+                        href={`/parts/${part.partId}`}
+                        className="font-medium text-blue-600 underline hover:text-blue-800"
+                      >
+                        View Part
+                      </Link>
+                    </div>
+                  </AlertDescription>
+                </Alert>
+              ))}
+            </div>
+          </section>
+        )}
 
         <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <Link
