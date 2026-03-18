@@ -2,7 +2,7 @@
  * @jest-environment jsdom
  */
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import { ProjectCard } from '../ProjectCard';
 import type { ProjectListItem } from '../../types';
 
@@ -154,5 +154,74 @@ describe('ProjectCard', () => {
     const { container } = render(<ProjectCard project={baseProject} />);
     const link = container.firstChild as HTMLElement;
     expect(link.className).not.toContain('opacity-60');
+  });
+
+  // --- Pin functionality ---
+
+  it('does not render a pin button when onPin is not provided', () => {
+    render(<ProjectCard project={baseProject} />);
+    expect(screen.queryByRole('button')).not.toBeInTheDocument();
+  });
+
+  it('renders a pin button when onPin is provided', () => {
+    render(<ProjectCard project={baseProject} onPin={jest.fn()} />);
+    expect(screen.getByRole('button')).toBeInTheDocument();
+  });
+
+  it('pin button has aria-label "Pin project" when not pinned', () => {
+    render(<ProjectCard project={baseProject} isPinned={false} onPin={jest.fn()} />);
+    expect(screen.getByRole('button', { name: 'Pin project' })).toBeInTheDocument();
+  });
+
+  it('pin button has aria-label "Unpin project" when pinned', () => {
+    render(<ProjectCard project={baseProject} isPinned={true} onPin={jest.fn()} />);
+    expect(screen.getByRole('button', { name: 'Unpin project' })).toBeInTheDocument();
+  });
+
+  it('calls onPin with project id when pin button is clicked', () => {
+    const onPin = jest.fn();
+    render(<ProjectCard project={baseProject} onPin={onPin} />);
+    fireEvent.click(screen.getByRole('button'));
+    expect(onPin).toHaveBeenCalledTimes(1);
+    expect(onPin).toHaveBeenCalledWith('proj-1');
+  });
+
+  it('clicking pin button does not follow the card link (stopPropagation)', () => {
+    const onPin = jest.fn();
+    render(<ProjectCard project={baseProject} onPin={onPin} />);
+    const button = screen.getByRole('button');
+    const clickEvent = new MouseEvent('click', { bubbles: true, cancelable: true });
+    const preventDefaultSpy = jest.spyOn(clickEvent, 'preventDefault');
+    button.dispatchEvent(clickEvent);
+    expect(preventDefaultSpy).toHaveBeenCalled();
+  });
+
+  it('defaults isPinned to false (pin button shows Pin project label)', () => {
+    render(<ProjectCard project={baseProject} onPin={jest.fn()} />);
+    expect(screen.getByRole('button', { name: 'Pin project' })).toBeInTheDocument();
+  });
+
+  it('pin button has low opacity class when not pinned', () => {
+    render(<ProjectCard project={baseProject} isPinned={false} onPin={jest.fn()} />);
+    const button = screen.getByRole('button');
+    expect(button.className).toContain('opacity-30');
+  });
+
+  it('pin button has full opacity class when pinned', () => {
+    render(<ProjectCard project={baseProject} isPinned={true} onPin={jest.fn()} />);
+    const button = screen.getByRole('button');
+    expect(button.className).toContain('opacity-100');
+    expect(button.className).not.toContain('opacity-30');
+  });
+
+  it('adds right margin to status column when onPin is provided', () => {
+    const { container } = render(<ProjectCard project={baseProject} onPin={jest.fn()} />);
+    const mrDiv = container.querySelector('.mr-6');
+    expect(mrDiv).not.toBeNull();
+  });
+
+  it('does not add right margin to status column when onPin is not provided', () => {
+    const { container } = render(<ProjectCard project={baseProject} />);
+    expect(container.querySelector('.mr-6')).toBeNull();
   });
 });
