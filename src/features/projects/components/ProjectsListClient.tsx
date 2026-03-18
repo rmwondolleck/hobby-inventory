@@ -5,7 +5,6 @@ import { useForm, Controller } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import type { ProjectListItem, ProjectFilters } from '../types';
-import type { ProjectStatus } from '@/lib/types';
 import { ProjectCard } from './ProjectCard';
 import {
   Dialog,
@@ -23,7 +22,9 @@ import {
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 
-const PROJECT_STATUSES: Array<{ value: ProjectStatus; label: string }> = [
+const PROJECT_STATUS_VALUES = ['idea', 'planned', 'active', 'deployed', 'retired'] as const;
+
+const PROJECT_STATUSES: Array<{ value: (typeof PROJECT_STATUS_VALUES)[number]; label: string }> = [
   { value: 'idea', label: 'Idea' },
   { value: 'planned', label: 'Planned' },
   { value: 'active', label: 'Active' },
@@ -33,7 +34,7 @@ const PROJECT_STATUSES: Array<{ value: ProjectStatus; label: string }> = [
 
 const newProjectSchema = z.object({
   name: z.string().min(1, 'Name is required'),
-  status: z.enum(['idea', 'planned', 'active', 'deployed', 'retired']),
+  status: z.enum(PROJECT_STATUS_VALUES),
   tags: z.string(),
   notes: z.string(),
 });
@@ -326,6 +327,7 @@ export function ProjectsListClient() {
   });
 
   const sidebarInitialized = useRef(false);
+  const refreshControllerRef = useRef<AbortController | null>(null);
 
   const fetchProjects = useCallback(async (currentFilters: ProjectFilters, signal: AbortSignal) => {
     setLoading(true);
@@ -364,14 +366,16 @@ export function ProjectsListClient() {
     return () => controller.abort();
   }, [fetchProjects, filters]);
 
-  const handleProjectCreated = useCallback((project: ProjectListItem) => {
-    setProjects((prev) => [project, ...prev]);
-    setTotal((prev) => prev + 1);
-    const newTags = project.tags.filter((t) => !availableTags.includes(t));
-    if (newTags.length > 0) {
-      setAvailableTags((prev) => Array.from(new Set([...prev, ...newTags])).sort());
-    }
-  }, [availableTags]);
+  useEffect(() => {
+    return () => { refreshControllerRef.current?.abort(); };
+  }, []);
+
+  const handleProjectCreated = useCallback((_project: ProjectListItem) => {
+    refreshControllerRef.current?.abort();
+    const controller = new AbortController();
+    refreshControllerRef.current = controller;
+    fetchProjects(filters, controller.signal);
+  }, [fetchProjects, filters]);
 
   return (
     <div className="flex gap-6">
