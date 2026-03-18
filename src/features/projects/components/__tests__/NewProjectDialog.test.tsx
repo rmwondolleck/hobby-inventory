@@ -3,7 +3,6 @@
  */
 import React from 'react';
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
 
 // ── UI component mocks ──────────────────────────────────────────────────────
 
@@ -169,6 +168,9 @@ describe('NewProjectDialog – successful submission', () => {
       json: async () => ({ data: createdProject }),
     } as Response);
 
+    // re-fetch triggered by handleProjectCreated after successful POST
+    mockListFetchOk([createdProject]);
+
     const nameInput = screen.getByPlaceholderText(/rc car build/i);
     await act(async () => {
       fireEvent.change(nameInput, { target: { value: 'My New Project' } });
@@ -195,7 +197,7 @@ describe('NewProjectDialog – successful submission', () => {
     expect(body.status).toBe('idea');
   });
 
-  it('prepends the new project to the list on success', async () => {
+  it('re-fetches and shows new project in the list after creation', async () => {
     const existingProject = {
       id: 'existing-1',
       name: 'Existing Project',
@@ -240,6 +242,9 @@ describe('NewProjectDialog – successful submission', () => {
       json: async () => ({ data: newProject }),
     } as Response);
 
+    // re-fetch after creation returns both projects
+    mockListFetchOk([newProject, existingProject]);
+
     const nameInput = screen.getByPlaceholderText(/rc car build/i);
     await act(async () => {
       fireEvent.change(nameInput, { target: { value: 'Brand New Project' } });
@@ -250,7 +255,7 @@ describe('NewProjectDialog – successful submission', () => {
     });
 
     await waitFor(() => expect(screen.getByTestId('dialog')).toHaveAttribute('data-open', 'false'));
-    expect(screen.getByText('Brand New Project')).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByText('Brand New Project')).toBeInTheDocument());
     expect(screen.getByText('Existing Project')).toBeInTheDocument();
   });
 });
@@ -322,6 +327,9 @@ describe('NewProjectDialog – tag parsing', () => {
       }),
     } as Response);
 
+    // re-fetch after creation
+    mockListFetchOk([]);
+
     await act(async () => {
       fireEvent.change(screen.getByPlaceholderText(/rc car build/i), { target: { value: 'Tag Test' } });
       fireEvent.change(screen.getByPlaceholderText(/rc, electronics/i), { target: { value: ' rc , robot , servo ' } });
@@ -355,6 +363,9 @@ describe('NewProjectDialog – tag parsing', () => {
         },
       }),
     } as Response);
+
+    // re-fetch after creation
+    mockListFetchOk([]);
 
     await act(async () => {
       fireEvent.change(screen.getByPlaceholderText(/rc car build/i), { target: { value: 'No Tags' } });

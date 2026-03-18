@@ -1,9 +1,12 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { safeParseJson } from '@/lib/utils';
+import type { ProjectStatus } from '@/lib/types';
 
 const DEFAULT_LIMIT = 50;
 const MAX_LIMIT = 500;
+
+const VALID_STATUSES: ProjectStatus[] = ['idea', 'planned', 'active', 'deployed', 'retired'];
 
 export async function GET(request: Request) {
   try {
@@ -82,6 +85,71 @@ export async function GET(request: Request) {
     }
 
     return NextResponse.json({ data, total: tagsParam ? data.length : total, limit, offset });
+  } catch {
+    return NextResponse.json(
+      { error: 'internal_error', message: 'An unexpected error occurred' },
+      { status: 500 },
+    );
+  }
+}
+
+export async function POST(request: Request) {
+  let body: Record<string, unknown>;
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json(
+      { error: 'invalid_json', message: 'Request body must be valid JSON' },
+      { status: 400 },
+    );
+  }
+
+  if (typeof body.name !== 'string' || body.name.trim() === '') {
+    return NextResponse.json(
+      { error: 'validation_error', message: 'name must be a non-empty string' },
+      { status: 400 },
+    );
+  }
+
+  const status: ProjectStatus = (body.status as ProjectStatus | undefined) ?? 'idea';
+  if (!VALID_STATUSES.includes(status)) {
+    return NextResponse.json(
+      {
+        error: 'validation_error',
+        message: `status must be one of: ${VALID_STATUSES.join(', ')}`,
+      },
+      { status: 400 },
+    );
+  }
+
+  const tags = Array.isArray(body.tags)
+    ? body.tags.filter((t): t is string => typeof t === 'string')
+    : [];
+
+  const notes =
+    body.notes !== undefined && body.notes !== null ? String(body.notes) : null;
+
+  try {
+    const project = await prisma.project.create({
+      data: {
+        name: body.name.trim(),
+        status,
+        tags: JSON.stringify(tags),
+        notes,
+      },
+    });
+
+    return NextResponse.json(
+      {
+        data: {
+          ...project,
+          tags,
+          allocationCount: 0,
+          allocationsByStatus: {},
+        },
+      },
+      { status: 201 },
+    );
   } catch {
     return NextResponse.json(
       { error: 'internal_error', message: 'An unexpected error occurred' },
