@@ -2,8 +2,10 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { Trash2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { formatDate, formatDateTime } from '@/lib/utils';
+import { AddAllocationDialog } from './AddAllocationDialog';
 import type { ProjectDetail, AllocationWithDetails, ProjectEvent } from '../types';
 
 const STATUS_LABELS: Record<string, string> = {
@@ -34,7 +36,21 @@ const ALLOCATION_STATUS_LABELS: Record<string, string> = {
 
 const ALLOCATION_STATUS_ORDER = ['in_use', 'deployed', 'reserved', 'recovered'];
 
-function AllocationRow({ allocation }: { allocation: AllocationWithDetails }) {
+function AllocationRow({
+  allocation,
+  removeConfirmId,
+  removingId,
+  onRemoveRequest,
+  onRemoveConfirm,
+  onRemoveCancel,
+}: {
+  allocation: AllocationWithDetails;
+  removeConfirmId: string | null;
+  removingId: string | null;
+  onRemoveRequest: (id: string) => void;
+  onRemoveConfirm: (id: string) => void;
+  onRemoveCancel: () => void;
+}) {
   const { lot } = allocation;
   const qtyDisplay =
     lot.quantityMode === 'qualitative'
@@ -44,6 +60,10 @@ function AllocationRow({ allocation }: { allocation: AllocationWithDetails }) {
       : lot.quantity != null
       ? `${lot.quantity}${lot.unit ? ' ' + lot.unit : ''}`
       : '—';
+
+  const isConfirming = removeConfirmId === allocation.id;
+  const isRemoving = removingId === allocation.id;
+  const isRecovered = allocation.status === 'recovered';
 
   return (
     <tr className="border-t border-gray-100 hover:bg-gray-50">
@@ -74,6 +94,40 @@ function AllocationRow({ allocation }: { allocation: AllocationWithDetails }) {
       </td>
       <td className="py-2 pr-4 text-sm text-gray-700">{qtyDisplay}</td>
       <td className="py-2 text-sm text-gray-500">{allocation.notes ?? '—'}</td>
+      <td className="py-2 pl-2 text-right">
+        {!isRecovered && (
+          isConfirming ? (
+            <span className="flex items-center justify-end gap-1 text-xs">
+              <span className="text-gray-600">Remove?</span>
+              <button
+                type="button"
+                onClick={() => onRemoveConfirm(allocation.id)}
+                disabled={isRemoving}
+                className="rounded bg-red-600 px-2 py-0.5 text-white hover:bg-red-700 disabled:opacity-50"
+              >
+                {isRemoving ? '…' : 'Yes'}
+              </button>
+              <button
+                type="button"
+                onClick={onRemoveCancel}
+                disabled={isRemoving}
+                className="rounded border border-gray-300 px-2 py-0.5 text-gray-600 hover:bg-gray-50 disabled:opacity-50"
+              >
+                No
+              </button>
+            </span>
+          ) : (
+            <button
+              type="button"
+              onClick={() => onRemoveRequest(allocation.id)}
+              className="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-red-500"
+              aria-label="Remove allocation"
+            >
+              <Trash2 className="h-4 w-4" />
+            </button>
+          )
+        )}
+      </td>
     </tr>
   );
 }
@@ -81,9 +135,19 @@ function AllocationRow({ allocation }: { allocation: AllocationWithDetails }) {
 function AllocationGroup({
   status,
   allocations,
+  removeConfirmId,
+  removingId,
+  onRemoveRequest,
+  onRemoveConfirm,
+  onRemoveCancel,
 }: {
   status: string;
   allocations: AllocationWithDetails[];
+  removeConfirmId: string | null;
+  removingId: string | null;
+  onRemoveRequest: (id: string) => void;
+  onRemoveConfirm: (id: string) => void;
+  onRemoveCancel: () => void;
 }) {
   if (allocations.length === 0) return null;
 
@@ -103,11 +167,20 @@ function AllocationGroup({
               <th className="py-2 pr-4 text-left text-xs font-medium text-gray-500">Location</th>
               <th className="py-2 pr-4 text-left text-xs font-medium text-gray-500">Quantity</th>
               <th className="py-2 text-left text-xs font-medium text-gray-500">Notes</th>
+              <th className="py-2 pl-2 text-right text-xs font-medium text-gray-500"></th>
             </tr>
           </thead>
           <tbody>
             {allocations.map((a) => (
-              <AllocationRow key={a.id} allocation={a} />
+              <AllocationRow
+                key={a.id}
+                allocation={a}
+                removeConfirmId={removeConfirmId}
+                removingId={removingId}
+                onRemoveRequest={onRemoveRequest}
+                onRemoveConfirm={onRemoveConfirm}
+                onRemoveCancel={onRemoveCancel}
+              />
             ))}
           </tbody>
         </table>
@@ -149,6 +222,11 @@ export function ProjectDetailClient({ id }: ProjectDetailClientProps) {
   const [error, setError] = useState<string | null>(null);
   const [notFound, setNotFound] = useState(false);
 
+  const [addDialogOpen, setAddDialogOpen] = useState(false);
+  const [removeConfirmId, setRemoveConfirmId] = useState<string | null>(null);
+  const [removingId, setRemovingId] = useState<string | null>(null);
+  const [removeError, setRemoveError] = useState<string | null>(null);
+
   useEffect(() => {
     async function fetchProject() {
       try {
@@ -168,6 +246,48 @@ export function ProjectDetailClient({ id }: ProjectDetailClientProps) {
     }
     fetchProject();
   }, [id]);
+
+  function handleAllocationAdded(allocation: AllocationWithDetails) {
+    if (!project) return;
+    setProject({
+      ...project,
+      allocations: [...project.allocations, allocation],
+      allocationCount: project.allocationCount + 1,
+    });
+  }
+
+  async function handleRemoveConfirm(allocationId: string) {
+    setRemovingId(allocationId);
+    setRemoveError(null);
+    try {
+      const res = await fetch(`/api/allocations/${allocationId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'recovered' }),
+      });
+      if (!res.ok) {
+        const json = (await res.json()) as { message?: string };
+        setRemoveError(json.message ?? 'Failed to remove allocation');
+        setRemovingId(null);
+        setRemoveConfirmId(null);
+        return;
+      }
+      if (!project) return;
+      setProject({
+        ...project,
+        allocations: project.allocations.filter(
+          (a: AllocationWithDetails) => a.id !== allocationId,
+        ),
+        allocationCount: Math.max(0, project.allocationCount - 1),
+      });
+      setRemoveConfirmId(null);
+      setRemovingId(null);
+    } catch {
+      setRemoveError('Network error, please try again');
+      setRemovingId(null);
+      setRemoveConfirmId(null);
+    }
+  }
 
   if (loading) {
     return (
@@ -259,14 +379,29 @@ export function ProjectDetailClient({ id }: ProjectDetailClientProps) {
 
       {/* Allocations */}
       <div className="mb-6">
-        <h2 className="mb-4 text-lg font-semibold text-gray-900">
-          Allocations
-          {hasAllocations && (
-            <span className="ml-2 text-sm font-normal text-gray-500">
-              ({project.allocationCount} total)
-            </span>
-          )}
-        </h2>
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="text-lg font-semibold text-gray-900">
+            Allocations
+            {hasAllocations && (
+              <span className="ml-2 text-sm font-normal text-gray-500">
+                ({project.allocationCount} total)
+              </span>
+            )}
+          </h2>
+          <button
+            type="button"
+            onClick={() => setAddDialogOpen(true)}
+            className="rounded-lg bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700"
+          >
+            + Add Part
+          </button>
+        </div>
+
+        {removeError && (
+          <div className="mb-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
+            {removeError}
+          </div>
+        )}
 
         {!hasAllocations ? (
           <div className="rounded-lg border border-dashed border-gray-300 p-6 text-center text-sm text-gray-500">
@@ -274,7 +409,16 @@ export function ProjectDetailClient({ id }: ProjectDetailClientProps) {
           </div>
         ) : (
           allocationGroups.map(({ status, allocations }) => (
-            <AllocationGroup key={status} status={status} allocations={allocations} />
+            <AllocationGroup
+              key={status}
+              status={status}
+              allocations={allocations}
+              removeConfirmId={removeConfirmId}
+              removingId={removingId}
+              onRemoveRequest={(aid) => { setRemoveConfirmId(aid); setRemoveError(null); }}
+              onRemoveConfirm={handleRemoveConfirm}
+              onRemoveCancel={() => setRemoveConfirmId(null)}
+            />
           ))
         )}
       </div>
@@ -321,6 +465,13 @@ export function ProjectDetailClient({ id }: ProjectDetailClientProps) {
           </>
         )}
       </div>
+
+      <AddAllocationDialog
+        projectId={id}
+        open={addDialogOpen}
+        onOpenChange={setAddDialogOpen}
+        onAllocationAdded={handleAllocationAdded}
+      />
     </div>
   );
 }
