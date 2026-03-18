@@ -46,15 +46,15 @@ jest.mock('@/components/ui/input', () => ({
 }));
 
 const mockSetTheme = jest.fn();
-let mockTheme = 'light';
+let mockResolvedTheme = 'light';
 
 jest.mock('next-themes', () => ({
-  useTheme: () => ({ theme: mockTheme, setTheme: mockSetTheme }),
+  useTheme: () => ({ resolvedTheme: mockResolvedTheme, setTheme: mockSetTheme }),
 }));
 
 describe('AppShell', () => {
   beforeEach(() => {
-    mockTheme = 'light';
+    mockResolvedTheme = 'light';
     mockSetTheme.mockClear();
     mockPathname.mockReturnValue('/');
   });
@@ -88,25 +88,23 @@ describe('AppShell', () => {
   });
 
   describe('theme toggle button', () => {
-    it('is hidden before mount (no button rendered before useEffect)', () => {
-      // Before useEffect fires the component renders without the button
-      // We can verify this by checking the mounted state renders button after act
+    it('is hidden before mount', () => {
+      // Stub useEffect so setMounted(true) never fires → mounted stays false
+      const useEffectSpy = jest.spyOn(React, 'useEffect').mockImplementation(() => {});
       const { container } = render(<AppShell><div /></AppShell>);
-      // After initial render + act (useEffect runs synchronously in test env)
-      const button = container.querySelector('button[aria-label="Toggle theme"]');
-      // After act the effect has run and mounted=true, so button should be present
-      expect(button).toBeInTheDocument();
+      expect(container.querySelector('button[aria-label="Toggle theme"]')).not.toBeInTheDocument();
+      useEffectSpy.mockRestore();
     });
 
     it('shows Moon icon in light mode', () => {
-      mockTheme = 'light';
+      mockResolvedTheme = 'light';
       render(<AppShell><div /></AppShell>);
       expect(screen.getByTestId('icon-moon')).toBeInTheDocument();
       expect(screen.queryByTestId('icon-sun')).not.toBeInTheDocument();
     });
 
     it('shows Sun icon in dark mode', () => {
-      mockTheme = 'dark';
+      mockResolvedTheme = 'dark';
       render(<AppShell><div /></AppShell>);
       expect(screen.getByTestId('icon-sun')).toBeInTheDocument();
       expect(screen.queryByTestId('icon-moon')).not.toBeInTheDocument();
@@ -119,28 +117,28 @@ describe('AppShell', () => {
     });
 
     it('has title "Switch to dark mode" in light mode', () => {
-      mockTheme = 'light';
+      mockResolvedTheme = 'light';
       render(<AppShell><div /></AppShell>);
       const button = screen.getByRole('button', { name: 'Toggle theme' });
       expect(button).toHaveAttribute('title', 'Switch to dark mode');
     });
 
     it('has title "Switch to light mode" in dark mode', () => {
-      mockTheme = 'dark';
+      mockResolvedTheme = 'dark';
       render(<AppShell><div /></AppShell>);
       const button = screen.getByRole('button', { name: 'Toggle theme' });
       expect(button).toHaveAttribute('title', 'Switch to light mode');
     });
 
     it('calls setTheme with "dark" when clicked in light mode', () => {
-      mockTheme = 'light';
+      mockResolvedTheme = 'light';
       render(<AppShell><div /></AppShell>);
       fireEvent.click(screen.getByRole('button', { name: 'Toggle theme' }));
       expect(mockSetTheme).toHaveBeenCalledWith('dark');
     });
 
     it('calls setTheme with "light" when clicked in dark mode', () => {
-      mockTheme = 'dark';
+      mockResolvedTheme = 'dark';
       render(<AppShell><div /></AppShell>);
       fireEvent.click(screen.getByRole('button', { name: 'Toggle theme' }));
       expect(mockSetTheme).toHaveBeenCalledWith('light');
