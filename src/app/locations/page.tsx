@@ -1,7 +1,34 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { PencilIcon } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 
 interface LocationData {
   id: string;
@@ -12,10 +39,39 @@ interface LocationData {
   children?: { id: string; name: string; path: string }[];
 }
 
+interface LocationFormData {
+  name: string;
+  parentId: string | null;
+  notes: string;
+}
+
+/** Returns IDs of all descendants of a given location. */
+function getDescendantIds(locationId: string, locations: LocationData[]): Set<string> {
+  const descendants = new Set<string>();
+  const queue = [locationId];
+  while (queue.length > 0) {
+    const current = queue.shift()!;
+    for (const loc of locations) {
+      if (loc.parentId === current && !descendants.has(loc.id)) {
+        descendants.add(loc.id);
+        queue.push(loc.id);
+      }
+    }
+  }
+  return descendants;
+}
+
 export default function LocationsPage() {
   const [locations, setLocations] = useState<LocationData[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Dialog state
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [editingLocation, setEditingLocation] = useState<LocationData | null>(null);
+  const [formData, setFormData] = useState<LocationFormData>({ name: '', parentId: null, notes: '' });
+  const [saving, setSaving] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
 
   useEffect(() => {
     fetch('/api/locations?withChildren=true&limit=500')
@@ -38,100 +94,277 @@ export default function LocationsPage() {
     );
   };
 
+  const openEditDialog = (location: LocationData) => {
+    setEditingLocation(location);
+    setFormData({
+      name: location.name,
+      parentId: location.parentId,
+      notes: location.notes ?? '',
+    });
+    setFormError(null);
+    setDialogOpen(true);
+  };
+
+  const openAddDialog = () => {
+    setEditingLocation(null);
+    setFormData({ name: '', parentId: null, notes: '' });
+    setFormError(null);
+    setDialogOpen(true);
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!formData.name.trim()) {
+      setFormError('Name is required');
+      return;
+    }
+    setSaving(true);
+    setFormError(null);
+    try {
+      const body = {
+        name: formData.name.trim(),
+        parentId: formData.parentId ?? null,
+        notes: formData.notes.trim() || null,
+      };
+      if (editingLocation) {
+        const res = await fetch(`/api/locations/${editingLocation.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        });
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          throw new Error((err as { error?: string }).error ?? 'Failed to update location');
+        }
+        const updated = (await res.json()) as { data: LocationData };
+        setLocations((prev) =>
+          prev.map((l) =>
+            l.id === editingLocation.id
+              ? { ...updated.data, children: l.children }
+              : l
+          )
+        );
+      } else {
+        const res = await fetch('/api/locations', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        });
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          throw new Error((err as { error?: string }).error ?? 'Failed to create location');
+        }
+        const created = (await res.json()) as { data: LocationData };
+        setLocations((prev) => [...prev, created.data]);
+      }
+      setDialogOpen(false);
+    } catch (err) {
+      setFormError(err instanceof Error ? err.message : 'An error occurred');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // Parent dropdown excludes the location being edited and all its descendants.
+  const parentOptions = editingLocation
+    ? locations.filter((l) => {
+        if (l.id === editingLocation.id) return false;
+        return !getDescendantIds(editingLocation.id, locations).has(l.id);
+      })
+    : locations;
+
   if (loading) {
-    return <div style={{ padding: 32, color: '#9ca3af' }}>Loading locations…</div>;
+    return (
+      <div className="min-h-screen bg-background">
+        <div className="mx-auto max-w-7xl px-4 py-8">
+          <p className="text-muted-foreground">Loading locations…</p>
+        </div>
+      </div>
+    );
   }
+
   if (error) {
-    return <div style={{ padding: 32, color: '#dc2626' }}>{error}</div>;
+    return (
+      <div className="min-h-screen bg-background">
+        <div className="mx-auto max-w-7xl px-4 py-8">
+          <p className="text-destructive">{error}</p>
+        </div>
+      </div>
+    );
   }
 
   return (
-    <div style={{ padding: 24 }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
-        <h1 style={{ fontSize: 24, fontWeight: 700, margin: 0 }}>Locations</h1>
-        <button
-          onClick={() => openPrintLabel(locations.map((l) => l.id))}
-          disabled={locations.length === 0}
-          style={{
-            background: '#2563eb',
-            color: '#fff',
-            border: 'none',
-            borderRadius: 6,
-            padding: '8px 16px',
-            fontSize: 14,
-            fontWeight: 500,
-            cursor: 'pointer',
-            opacity: locations.length === 0 ? 0.5 : 1,
-          }}
-        >
-          🖨️ Print All Labels
-        </button>
-      </div>
-
-      {locations.length === 0 ? (
-        <div style={{ textAlign: 'center', color: '#9ca3af', padding: '48px 0' }}>
-          No locations found.
+    <div className="min-h-screen bg-background">
+      <div className="mx-auto max-w-7xl px-4 py-8">
+        <div className="flex items-center justify-between mb-6">
+          <h1 className="text-2xl font-bold text-foreground">Locations</h1>
+          <div className="flex gap-2">
+            <Button variant="default" size="sm" onClick={openAddDialog}>
+              + Add Location
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => openPrintLabel(locations.map((l) => l.id))}
+              disabled={locations.length === 0}
+            >
+              🖨️ Print All Labels
+            </Button>
+          </div>
         </div>
-      ) : (
-        <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
-            <thead>
-              <tr style={{ background: '#f9fafb', textAlign: 'left' }}>
-                <th style={{ border: '1px solid #e5e7eb', padding: '8px 12px', fontWeight: 600 }}>Name</th>
-                <th style={{ border: '1px solid #e5e7eb', padding: '8px 12px', fontWeight: 600 }}>Path</th>
-                <th style={{ border: '1px solid #e5e7eb', padding: '8px 12px', fontWeight: 600 }}>Notes</th>
-                <th style={{ border: '1px solid #e5e7eb', padding: '8px 12px', fontWeight: 600 }}>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
+
+        {locations.length === 0 ? (
+          <div className="text-center text-muted-foreground py-12">
+            No locations found.
+          </div>
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Name</TableHead>
+                <TableHead>Path</TableHead>
+                <TableHead>Notes</TableHead>
+                <TableHead>Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               {locations.map((location) => (
-                <tr key={location.id} style={{ verticalAlign: 'middle' }}>
-                  <td style={{ border: '1px solid #e5e7eb', padding: '8px 12px', fontWeight: 500 }}>
-                    <Link href={`/locations/${location.id}`} style={{ color: '#2563eb', textDecoration: 'none' }}>
+                <TableRow key={location.id}>
+                  <TableCell className="font-medium">
+                    <Link
+                      href={`/locations/${location.id}`}
+                      className="text-primary hover:underline"
+                    >
                       {location.name}
                     </Link>
-                  </td>
-                  <td style={{ border: '1px solid #e5e7eb', padding: '8px 12px', color: '#6b7280', fontFamily: 'monospace', fontSize: 12 }}>
+                  </TableCell>
+                  <TableCell className="text-muted-foreground font-mono text-xs">
                     {location.path}
-                  </td>
-                  <td style={{ border: '1px solid #e5e7eb', padding: '8px 12px', color: '#6b7280' }}>
+                  </TableCell>
+                  <TableCell className="text-muted-foreground">
                     {location.notes ?? '—'}
-                  </td>
-                  <td style={{ border: '1px solid #e5e7eb', padding: '8px 12px' }}>
-                    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                      <button
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex gap-1.5 flex-wrap">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => openEditDialog(location)}
+                        title="Edit this location"
+                      >
+                        <PencilIcon className="size-4" />
+                        <span className="sr-only">Edit</span>
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
                         onClick={() => openPrintLabel([location.id])}
                         title="Print label for this location"
-                        style={{ fontSize: 12, background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, padding: '3px 8px', cursor: 'pointer' }}
                       >
                         🏷️ Label
-                      </button>
+                      </Button>
                       {(location.children?.length ?? 0) > 0 && (
-                        <button
+                        <Button
+                          variant="outline"
+                          size="sm"
                           onClick={() => openPrintLabel((location.children ?? []).map((c) => c.id))}
                           title="Print labels for all child locations"
-                          style={{ fontSize: 12, background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, padding: '3px 8px', cursor: 'pointer' }}
                         >
                           🏷️ Children
-                        </button>
+                        </Button>
                       )}
-                      <Link
-                        href={`/print/labels?type=lot&locationId=${encodeURIComponent(location.id)}&size=medium`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        title="Print labels for all lots at this location"
-                        style={{ fontSize: 12, background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, padding: '3px 8px', cursor: 'pointer', textDecoration: 'none', color: 'inherit' }}
-                      >
-                        🏷️ Lots
-                      </Link>
+                      <Button variant="outline" size="sm" asChild>
+                        <Link
+                          href={`/print/labels?type=lot&locationId=${encodeURIComponent(location.id)}&size=medium`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          title="Print labels for all lots at this location"
+                        >
+                          🏷️ Lots
+                        </Link>
+                      </Button>
                     </div>
-                  </td>
-                </tr>
+                  </TableCell>
+                </TableRow>
               ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+            </TableBody>
+          </Table>
+        )}
+      </div>
+
+      {/* Add / Edit Location Dialog */}
+      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {editingLocation ? 'Edit Location' : 'Add Location'}
+            </DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="location-name">Name *</Label>
+              <Input
+                id="location-name"
+                value={formData.name}
+                onChange={(e) => setFormData((f) => ({ ...f, name: e.target.value }))}
+                placeholder="Location name"
+                required
+              />
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="location-parent">Parent Location</Label>
+              <Select
+                value={formData.parentId ?? '__none__'}
+                onValueChange={(val) =>
+                  setFormData((f) => ({ ...f, parentId: val === '__none__' ? null : val }))
+                }
+              >
+                <SelectTrigger id="location-parent">
+                  <SelectValue placeholder="None (root location)" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">None (root location)</SelectItem>
+                  {parentOptions.map((loc) => (
+                    <SelectItem key={loc.id} value={loc.id}>
+                      {loc.path || loc.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="location-notes">Notes</Label>
+              <Textarea
+                id="location-notes"
+                value={formData.notes}
+                onChange={(e) => setFormData((f) => ({ ...f, notes: e.target.value }))}
+                placeholder="Optional notes"
+                rows={3}
+              />
+            </div>
+
+            {formError && (
+              <p className="text-sm text-destructive">{formError}</p>
+            )}
+
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setDialogOpen(false)}
+                disabled={saving}
+              >
+                Cancel
+              </Button>
+              <Button type="submit" disabled={saving}>
+                {saving ? 'Saving…' : editingLocation ? 'Save Changes' : 'Add Location'}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
