@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, type ChangeEvent } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -62,6 +62,7 @@ export function AddAllocationDialog({
       setQuantity('');
       setNotes('');
       setSubmitError(null);
+      setSubmitting(false);
     }
   }, [open]);
 
@@ -71,8 +72,14 @@ export function AddAllocationDialog({
     setLotsLoading(true);
     setLotsError(null);
     fetch(`/api/lots?partId=${encodeURIComponent(selectedPart.id)}&limit=100`)
-      .then((res) => res.json())
-      .then((data: { data?: LotForPicker[] }) => {
+      .then(async (res) => {
+        if (!res.ok) {
+          setLotsError('Failed to load lots');
+          setLots([]);
+          setLotsLoading(false);
+          return;
+        }
+        const data: { data?: LotForPicker[] } = await res.json();
         setLots(data.data ?? []);
         setLotsLoading(false);
       })
@@ -97,11 +104,16 @@ export function AddAllocationDialog({
     fetch(
       `/api/allocations?lotId=${encodeURIComponent(selectedLotId)}&status=reserved,in_use,deployed&limit=500`,
     )
-      .then((res) => res.json())
-      .then((data: { data?: { quantity: number | null }[] }) => {
+      .then(async (res) => {
+        if (!res.ok) {
+          setAvailableQty(null);
+          setAvailableQtyLoading(false);
+          return;
+        }
+        const data: { data?: { quantity: number | null }[] } = await res.json();
         const active = data.data ?? [];
         const allocated = active.reduce((sum, a) => sum + (a.quantity ?? 0), 0);
-        setAvailableQty((lot.quantity ?? 0) - allocated);
+        setAvailableQty(Math.max(0, (lot.quantity ?? 0) - allocated));
         setAvailableQtyLoading(false);
       })
       .catch(() => {
@@ -152,13 +164,13 @@ export function AddAllocationDialog({
       const json = (await res.json()) as { data?: AllocationWithDetails; message?: string };
       if (!res.ok) {
         setSubmitError(json.message ?? 'Failed to create allocation');
-        setSubmitting(false);
         return;
       }
       onAllocationAdded(json.data as AllocationWithDetails);
       onOpenChange(false);
     } catch {
       setSubmitError('Network error, please try again');
+    } finally {
       setSubmitting(false);
     }
   }
@@ -285,7 +297,7 @@ export function AddAllocationDialog({
                   min={1}
                   max={availableQty ?? undefined}
                   value={quantity}
-                  onChange={(e: { target: HTMLInputElement }) => setQuantity(e.target.value)}
+                  onChange={(e: ChangeEvent<HTMLInputElement>) => setQuantity(e.target.value)}
                   placeholder="Enter quantity"
                   className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
                 />
@@ -301,7 +313,7 @@ export function AddAllocationDialog({
                 <input
                   type="text"
                   value={notes}
-                  onChange={(e: { target: HTMLInputElement }) => setNotes(e.target.value)}
+                  onChange={(e: ChangeEvent<HTMLInputElement>) => setNotes(e.target.value)}
                   placeholder="Optional notes"
                   className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
                 />

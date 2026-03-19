@@ -248,11 +248,13 @@ export function ProjectDetailClient({ id }: ProjectDetailClientProps) {
   }, [id]);
 
   function handleAllocationAdded(allocation: AllocationWithDetails) {
-    if (!project) return;
-    setProject({
-      ...project,
-      allocations: [...project.allocations, allocation],
-      allocationCount: project.allocationCount + 1,
+    setProject((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        allocations: [...prev.allocations, allocation],
+        allocationCount: prev.allocationCount + 1,
+      };
     });
   }
 
@@ -266,19 +268,27 @@ export function ProjectDetailClient({ id }: ProjectDetailClientProps) {
         body: JSON.stringify({ status: 'recovered' }),
       });
       if (!res.ok) {
-        const json = (await res.json()) as { message?: string };
-        setRemoveError(json.message ?? 'Failed to remove allocation');
+        let message = 'Failed to remove allocation';
+        try {
+          const json = (await res.json()) as { message?: string };
+          message = json.message ?? message;
+        } catch {
+          // ignore JSON parse failure; use fallback message
+        }
+        setRemoveError(message);
         setRemovingId(null);
         setRemoveConfirmId(null);
         return;
       }
-      if (!project) return;
-      setProject({
-        ...project,
-        allocations: project.allocations.filter(
-          (a: AllocationWithDetails) => a.id !== allocationId,
-        ),
-        allocationCount: Math.max(0, project.allocationCount - 1),
+      setProject((prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          allocations: prev.allocations.filter(
+            (a: AllocationWithDetails) => a.id !== allocationId,
+          ),
+          allocationCount: Math.max(0, prev.allocationCount - 1),
+        };
       });
       setRemoveConfirmId(null);
       setRemovingId(null);
