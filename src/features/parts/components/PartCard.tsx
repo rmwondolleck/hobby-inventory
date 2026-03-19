@@ -27,18 +27,18 @@ export function PartCard({ part }: PartCardProps) {
     <Link
       href={`/parts/${part.id}`}
       className={cn(
-        'block rounded-lg border bg-white p-4 shadow-sm transition-shadow hover:shadow-md',
+        'block rounded-lg border bg-card p-4 shadow-sm transition-shadow hover:shadow-md',
         isArchived && 'opacity-60'
       )}
     >
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0 flex-1">
-          <h3 className="truncate font-semibold text-gray-900">{part.name}</h3>
+          <h3 className="truncate font-semibold text-foreground">{part.name}</h3>
           {part.mpn && (
-            <p className="mt-0.5 text-sm text-gray-500">MPN: {part.mpn}</p>
+            <p className="mt-0.5 text-sm text-muted-foreground">MPN: {part.mpn}</p>
           )}
           {part.manufacturer && (
-            <p className="mt-0.5 text-xs text-gray-400">{part.manufacturer}</p>
+            <p className="mt-0.5 text-xs text-muted-foreground">{part.manufacturer}</p>
           )}
         </div>
         <div className="flex shrink-0 flex-col items-end gap-1">
@@ -58,13 +58,13 @@ export function PartCard({ part }: PartCardProps) {
             <Badge variant="secondary">+{part.tags.length - 4}</Badge>
           )}
         </div>
-        <div className="ml-2 shrink-0 text-sm font-medium text-gray-700">
+        <div className="ml-2 shrink-0 text-sm font-medium text-foreground">
           {hasQualitativeStock ? (
             <QualitativeDisplay />
           ) : hasExactStock ? (
             <span>{part.totalQuantity} in stock</span>
           ) : (
-            <span className="text-gray-400">No stock</span>
+            <span className="text-muted-foreground">No stock</span>
           )}
         </div>
       </div>

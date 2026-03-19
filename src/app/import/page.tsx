@@ -8,11 +8,11 @@ export const metadata: Metadata = {
 
 export default function ImportPage() {
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-background">
       <div className="mx-auto max-w-4xl px-4 py-8">
         <div className="mb-6">
-          <h1 className="text-2xl font-bold text-gray-900">CSV Import</h1>
-          <p className="mt-1 text-sm text-gray-500">
+          <h1 className="text-2xl font-bold text-foreground">CSV Import</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
             Bulk-import locations, parts, and lots from CSV files. Always run a dry-run first.
           </p>
           <div className="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-2 text-sm text-amber-800">
@@ -21,7 +21,7 @@ export default function ImportPage() {
           </div>
         </div>
 
-        <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+        <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
           <ImportForm />
         </div>
       </div>

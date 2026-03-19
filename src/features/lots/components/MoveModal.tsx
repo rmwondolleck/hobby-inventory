@@ -69,12 +69,12 @@ export function MoveModal({ lotId, currentLocationId, onClose, onSuccess }: Move
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-      <div className="mx-4 w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
+      <div className="mx-4 w-full max-w-md rounded-xl bg-card p-6 shadow-xl">
         <div className="mb-4 flex items-center justify-between">
-          <h3 className="text-lg font-semibold text-gray-900">Move to New Location</h3>
+          <h3 className="text-lg font-semibold text-foreground">Move to New Location</h3>
           <button
             onClick={onClose}
-            className="text-xl leading-none text-gray-400 hover:text-gray-600"
+            className="text-xl leading-none text-muted-foreground hover:text-muted-foreground"
             aria-label="Close"
           >
             ✕
@@ -82,15 +82,15 @@ export function MoveModal({ lotId, currentLocationId, onClose, onSuccess }: Move
         </div>
 
         {fetching ? (
-          <p className="py-4 text-center text-sm text-gray-500">Loading locations…</p>
+          <p className="py-4 text-center text-sm text-muted-foreground">Loading locations…</p>
         ) : (
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="mb-1 block text-sm font-medium text-gray-700">New Location</label>
+              <label className="mb-1 block text-sm font-medium text-foreground">New Location</label>
               <select
                 value={locationId}
                 onChange={(e) => setLocationId(e.target.value)}
-                className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full rounded-lg border border-border bg-card px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
                 disabled={loading}
               >
                 <option value="">— No location —</option>
@@ -108,13 +108,13 @@ export function MoveModal({ lotId, currentLocationId, onClose, onSuccess }: Move
             </div>
 
             <div>
-              <label className="mb-1 block text-sm font-medium text-gray-700">Notes</label>
+              <label className="mb-1 block text-sm font-medium text-foreground">Notes</label>
               <textarea
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
                 placeholder="Optional reason for move…"
                 rows={2}
-                className="w-full resize-none rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full resize-none rounded-lg border border-border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
                 disabled={loading}
               />
             </div>
@@ -125,7 +125,7 @@ export function MoveModal({ lotId, currentLocationId, onClose, onSuccess }: Move
               <button
                 type="button"
                 onClick={onClose}
-                className="rounded-lg border border-gray-300 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                className="rounded-lg border border-border px-4 py-2 text-sm text-foreground hover:bg-muted"
                 disabled={loading}
               >
                 Cancel

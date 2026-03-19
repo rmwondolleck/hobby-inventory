@@ -111,11 +111,11 @@ export default async function LotsPage({ searchParams }: PageProps) {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-background">
       <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
         <div className="mb-6">
-          <h1 className="text-2xl font-bold text-gray-900">Lots</h1>
-          <p className="mt-1 text-sm text-gray-500">
+          <h1 className="text-2xl font-bold text-foreground">Lots</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
             {total} lot{total !== 1 ? 's' : ''} found
           </p>
         </div>
@@ -130,8 +130,8 @@ export default async function LotsPage({ searchParams }: PageProps) {
 
           <div className="flex-1 min-w-0">
             {lots.length === 0 ? (
-              <div className="rounded-lg border border-dashed border-gray-300 p-12 text-center">
-                <p className="text-gray-500">No lots found. Try adjusting your filters.</p>
+              <div className="rounded-lg border border-dashed border-border p-12 text-center">
+                <p className="text-muted-foreground">No lots found. Try adjusting your filters.</p>
               </div>
             ) : (
               <>
@@ -142,7 +142,7 @@ export default async function LotsPage({ searchParams }: PageProps) {
                 </div>
 
                 {total > PAGE_SIZE && (
-                  <div className="mt-6 flex items-center justify-between text-sm text-gray-500">
+                  <div className="mt-6 flex items-center justify-between text-sm text-muted-foreground">
                     <span>
                       Showing {offset + 1}–{Math.min(offset + PAGE_SIZE, total)} of {total}
                     </span>
@@ -150,7 +150,7 @@ export default async function LotsPage({ searchParams }: PageProps) {
                       {offset > 0 && (
                         <a
                           href={buildPaginationUrl(offset - PAGE_SIZE)}
-                          className="rounded-md border px-3 py-1 hover:bg-gray-100"
+                          className="rounded-md border px-3 py-1 hover:bg-muted"
                         >
                           Previous
                         </a>
@@ -158,7 +158,7 @@ export default async function LotsPage({ searchParams }: PageProps) {
                       {offset + PAGE_SIZE < total && (
                         <a
                           href={buildPaginationUrl(offset + PAGE_SIZE)}
-                          className="rounded-md border px-3 py-1 hover:bg-gray-100"
+                          className="rounded-md border px-3 py-1 hover:bg-muted"
                         >
                           Next
                         </a>

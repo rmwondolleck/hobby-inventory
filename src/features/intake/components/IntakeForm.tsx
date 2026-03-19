@@ -246,7 +246,7 @@ export function IntakeForm() {
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       {/* Mode selector */}
-      <div className="flex overflow-hidden rounded-lg border border-gray-200">
+      <div className="flex overflow-hidden rounded-lg border border-border">
         {(
           [
             { id: 'new-part', label: 'New Part + Lot' },
@@ -262,7 +262,7 @@ export function IntakeForm() {
               'flex-1 px-3 py-2 text-sm font-medium transition-colors',
               mode === id
                 ? 'bg-blue-600 text-white'
-                : 'bg-white text-gray-600 hover:bg-gray-50',
+                : 'bg-card text-muted-foreground hover:bg-muted',
             )}
           >
             {label}
@@ -272,7 +272,7 @@ export function IntakeForm() {
 
       {/* Part section */}
       <section>
-        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-500">
+        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
           {showPartForm ? 'Part' : 'Select Part'}
         </h2>
 
@@ -291,7 +291,7 @@ export function IntakeForm() {
         {showPartForm && (
           <div className="space-y-3">
             <div>
-              <label htmlFor="part-name" className="mb-1 block text-xs font-medium text-gray-700">
+              <label htmlFor="part-name" className="mb-1 block text-xs font-medium text-foreground">
                 Name <span className="text-red-500">*</span>
               </label>
               <input
@@ -302,13 +302,13 @@ export function IntakeForm() {
                 value={part.name}
                 onChange={(e) => handlePartChange('name', e.target.value)}
                 placeholder="e.g. ESP32-WROOM-32"
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                className="w-full rounded-lg border border-border px-3 py-2 text-sm focus:border-ring focus:outline-none focus:ring-1 focus:ring-ring"
               />
             </div>
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label htmlFor="part-category" className="mb-1 block text-xs font-medium text-gray-700">Category</label>
+                <label htmlFor="part-category" className="mb-1 block text-xs font-medium text-foreground">Category</label>
                 <input
                   id="part-category"
                   type="text"
@@ -316,7 +316,7 @@ export function IntakeForm() {
                   value={part.category}
                   onChange={(e) => handlePartChange('category', e.target.value)}
                   placeholder="e.g. Resistors"
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  className="w-full rounded-lg border border-border px-3 py-2 text-sm focus:border-ring focus:outline-none focus:ring-1 focus:ring-ring"
                 />
                 <datalist id="categories-list">
                   {categories.map((c) => (
@@ -325,39 +325,39 @@ export function IntakeForm() {
                 </datalist>
               </div>
               <div>
-                <label htmlFor="part-manufacturer" className="mb-1 block text-xs font-medium text-gray-700">Manufacturer</label>
+                <label htmlFor="part-manufacturer" className="mb-1 block text-xs font-medium text-foreground">Manufacturer</label>
                 <input
                   id="part-manufacturer"
                   type="text"
                   value={part.manufacturer}
                   onChange={(e) => handlePartChange('manufacturer', e.target.value)}
                   placeholder="e.g. Espressif"
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  className="w-full rounded-lg border border-border px-3 py-2 text-sm focus:border-ring focus:outline-none focus:ring-1 focus:ring-ring"
                 />
               </div>
             </div>
 
             <div>
-              <label htmlFor="part-mpn" className="mb-1 block text-xs font-medium text-gray-700">MPN</label>
+              <label htmlFor="part-mpn" className="mb-1 block text-xs font-medium text-foreground">MPN</label>
               <input
                 id="part-mpn"
                 type="text"
                 value={part.mpn}
                 onChange={(e) => handlePartChange('mpn', e.target.value)}
                 placeholder="Manufacturer part number"
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                className="w-full rounded-lg border border-border px-3 py-2 text-sm focus:border-ring focus:outline-none focus:ring-1 focus:ring-ring"
               />
             </div>
 
             <div>
-              <label htmlFor="part-notes" className="mb-1 block text-xs font-medium text-gray-700">Notes</label>
+              <label htmlFor="part-notes" className="mb-1 block text-xs font-medium text-foreground">Notes</label>
               <textarea
                 id="part-notes"
                 value={part.notes}
                 onChange={(e) => handlePartChange('notes', e.target.value)}
                 placeholder="Optional part notes"
                 rows={2}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                className="w-full rounded-lg border border-border px-3 py-2 text-sm focus:border-ring focus:outline-none focus:ring-1 focus:ring-ring"
               />
             </div>
           </div>
@@ -366,12 +366,12 @@ export function IntakeForm() {
 
       {/* Lot section */}
       <section>
-        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-500">Lot</h2>
+        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">Lot</h2>
         <div className="space-y-3">
           {/* Quantity mode toggle */}
           <div className="flex items-center gap-3">
-            <span className="text-xs font-medium text-gray-700">Quantity mode</span>
-            <div className="flex overflow-hidden rounded-md border border-gray-200">
+            <span className="text-xs font-medium text-foreground">Quantity mode</span>
+            <div className="flex overflow-hidden rounded-md border border-border">
               {(['exact', 'qualitative'] as const).map((m) => (
                 <button
                   key={m}
@@ -380,8 +380,8 @@ export function IntakeForm() {
                   className={cn(
                     'px-3 py-1 text-xs font-medium transition-colors',
                     lot.quantityMode === m
-                      ? 'bg-gray-800 text-white'
-                      : 'bg-white text-gray-600 hover:bg-gray-50',
+                      ? 'bg-primary text-primary-foreground'
+                      : 'bg-card text-muted-foreground hover:bg-muted',
                   )}
                 >
                   {m.charAt(0).toUpperCase() + m.slice(1)}
@@ -393,7 +393,7 @@ export function IntakeForm() {
           {lot.quantityMode === 'exact' ? (
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label htmlFor="lot-quantity" className="mb-1 block text-xs font-medium text-gray-700">Quantity</label>
+                <label htmlFor="lot-quantity" className="mb-1 block text-xs font-medium text-foreground">Quantity</label>
                 <input
                   id="lot-quantity"
                   type="number"
@@ -401,24 +401,24 @@ export function IntakeForm() {
                   value={lot.quantity}
                   onChange={(e) => handleLotChange('quantity', e.target.value)}
                   placeholder="e.g. 100"
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  className="w-full rounded-lg border border-border px-3 py-2 text-sm focus:border-ring focus:outline-none focus:ring-1 focus:ring-ring"
                 />
               </div>
               <div>
-                <label htmlFor="lot-unit" className="mb-1 block text-xs font-medium text-gray-700">Unit</label>
+                <label htmlFor="lot-unit" className="mb-1 block text-xs font-medium text-foreground">Unit</label>
                 <input
                   id="lot-unit"
                   type="text"
                   value={lot.unit}
                   onChange={(e) => handleLotChange('unit', e.target.value)}
                   placeholder="e.g. pcs, m, kg"
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  className="w-full rounded-lg border border-border px-3 py-2 text-sm focus:border-ring focus:outline-none focus:ring-1 focus:ring-ring"
                 />
               </div>
             </div>
           ) : (
             <div>
-              <label className="mb-1 block text-xs font-medium text-gray-700">Stock level</label>
+              <label className="mb-1 block text-xs font-medium text-foreground">Stock level</label>
               <div className="flex gap-2">
                 {(['plenty', 'low', 'out'] as const).map((level) => (
                   <button
@@ -433,7 +433,7 @@ export function IntakeForm() {
                           : level === 'low'
                           ? 'border-yellow-500 bg-yellow-50 text-yellow-700'
                           : 'border-red-500 bg-red-50 text-red-700'
-                        : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50',
+                        : 'border-border bg-card text-muted-foreground hover:bg-muted',
                     )}
                   >
                     {level}
@@ -445,7 +445,7 @@ export function IntakeForm() {
 
           {/* Source URL */}
           <div>
-            <label htmlFor="lot-source-url" className="mb-1 block text-xs font-medium text-gray-700">
+            <label htmlFor="lot-source-url" className="mb-1 block text-xs font-medium text-foreground">
               Source URL
               {detectedSource && detectedSource !== 'manual' && (
                 <span className="ml-2 rounded-full bg-blue-100 px-2 py-0.5 text-xs text-blue-700 capitalize">
@@ -459,32 +459,32 @@ export function IntakeForm() {
               value={lot.sourceUrl}
               onChange={(e) => handleLotChange('sourceUrl', e.target.value)}
               placeholder="https://www.amazon.com/…"
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              className="w-full rounded-lg border border-border px-3 py-2 text-sm focus:border-ring focus:outline-none focus:ring-1 focus:ring-ring"
             />
           </div>
 
           {/* Received date */}
           <div>
-            <label htmlFor="lot-received-at" className="mb-1 block text-xs font-medium text-gray-700">Received date</label>
+            <label htmlFor="lot-received-at" className="mb-1 block text-xs font-medium text-foreground">Received date</label>
             <input
               id="lot-received-at"
               type="date"
               value={lot.receivedAt}
               onChange={(e) => handleLotChange('receivedAt', e.target.value)}
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              className="w-full rounded-lg border border-border px-3 py-2 text-sm focus:border-ring focus:outline-none focus:ring-1 focus:ring-ring"
             />
           </div>
 
           {!isQuickRestock && (
             <div>
-              <label htmlFor="lot-notes" className="mb-1 block text-xs font-medium text-gray-700">Lot notes</label>
+              <label htmlFor="lot-notes" className="mb-1 block text-xs font-medium text-foreground">Lot notes</label>
               <textarea
                 id="lot-notes"
                 value={lot.notes}
                 onChange={(e) => handleLotChange('notes', e.target.value)}
                 placeholder="Optional notes for this batch"
                 rows={2}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                className="w-full rounded-lg border border-border px-3 py-2 text-sm focus:border-ring focus:outline-none focus:ring-1 focus:ring-ring"
               />
             </div>
           )}
@@ -493,7 +493,7 @@ export function IntakeForm() {
 
       {/* Location section */}
       <section>
-        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-500">
+        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
           Location
         </h2>
         <LocationPicker value={location} onChange={setLocation} />
@@ -510,7 +510,7 @@ export function IntakeForm() {
       <button
         type="submit"
         disabled={!canSubmit}
-        className="w-full rounded-lg bg-blue-600 px-4 py-3 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+        className="w-full rounded-lg bg-blue-600 px-4 py-3 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
       >
         {isSubmitting ? 'Adding…' : 'Add to Inventory →'}
       </button>
