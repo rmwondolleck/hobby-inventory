@@ -48,6 +48,7 @@ safe-outputs:
       - "next.config.js"
       - "tailwind.config.ts"
       - "tsconfig.json"
+      - "README.md"
   add-comment:
     target: "*"
     max: 5
