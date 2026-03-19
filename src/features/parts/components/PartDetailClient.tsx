@@ -111,13 +111,15 @@ export function PartDetailClient() {
 
   return (
     <div className="space-y-6">
-      {/* Edit dialog */}
-      <EditPartDialog
-        open={editOpen}
-        onOpenChange={setEditOpen}
-        part={part}
-        onSave={setPart}
-      />
+      {/* Edit dialog – only mounted when open to avoid eager category fetch */}
+      {editOpen && (
+        <EditPartDialog
+          open={editOpen}
+          onOpenChange={setEditOpen}
+          part={part}
+          onSave={setPart}
+        />
+      )}
 
       {/* Header */}
       <div className="flex items-start justify-between gap-4">
