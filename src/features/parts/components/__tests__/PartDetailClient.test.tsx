@@ -165,8 +165,8 @@ describe('PartDetailClient — Allocate button visibility', () => {
   });
 
   it('counts only active allocations (reserved/in_use/deployed) when computing available qty', async () => {
-    // cancelled allocation should NOT reduce available quantity
-    const lotWithCancelledAlloc: LotWithDetails = {
+    // recovered (terminal) allocation should NOT reduce available quantity
+    const lotWithRecoveredAlloc: LotWithDetails = {
       ...baseLot,
       quantity: 5,
       allocations: [
@@ -175,7 +175,7 @@ describe('PartDetailClient — Allocate button visibility', () => {
           lotId: 'lot-1',
           projectId: 'proj-1',
           quantity: 5,
-          status: 'cancelled',
+          status: 'recovered',
           notes: null,
           createdAt: '2024-01-01',
           updatedAt: '2024-01-01',
@@ -183,10 +183,10 @@ describe('PartDetailClient — Allocate button visibility', () => {
         },
       ],
     };
-    setupFetch(makePart([lotWithCancelledAlloc]));
+    setupFetch(makePart([lotWithRecoveredAlloc]));
     render(<PartDetailClient />);
     await waitFor(() => expect(screen.getByText('Test Part')).toBeInTheDocument());
-    // cancelled allocation doesn't count → still 5 available → Allocate shown
+    // recovered allocation doesn't count → still 5 available → Allocate shown
     expect(screen.getByRole('button', { name: /allocate/i })).toBeInTheDocument();
   });
 
