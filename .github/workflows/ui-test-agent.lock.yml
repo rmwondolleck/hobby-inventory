@@ -23,7 +23,7 @@
 #
 # Writes and runs Playwright E2E UI tests against the Next.js app, reports results
 #
-# gh-aw-metadata: {"schema_version":"v2","frontmatter_hash":"5ae6a5e5b990c419f0e6fe90dd010def17c9cab26d469bc27c6cc0ff269f700b","compiler_version":"v0.57.2","strict":true}
+# gh-aw-metadata: {"schema_version":"v2","frontmatter_hash":"58989c14ebdaac4097769a92d40b50853b7c8a1c396191a80659daaefe557452","compiler_version":"v0.57.2","strict":true}
 
 name: "UI Test Agent"
 "on":
@@ -48,7 +48,8 @@ name: "UI Test Agent"
 permissions: {}
 
 concurrency:
-  group: "gh-aw-${{ github.workflow }}"
+  cancel-in-progress: false
+  group: ui-test-agent-pr-${{ github.event.inputs.pr_number }}
 
 run-name: "UI Test Agent"
 
