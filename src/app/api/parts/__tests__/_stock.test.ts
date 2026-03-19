@@ -86,7 +86,7 @@ describe('computeStockFields', () => {
     expect(inUseQuantity).toBe(10);
   });
 
-  it('ignores non-reserved/non-in_use allocations', () => {
+  it('treats deployed as in_use and ignores recovered allocations', () => {
     const lots: LotForStock[] = [
       {
         quantity: 50,
@@ -101,7 +101,7 @@ describe('computeStockFields', () => {
     ];
     const { reservedQuantity, inUseQuantity } = computeStockFields(lots);
     expect(reservedQuantity).toBe(0);
-    expect(inUseQuantity).toBe(0);
+    expect(inUseQuantity).toBe(5); // deployed is folded into inUseQuantity
   });
 
   it('computes availableQuantity as totalQuantity minus reserved and in_use', () => {
@@ -218,6 +218,28 @@ describe('computeStockFields', () => {
     expect(reservedQuantity).toBe(3);
     expect(inUseQuantity).toBe(2);
     expect(availableQuantity).toBe(15);
+  });
+
+  it('ignores allocations on non-in_stock lots when computing reserved/inUse', () => {
+    const lots: LotForStock[] = [
+      {
+        quantity: 10,
+        quantityMode: 'exact',
+        qualitativeStatus: null,
+        status: 'in_stock',
+        allocations: [{ quantity: 2, status: 'reserved' }],
+      },
+      {
+        quantity: 5,
+        quantityMode: 'exact',
+        qualitativeStatus: null,
+        status: 'ordered',
+        allocations: [{ quantity: 5, status: 'reserved' }],
+      },
+    ];
+    const { reservedQuantity, availableQuantity } = computeStockFields(lots);
+    expect(reservedQuantity).toBe(2); // only from in_stock lot
+    expect(availableQuantity).toBe(8);
   });
 
   it('treats lots with no allocations field as having no allocations', () => {
