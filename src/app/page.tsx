@@ -4,19 +4,16 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { PageHeader } from '@/components/PageHeader';
 import { ProjectCard } from '@/features/projects/components/ProjectCard';
+import { safeParseJson } from '@/lib/utils';
 import type { ProjectListItem } from '@/features/projects/types';
 
 const PINNED_KEY = 'pinned-projects';
 
 function loadPinnedIds(): string[] {
-  try {
-    const raw = localStorage.getItem(PINNED_KEY);
-    if (!raw) return [];
-    const parsed: unknown = JSON.parse(raw);
-    return Array.isArray(parsed) ? (parsed as string[]) : [];
-  } catch {
-    return [];
-  }
+  const raw = localStorage.getItem(PINNED_KEY);
+  if (!raw) return [];
+  const parsed = safeParseJson<unknown>(raw, []);
+  return Array.isArray(parsed) ? (parsed as string[]) : [];
 }
 
 export default function Home() {
@@ -25,20 +22,38 @@ export default function Home() {
 
   useEffect(() => {
     setPinnedIds(loadPinnedIds());
-    fetch('/api/projects?status=active&limit=20')
-      .then((r) => r.json())
-      .then((data: { data?: ProjectListItem[] }) => setProjects(data.data ?? []));
+
+    const controller = new AbortController();
+    (async () => {
+      try {
+        const res = await fetch('/api/projects?status=active&limit=20', {
+          signal: controller.signal,
+        });
+        if (!res.ok) return;
+        const data: { data?: ProjectListItem[] } = await res.json();
+        setProjects(data.data ?? []);
+      } catch (err) {
+        if (err instanceof Error && err.name === 'AbortError') return;
+      }
+    })();
+
+    return () => controller.abort();
   }, []);
 
   function handlePin(id: string) {
     setPinnedIds((prev) => {
       const next = prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id];
-      localStorage.setItem(PINNED_KEY, JSON.stringify(next));
+      try {
+        localStorage.setItem(PINNED_KEY, JSON.stringify(next));
+      } catch {
+        // quota exceeded or storage disabled — pinned state updated in memory only
+      }
       return next;
     });
   }
 
   const pinnedProjects = projects.filter((p) => pinnedIds.includes(p.id));
+  const unpinnedProjects = projects.filter((p) => !pinnedIds.includes(p.id));
 
   return (
     <main className="min-h-screen bg-gray-50">
@@ -113,15 +128,15 @@ export default function Home() {
           </Link>
         </div>
 
-        {projects.length > 0 && (
+        {unpinnedProjects.length > 0 && (
           <section className="mt-8">
             <h2 className="mb-3 text-lg font-semibold text-gray-800">Active Projects</h2>
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {projects.map((project) => (
+              {unpinnedProjects.map((project) => (
                 <ProjectCard
                   key={project.id}
                   project={project}
-                  isPinned={pinnedIds.includes(project.id)}
+                  isPinned={false}
                   onPin={handlePin}
                 />
               ))}
