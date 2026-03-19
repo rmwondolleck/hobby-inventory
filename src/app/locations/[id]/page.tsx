@@ -1,6 +1,7 @@
 import prisma from '@/lib/db';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
+import { PageHeader } from '@/components/PageHeader';
 
 export const dynamic = 'force-dynamic';
 
@@ -64,19 +65,18 @@ export default async function LocationDetailPage({ params }: Params) {
         <span className="text-gray-900 font-medium">{location.name}</span>
       </nav>
 
-      {/* Header */}
-      <div className="flex items-start justify-between mb-6 gap-4">
-        <div className="min-w-0">
-          <h1 className="text-2xl font-bold text-gray-900">{location.name}</h1>
-          <p className="text-gray-400 text-xs mt-1 font-mono truncate">{location.path}</p>
-        </div>
-        <Link
-          href="/locations"
-          className="px-3 py-2 text-sm text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 flex-shrink-0"
-        >
-          ← Back
-        </Link>
-      </div>
+      <PageHeader
+        title={location.name}
+        description={<span className="font-mono text-xs text-muted-foreground">{location.path}</span>}
+        actions={
+          <Link
+            href="/locations"
+            className="px-3 py-2 text-sm text-muted-foreground border border-border rounded-lg hover:bg-muted flex-shrink-0"
+          >
+            ← Back
+          </Link>
+        }
+      />
 
       {/* Notes */}
       {location.notes && (

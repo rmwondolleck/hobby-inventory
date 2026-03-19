@@ -1,3 +1,4 @@
+import React from 'react';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
@@ -24,9 +25,11 @@ const STATUS_VARIANTS: Record<
 
 interface ProjectCardProps {
   project: ProjectListItem;
+  isPinned?: boolean;
+  onPin?: (id: string) => void;
 }
 
-export function ProjectCard({ project }: ProjectCardProps) {
+export function ProjectCard({ project, isPinned = false, onPin }: ProjectCardProps) {
   const isArchived = !!project.archivedAt;
   const reservedCount = project.allocationsByStatus.reserved ?? 0;
   const inUseCount = project.allocationsByStatus.in_use ?? 0;
@@ -36,10 +39,27 @@ export function ProjectCard({ project }: ProjectCardProps) {
     <Link
       href={`/projects/${project.id}`}
       className={cn(
-        'block rounded-lg border bg-card p-4 shadow-sm transition-shadow hover:shadow-md',
+        'relative block rounded-lg border bg-card p-4 shadow-sm transition-shadow hover:shadow-md',
         isArchived && 'opacity-60'
       )}
     >
+      {onPin && (
+        <button
+          type="button"
+          onClick={(e: React.MouseEvent) => {
+            e.preventDefault();
+            e.stopPropagation();
+            onPin(project.id);
+          }}
+          aria-label={isPinned ? 'Unpin project' : 'Pin project'}
+          className={cn(
+            'absolute right-2 top-2 rounded p-0.5 text-base leading-none transition-opacity',
+            isPinned ? 'opacity-100' : 'opacity-30 hover:opacity-100'
+          )}
+        >
+          📌
+        </button>
+      )}
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0 flex-1">
           <h3 className="truncate font-semibold text-foreground">{project.name}</h3>
@@ -47,7 +67,7 @@ export function ProjectCard({ project }: ProjectCardProps) {
             <p className="mt-0.5 line-clamp-2 text-sm text-muted-foreground">{project.notes}</p>
           )}
         </div>
-        <div className="flex shrink-0 flex-col items-end gap-1">
+        <div className={cn("flex shrink-0 flex-col items-end gap-1", onPin && "mr-6")}>
           {isArchived && <Badge variant="secondary">Archived</Badge>}
           <Badge variant={STATUS_VARIANTS[project.status] ?? 'default'}>
             {STATUS_LABELS[project.status] ?? project.status}
