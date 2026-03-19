@@ -11,6 +11,14 @@ jest.mock('next/navigation', () => ({
   useParams: () => ({ id: 'part-123' }),
 }));
 
+jest.mock('next/link', () => {
+  const MockLink = ({ href, children, ...props }: { href: string; children: React.ReactNode; [key: string]: unknown }) => (
+    <a href={href} {...props}>{children}</a>
+  );
+  MockLink.displayName = 'MockLink';
+  return MockLink;
+});
+
 jest.mock('sonner', () => ({
   toast: { success: jest.fn(), error: jest.fn() },
 }));

@@ -7,14 +7,15 @@ import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 import { formatDate } from '@/lib/utils';
 import { AllocateModal } from '@/features/lots/components/AllocateModal';
+import type { AllocationStatus } from '@/lib/types';
 import type { PartDetail, LotWithDetails } from '../types';
 
-const ACTIVE_ALLOCATION_STATUSES = ['reserved', 'in_use', 'deployed'] as const;
+const ACTIVE_ALLOCATION_STATUSES: AllocationStatus[] = ['reserved', 'in_use', 'deployed'];
 
 function getAvailableQuantity(lot: LotWithDetails): number | null {
   if (lot.quantityMode !== 'exact' || lot.quantity == null) return null;
   const allocated = lot.allocations
-    .filter((a) => (ACTIVE_ALLOCATION_STATUSES as readonly string[]).includes(a.status))
+    .filter((a) => ACTIVE_ALLOCATION_STATUSES.includes(a.status))
     .reduce((sum, a) => sum + (a.quantity ?? 0), 0);
   return Math.max(0, lot.quantity - allocated);
 }
@@ -243,6 +244,7 @@ export function PartDetailClient() {
                       <td className="px-4 py-3">
                         {canAllocate && (
                           <button
+                            type="button"
                             onClick={() => setAllocatingLot(lot)}
                             className="rounded-md bg-blue-50 px-2.5 py-1 text-xs font-medium text-blue-700 hover:bg-blue-100"
                           >
