@@ -2,7 +2,7 @@
  * @jest-environment jsdom
  */
 import React from 'react';
-import { render, screen, waitFor, fireEvent, act } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import Home from '../page';
 
 jest.mock('next/link', () => {
@@ -171,10 +171,7 @@ describe('Home page — low stock warnings', () => {
     mockFetchError();
     render(<Home />);
 
-    // Give async effects time to run
-    await act(async () => {
-      await new Promise((r) => setTimeout(r, 50));
-    });
+    await waitFor(() => expect(global.fetch).toHaveBeenCalledTimes(2));
 
     expect(screen.queryByText(/low stock warnings/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/error/i)).not.toBeInTheDocument();
@@ -184,9 +181,7 @@ describe('Home page — low stock warnings', () => {
     mockFetchNotOk();
     render(<Home />);
 
-    await act(async () => {
-      await new Promise((r) => setTimeout(r, 50));
-    });
+    await waitFor(() => expect(global.fetch).toHaveBeenCalledTimes(2));
 
     expect(screen.queryByText(/low stock warnings/i)).not.toBeInTheDocument();
   });

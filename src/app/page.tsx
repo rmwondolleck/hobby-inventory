@@ -38,14 +38,18 @@ export default function Home() {
 
     async function fetchLowStock() {
       try {
-        const [lowRes, outRes] = await Promise.all([
+        const [lowResult, outResult] = await Promise.allSettled([
           fetch('/api/lots?status=low&limit=100'),
           fetch('/api/lots?status=out&limit=100'),
         ]);
 
         const [lowData, outData] = await Promise.all([
-          lowRes.ok ? (lowRes.json() as Promise<{ data: LotListItem[] }>) : Promise.resolve({ data: [] }),
-          outRes.ok ? (outRes.json() as Promise<{ data: LotListItem[] }>) : Promise.resolve({ data: [] }),
+          lowResult.status === 'fulfilled' && lowResult.value.ok
+            ? (lowResult.value.json() as Promise<{ data: LotListItem[] }>)
+            : Promise.resolve({ data: [] as LotListItem[] }),
+          outResult.status === 'fulfilled' && outResult.value.ok
+            ? (outResult.value.json() as Promise<{ data: LotListItem[] }>)
+            : Promise.resolve({ data: [] as LotListItem[] }),
         ]);
 
         const allLots: LotListItem[] = [...lowData.data, ...outData.data];
@@ -79,9 +83,11 @@ export default function Home() {
     if (raw === undefined) return;
     const parsed = parseInt(raw, 10);
     const value = Number.isFinite(parsed) && parsed >= 0 ? parsed : DEFAULT_THRESHOLD;
-    const updated = { ...thresholds, [partId]: value };
-    setThresholds(updated);
-    saveThresholds(updated);
+    setThresholds((prev) => {
+      const updated = { ...prev, [partId]: value };
+      saveThresholds(updated);
+      return updated;
+    });
     setThresholdInputs((prev) => {
       const next = { ...prev };
       delete next[partId];
