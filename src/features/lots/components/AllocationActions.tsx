@@ -40,24 +40,24 @@ function ConfirmDialog({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-      <div className="mx-4 w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
+      <div className="mx-4 w-full max-w-md rounded-xl bg-card p-6 shadow-xl">
         <div className="mb-4 flex items-center justify-between">
-          <h3 className="text-lg font-semibold text-gray-900">{title}</h3>
+          <h3 className="text-lg font-semibold text-foreground">{title}</h3>
           <button
             onClick={onClose}
-            className="text-xl leading-none text-gray-400 hover:text-gray-600"
+            className="text-xl leading-none text-muted-foreground hover:text-muted-foreground"
             aria-label="Close"
           >
             ✕
           </button>
         </div>
-        <p className="mb-6 text-sm text-gray-600">{description}</p>
+        <p className="mb-6 text-sm text-muted-foreground">{description}</p>
         {error && <p className="mb-4 text-sm text-red-600">{error}</p>}
         <div className="flex justify-end gap-3">
           <button
             type="button"
             onClick={onClose}
-            className="rounded-lg border border-gray-300 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+            className="rounded-lg border border-border px-4 py-2 text-sm text-foreground hover:bg-muted"
             disabled={loading}
           >
             Cancel

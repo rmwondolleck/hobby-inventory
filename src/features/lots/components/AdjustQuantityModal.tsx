@@ -74,14 +74,14 @@ export function AdjustQuantityModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-      <div className="mx-4 w-full max-w-sm rounded-xl bg-white p-6 shadow-xl">
+      <div className="mx-4 w-full max-w-sm rounded-xl bg-card p-6 shadow-xl">
         <div className="mb-4 flex items-center justify-between">
-          <h3 className="text-lg font-semibold text-gray-900">
+          <h3 className="text-lg font-semibold text-foreground">
             {quantityMode === 'exact' ? 'Adjust Quantity' : 'Update Stock Level'}
           </h3>
           <button
             onClick={onClose}
-            className="text-xl leading-none text-gray-400 hover:text-gray-600"
+            className="text-xl leading-none text-muted-foreground hover:text-muted-foreground"
             aria-label="Close"
           >
             ✕
@@ -91,7 +91,7 @@ export function AdjustQuantityModal({
         <form onSubmit={handleSubmit} className="space-y-4">
           {quantityMode === 'exact' ? (
             <div>
-              <label className="mb-1 block text-sm font-medium text-gray-700">
+              <label className="mb-1 block text-sm font-medium text-foreground">
                 New Quantity{unit ? ` (${unit})` : ''}
               </label>
               <input
@@ -99,7 +99,7 @@ export function AdjustQuantityModal({
                 min="0"
                 value={quantity}
                 onChange={(e) => setQuantity(e.target.value)}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full rounded-lg border border-border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
                 disabled={loading}
                 autoFocus
                 required
@@ -107,7 +107,7 @@ export function AdjustQuantityModal({
             </div>
           ) : (
             <div>
-              <label className="mb-2 block text-sm font-medium text-gray-700">
+              <label className="mb-2 block text-sm font-medium text-foreground">
                 Stock Level
               </label>
               <div className="flex gap-4">
@@ -134,7 +134,7 @@ export function AdjustQuantityModal({
             <button
               type="button"
               onClick={onClose}
-              className="rounded-lg border border-gray-300 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+              className="rounded-lg border border-border px-4 py-2 text-sm text-foreground hover:bg-muted"
               disabled={loading}
             >
               Cancel

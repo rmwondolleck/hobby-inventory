@@ -46,7 +46,7 @@ function AllocationRow({ allocation }: { allocation: AllocationWithDetails }) {
       : '—';
 
   return (
-    <tr className="border-t border-gray-100 hover:bg-gray-50">
+    <tr className="border-t border-border hover:bg-muted">
       <td className="py-2 pr-4 text-sm">
         <Link
           href={`/parts/${lot.part.id}`}
@@ -60,7 +60,7 @@ function AllocationRow({ allocation }: { allocation: AllocationWithDetails }) {
           </span>
         )}
       </td>
-      <td className="py-2 pr-4 text-sm text-gray-600">
+      <td className="py-2 pr-4 text-sm text-muted-foreground">
         {lot.location ? (
           <Link
             href={`/locations/${lot.location.id}`}
@@ -69,11 +69,11 @@ function AllocationRow({ allocation }: { allocation: AllocationWithDetails }) {
             {lot.location.name}
           </Link>
         ) : (
-          <span className="text-gray-400">—</span>
+          <span className="text-muted-foreground">—</span>
         )}
       </td>
-      <td className="py-2 pr-4 text-sm text-gray-700">{qtyDisplay}</td>
-      <td className="py-2 text-sm text-gray-500">{allocation.notes ?? '—'}</td>
+      <td className="py-2 pr-4 text-sm text-foreground">{qtyDisplay}</td>
+      <td className="py-2 text-sm text-muted-foreground">{allocation.notes ?? '—'}</td>
     </tr>
   );
 }
@@ -89,20 +89,20 @@ function AllocationGroup({
 
   return (
     <div className="mb-6">
-      <h3 className="mb-2 flex items-center gap-2 text-sm font-semibold text-gray-700">
+      <h3 className="mb-2 flex items-center gap-2 text-sm font-semibold text-foreground">
         {ALLOCATION_STATUS_LABELS[status] ?? status}
-        <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-normal text-gray-500">
+        <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-normal text-muted-foreground">
           {allocations.length}
         </span>
       </h3>
-      <div className="overflow-hidden rounded-lg border border-gray-200 bg-white">
+      <div className="overflow-hidden rounded-lg border border-border bg-card">
         <table className="w-full">
           <thead>
-            <tr className="border-b border-gray-100 bg-gray-50">
-              <th className="py-2 pr-4 text-left text-xs font-medium text-gray-500">Part</th>
-              <th className="py-2 pr-4 text-left text-xs font-medium text-gray-500">Location</th>
-              <th className="py-2 pr-4 text-left text-xs font-medium text-gray-500">Quantity</th>
-              <th className="py-2 text-left text-xs font-medium text-gray-500">Notes</th>
+            <tr className="border-b border-border bg-muted">
+              <th className="py-2 pr-4 text-left text-xs font-medium text-muted-foreground">Part</th>
+              <th className="py-2 pr-4 text-left text-xs font-medium text-muted-foreground">Location</th>
+              <th className="py-2 pr-4 text-left text-xs font-medium text-muted-foreground">Quantity</th>
+              <th className="py-2 text-left text-xs font-medium text-muted-foreground">Notes</th>
             </tr>
           </thead>
           <tbody>
@@ -118,8 +118,8 @@ function AllocationGroup({
 
 function EventRow({ event }: { event: ProjectEvent }) {
   return (
-    <tr className="border-t border-gray-100 hover:bg-gray-50">
-      <td className="py-2 pr-4 text-xs text-gray-400 whitespace-nowrap">
+    <tr className="border-t border-border hover:bg-muted">
+      <td className="py-2 pr-4 text-xs text-muted-foreground whitespace-nowrap">
         {formatDateTime(event.createdAt)}
       </td>
       <td className="py-2 pr-4 text-sm">
@@ -130,11 +130,11 @@ function EventRow({ event }: { event: ProjectEvent }) {
           {event.lot.part.name}
         </Link>
       </td>
-      <td className="py-2 pr-4 text-sm text-gray-600 capitalize">{event.type}</td>
-      <td className="py-2 pr-4 text-sm text-gray-600">
+      <td className="py-2 pr-4 text-sm text-muted-foreground capitalize">{event.type}</td>
+      <td className="py-2 pr-4 text-sm text-muted-foreground">
         {event.delta != null ? (event.delta > 0 ? `+${event.delta}` : event.delta) : '—'}
       </td>
-      <td className="py-2 text-sm text-gray-500">{event.notes ?? '—'}</td>
+      <td className="py-2 text-sm text-muted-foreground">{event.notes ?? '—'}</td>
     </tr>
   );
 }
@@ -172,17 +172,17 @@ export function ProjectDetailClient({ id }: ProjectDetailClientProps) {
   if (loading) {
     return (
       <div className="space-y-4">
-        <div className="h-8 w-64 animate-pulse rounded bg-gray-200" />
-        <div className="h-4 w-48 animate-pulse rounded bg-gray-100" />
-        <div className="h-32 animate-pulse rounded-lg bg-gray-100" />
+        <div className="h-8 w-64 animate-pulse rounded bg-muted" />
+        <div className="h-4 w-48 animate-pulse rounded bg-muted" />
+        <div className="h-32 animate-pulse rounded-lg bg-muted" />
       </div>
     );
   }
 
   if (notFound) {
     return (
-      <div className="rounded-lg border border-dashed border-gray-300 p-8 text-center">
-        <p className="text-gray-500">Project not found.</p>
+      <div className="rounded-lg border border-dashed border-border p-8 text-center">
+        <p className="text-muted-foreground">Project not found.</p>
         <Link href="/projects" className="mt-2 inline-block text-sm text-blue-600 hover:underline">
           Back to projects
         </Link>
@@ -213,7 +213,7 @@ export function ProjectDetailClient({ id }: ProjectDetailClientProps) {
       <div className="mb-6 flex items-start justify-between gap-4">
         <div>
           <div className="mb-1 flex items-center gap-3">
-            <h1 className="text-2xl font-bold text-gray-900">{project.name}</h1>
+            <h1 className="text-2xl font-bold text-foreground">{project.name}</h1>
             <Badge variant={STATUS_VARIANTS[project.status] ?? 'default'}>
               {STATUS_LABELS[project.status] ?? project.status}
             </Badge>
@@ -239,8 +239,8 @@ export function ProjectDetailClient({ id }: ProjectDetailClientProps) {
 
       {/* Notes */}
       {project.notes && (
-        <div className="mb-6 rounded-lg bg-gray-50 p-4 text-sm text-gray-700">
-          <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-gray-400">
+        <div className="mb-6 rounded-lg bg-muted p-4 text-sm text-foreground">
+          <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
             Notes
           </p>
           <p className="whitespace-pre-wrap">{project.notes}</p>
@@ -259,17 +259,17 @@ export function ProjectDetailClient({ id }: ProjectDetailClientProps) {
 
       {/* Allocations */}
       <div className="mb-6">
-        <h2 className="mb-4 text-lg font-semibold text-gray-900">
+        <h2 className="mb-4 text-lg font-semibold text-foreground">
           Allocations
           {hasAllocations && (
-            <span className="ml-2 text-sm font-normal text-gray-500">
+            <span className="ml-2 text-sm font-normal text-muted-foreground">
               ({project.allocationCount} total)
             </span>
           )}
         </h2>
 
         {!hasAllocations ? (
-          <div className="rounded-lg border border-dashed border-gray-300 p-6 text-center text-sm text-gray-500">
+          <div className="rounded-lg border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
             No parts allocated to this project yet.
           </div>
         ) : (
@@ -281,22 +281,22 @@ export function ProjectDetailClient({ id }: ProjectDetailClientProps) {
 
       {/* Event history */}
       <div className="mb-6">
-        <h2 className="mb-4 text-lg font-semibold text-gray-900">Event History</h2>
+        <h2 className="mb-4 text-lg font-semibold text-foreground">Event History</h2>
 
         {!hasEvents ? (
-          <div className="rounded-lg border border-dashed border-gray-300 p-6 text-center text-sm text-gray-500">
+          <div className="rounded-lg border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
             No events recorded for this project.
           </div>
         ) : (
-          <div className="overflow-hidden rounded-lg border border-gray-200 bg-white">
+          <div className="overflow-hidden rounded-lg border border-border bg-card">
             <table className="w-full">
               <thead>
-                <tr className="border-b border-gray-100 bg-gray-50">
-                  <th className="py-2 pr-4 text-left text-xs font-medium text-gray-500">Date</th>
-                  <th className="py-2 pr-4 text-left text-xs font-medium text-gray-500">Part</th>
-                  <th className="py-2 pr-4 text-left text-xs font-medium text-gray-500">Type</th>
-                  <th className="py-2 pr-4 text-left text-xs font-medium text-gray-500">Delta</th>
-                  <th className="py-2 text-left text-xs font-medium text-gray-500">Notes</th>
+                <tr className="border-b border-border bg-muted">
+                  <th className="py-2 pr-4 text-left text-xs font-medium text-muted-foreground">Date</th>
+                  <th className="py-2 pr-4 text-left text-xs font-medium text-muted-foreground">Part</th>
+                  <th className="py-2 pr-4 text-left text-xs font-medium text-muted-foreground">Type</th>
+                  <th className="py-2 pr-4 text-left text-xs font-medium text-muted-foreground">Delta</th>
+                  <th className="py-2 text-left text-xs font-medium text-muted-foreground">Notes</th>
                 </tr>
               </thead>
               <tbody>
@@ -310,7 +310,7 @@ export function ProjectDetailClient({ id }: ProjectDetailClientProps) {
       </div>
 
       {/* Metadata */}
-      <div className="mt-8 border-t border-gray-100 pt-4 text-xs text-gray-400">
+      <div className="mt-8 border-t border-border pt-4 text-xs text-muted-foreground">
         <span>Created {formatDate(project.createdAt)}</span>
         <span className="mx-2">·</span>
         <span>Updated {formatDate(project.updatedAt)}</span>
