@@ -1,22 +1,231 @@
-import Link from 'next/link'
+'use client';
+
+import { useState, useEffect } from 'react';
+import Link from 'next/link';
+import { PageHeader } from '@/components/PageHeader';
+import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
+import { ProjectCard } from '@/features/projects/components/ProjectCard';
+import { safeParseJson } from '@/lib/utils';
+import type { ProjectListItem } from '@/features/projects/types';
+import type { LotListItem } from '@/features/lots/types';
+
+// --- Pinned projects ---
+const PINNED_KEY = 'pinned-projects';
+
+function loadPinnedIds(): string[] {
+  const raw = localStorage.getItem(PINNED_KEY);
+  if (!raw) return [];
+  const parsed = safeParseJson<unknown>(raw, []);
+  return Array.isArray(parsed) ? (parsed as string[]) : [];
+}
+
+// --- Low stock ---
+const DEFAULT_THRESHOLD = 5;
+const THRESHOLDS_KEY = 'stock-thresholds';
+
+interface PartStockSummary {
+  partId: string;
+  partName: string;
+  totalQuantity: number;
+}
+
+function loadThresholds(): Record<string, number> {
+  try {
+    const raw = localStorage.getItem(THRESHOLDS_KEY);
+    return raw ? (JSON.parse(raw) as Record<string, number>) : {};
+  } catch {
+    return {};
+  }
+}
+
+function saveThresholds(thresholds: Record<string, number>): void {
+  localStorage.setItem(THRESHOLDS_KEY, JSON.stringify(thresholds));
+}
 
 export default function Home() {
+  // Pinned projects state
+  const [projects, setProjects] = useState<ProjectListItem[]>([]);
+  const [pinnedIds, setPinnedIds] = useState<string[]>([]);
+
+  // Low stock state
+  const [lowStockParts, setLowStockParts] = useState<PartStockSummary[]>([]);
+  const [thresholds, setThresholds] = useState<Record<string, number>>({});
+  const [thresholdInputs, setThresholdInputs] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    setPinnedIds(loadPinnedIds());
+    setThresholds(loadThresholds());
+
+    const controller = new AbortController();
+    (async () => {
+      try {
+        const res = await fetch('/api/projects?status=active&limit=20', {
+          signal: controller.signal,
+        });
+        if (!res.ok) return;
+        const data: { data?: ProjectListItem[] } = await res.json();
+        setProjects(data.data ?? []);
+      } catch (err) {
+        if (err instanceof Error && err.name === 'AbortError') return;
+      }
+    })();
+
+    async function fetchLowStock() {
+      try {
+        const [lowResult, outResult] = await Promise.allSettled([
+          fetch('/api/lots?status=low&limit=100'),
+          fetch('/api/lots?status=out&limit=100'),
+        ]);
+
+        const [lowData, outData] = await Promise.all([
+          lowResult.status === 'fulfilled' && lowResult.value.ok
+            ? (lowResult.value.json() as Promise<{ data: LotListItem[] }>)
+            : Promise.resolve({ data: [] as LotListItem[] }),
+          outResult.status === 'fulfilled' && outResult.value.ok
+            ? (outResult.value.json() as Promise<{ data: LotListItem[] }>)
+            : Promise.resolve({ data: [] as LotListItem[] }),
+        ]);
+
+        const allLots: LotListItem[] = [...lowData.data, ...outData.data];
+
+        const partMap = new Map<string, PartStockSummary>();
+        for (const lot of allLots) {
+          const existing = partMap.get(lot.partId);
+          const qty = lot.quantity ?? 0;
+          if (existing) {
+            existing.totalQuantity += qty;
+          } else {
+            partMap.set(lot.partId, {
+              partId: lot.partId,
+              partName: lot.part.name,
+              totalQuantity: qty,
+            });
+          }
+        }
+
+        setLowStockParts(Array.from(partMap.values()));
+      } catch {
+        // silently ignore fetch errors on dashboard
+      }
+    }
+
+    fetchLowStock();
+
+    return () => controller.abort();
+  }, []);
+
+  function handlePin(id: string) {
+    setPinnedIds((prev) => {
+      const next = prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id];
+      try {
+        localStorage.setItem(PINNED_KEY, JSON.stringify(next));
+      } catch {
+        // quota exceeded or storage disabled — pinned state updated in memory only
+      }
+      return next;
+    });
+  }
+
+  function handleThresholdBlur(partId: string) {
+    const raw = thresholdInputs[partId];
+    if (raw === undefined) return;
+    const parsed = parseInt(raw, 10);
+    const value = Number.isFinite(parsed) && parsed >= 0 ? parsed : DEFAULT_THRESHOLD;
+    setThresholds((prev) => {
+      const updated = { ...prev, [partId]: value };
+      saveThresholds(updated);
+      return updated;
+    });
+    setThresholdInputs((prev) => {
+      const next = { ...prev };
+      delete next[partId];
+      return next;
+    });
+  }
+
+  function getThreshold(partId: string): number {
+    return thresholds[partId] ?? DEFAULT_THRESHOLD;
+  }
+
+  function getThresholdDisplayValue(partId: string): string {
+    return thresholdInputs[partId] ?? String(getThreshold(partId));
+  }
+
+  const pinnedProjects = projects.filter((p) => pinnedIds.includes(p.id));
+  const unpinnedProjects = projects.filter((p) => !pinnedIds.includes(p.id));
+
   return (
-    <main className="min-h-screen bg-background">
+    <main className="min-h-screen bg-gray-50">
       <div className="mx-auto max-w-5xl px-4 py-10">
-        <h1 className="text-3xl font-bold text-foreground">Welcome to Hobby Inventory</h1>
-        <p className="mt-2 text-muted-foreground">
-          Track parts, lots, and locations for all your hobby projects.
-        </p>
+        <PageHeader
+          title="Welcome to Hobby Inventory"
+          description="Track parts, lots, and locations for all your hobby projects."
+        />
+
+        {lowStockParts.length > 0 && (
+          <section className="mt-8">
+            <h2 className="mb-3 flex items-center gap-2 text-lg font-semibold text-gray-800">
+              ⚠️ Low Stock Warnings
+            </h2>
+            <div className="flex flex-col gap-3">
+              {lowStockParts.map((part) => (
+                <Alert key={part.partId} variant="default" className="border-yellow-300 bg-yellow-50">
+                  <AlertTitle className="text-yellow-800">{part.partName}</AlertTitle>
+                  <AlertDescription>
+                    <div className="flex flex-wrap items-center gap-4 text-yellow-700">
+                      <span>Qty: {part.totalQuantity}</span>
+                      <span className="flex items-center gap-1">
+                        Threshold:
+                        <input
+                          type="number"
+                          min={0}
+                          value={getThresholdDisplayValue(part.partId)}
+                          onChange={(e) =>
+                            setThresholdInputs((prev) => ({ ...prev, [part.partId]: e.target.value }))
+                          }
+                          onBlur={() => handleThresholdBlur(part.partId)}
+                          className="ml-1 w-16 rounded border border-yellow-300 bg-white px-1 py-0.5 text-sm text-gray-800 focus:outline-none focus:ring-1 focus:ring-yellow-400"
+                          aria-label={`Stock threshold for ${part.partName}`}
+                        />
+                      </span>
+                      <Link
+                        href={`/parts/${part.partId}`}
+                        className="font-medium text-blue-600 underline hover:text-blue-800"
+                      >
+                        View Part
+                      </Link>
+                    </div>
+                  </AlertDescription>
+                </Alert>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {pinnedProjects.length > 0 && (
+          <section className="mt-8">
+            <h2 className="mb-3 text-lg font-semibold text-gray-800">📌 Pinned Projects</h2>
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {pinnedProjects.map((project) => (
+                <ProjectCard
+                  key={project.id}
+                  project={project}
+                  isPinned
+                  onPin={handlePin}
+                />
+              ))}
+            </div>
+          </section>
+        )}
 
         <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <Link
             href="/intake"
-            className="group flex flex-col gap-2 rounded-xl border border-primary/20 bg-primary/10 p-5 shadow-sm transition hover:shadow-md"
+            className="group flex flex-col gap-2 rounded-xl border border-blue-200 bg-blue-50 p-5 shadow-sm transition hover:shadow-md"
           >
             <span className="text-2xl">＋</span>
-            <h2 className="text-base font-semibold text-primary">Add to Inventory</h2>
-            <p className="text-sm text-primary/80">
+            <h2 className="text-base font-semibold text-blue-800">Add to Inventory</h2>
+            <p className="text-sm text-blue-600">
               Quick-add new parts and lots in under 60 seconds.
             </p>
           </Link>
@@ -26,8 +235,8 @@ export default function Home() {
             className="group flex flex-col gap-2 rounded-xl border border-border bg-card p-5 shadow-sm transition hover:shadow-md"
           >
             <span className="text-2xl">📦</span>
-            <h2 className="text-base font-semibold text-foreground">Browse Parts</h2>
-            <p className="text-sm text-muted-foreground">Search and filter your parts catalog.</p>
+            <h2 className="text-base font-semibold text-gray-800">Browse Parts</h2>
+            <p className="text-sm text-gray-500">Search and filter your parts catalog.</p>
           </Link>
 
           <Link
@@ -35,17 +244,17 @@ export default function Home() {
             className="group flex flex-col gap-2 rounded-xl border border-border bg-card p-5 shadow-sm transition hover:shadow-md"
           >
             <span className="text-2xl">🗂️</span>
-            <h2 className="text-base font-semibold text-foreground">Lots</h2>
-            <p className="text-sm text-muted-foreground">View stock quantities, sources, and locations.</p>
+            <h2 className="text-base font-semibold text-gray-800">Lots</h2>
+            <p className="text-sm text-gray-500">View stock quantities, sources, and locations.</p>
           </Link>
 
           <Link
             href="/locations"
             className="group flex flex-col gap-2 rounded-xl border border-border bg-card p-5 shadow-sm transition hover:shadow-md"
           >
-            <span className="text-2xl">📍</span>
-            <h2 className="text-base font-semibold text-foreground">Locations</h2>
-            <p className="text-sm text-muted-foreground">Manage storage locations and hierarchy.</p>
+            <span className="text-2xl">��</span>
+            <h2 className="text-base font-semibold text-gray-800">Locations</h2>
+            <p className="text-sm text-gray-500">Manage storage locations and hierarchy.</p>
           </Link>
 
           <Link
@@ -53,11 +262,27 @@ export default function Home() {
             className="group flex flex-col gap-2 rounded-xl border border-border bg-card p-5 shadow-sm transition hover:shadow-md"
           >
             <span className="text-2xl">🔧</span>
-            <h2 className="text-base font-semibold text-foreground">Projects</h2>
-            <p className="text-sm text-muted-foreground">Track part allocations across builds.</p>
+            <h2 className="text-base font-semibold text-gray-800">Projects</h2>
+            <p className="text-sm text-gray-500">Track part allocations across builds.</p>
           </Link>
         </div>
+
+        {unpinnedProjects.length > 0 && (
+          <section className="mt-8">
+            <h2 className="mb-3 text-lg font-semibold text-gray-800">Active Projects</h2>
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {unpinnedProjects.map((project) => (
+                <ProjectCard
+                  key={project.id}
+                  project={project}
+                  isPinned={false}
+                  onPin={handlePin}
+                />
+              ))}
+            </div>
+          </section>
+        )}
       </div>
     </main>
-  )
+  );
 }

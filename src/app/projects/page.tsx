@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { ProjectsListClient } from '@/features/projects/components/ProjectsListClient';
+import { PageHeader } from '@/components/PageHeader';
 
 export const metadata: Metadata = {
   title: 'Projects — Hobby Inventory',
@@ -8,13 +9,11 @@ export const metadata: Metadata = {
 
 export default function ProjectsPage() {
   return (
-    <div className="mx-auto max-w-7xl px-4 py-8">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-foreground">Projects</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Track where your parts are going and the status of each project.
-        </p>
-      </div>
+    <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6">
+      <PageHeader
+        title="Projects"
+        description="Track where your parts are going and the status of each project."
+      />
       <ProjectsListClient />
     </div>
   );

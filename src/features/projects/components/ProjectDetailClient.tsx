@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
 import { formatDate, formatDateTime } from '@/lib/utils';
+import { PageHeader } from '@/components/PageHeader';
 import type { ProjectDetail, AllocationWithDetails, ProjectEvent } from '../types';
 
 const STATUS_LABELS: Record<string, string> = {
@@ -209,33 +210,27 @@ export function ProjectDetailClient({ id }: ProjectDetailClientProps) {
 
   return (
     <div>
-      {/* Header */}
-      <div className="mb-6 flex items-start justify-between gap-4">
-        <div>
-          <div className="mb-1 flex items-center gap-3">
-            <h1 className="text-2xl font-bold text-foreground">{project.name}</h1>
+      <PageHeader
+        title={project.name}
+        actions={
+          <div className="flex flex-wrap items-center gap-3">
             <Badge variant={STATUS_VARIANTS[project.status] ?? 'default'}>
               {STATUS_LABELS[project.status] ?? project.status}
             </Badge>
-            {project.archivedAt && (
-              <Badge variant="secondary">Archived</Badge>
-            )}
+            {project.archivedAt && <Badge variant="secondary">Archived</Badge>}
+            <Link href="/projects" className="text-sm text-muted-foreground hover:underline">
+              ← Back to projects
+            </Link>
           </div>
-          {project.tags.length > 0 && (
-            <div className="flex flex-wrap gap-1 mt-2">
-              {project.tags.map((tag) => (
-                <Badge key={tag} variant="secondary">{tag}</Badge>
-              ))}
-            </div>
-          )}
+        }
+      />
+      {project.tags.length > 0 && (
+        <div className="flex flex-wrap gap-1 mb-6">
+          {project.tags.map((tag) => (
+            <Badge key={tag} variant="secondary">{tag}</Badge>
+          ))}
         </div>
-        <Link
-          href="/projects"
-          className="shrink-0 text-sm text-blue-600 hover:underline"
-        >
-          ← Back to projects
-        </Link>
-      </div>
+      )}
 
       {/* Notes */}
       {project.notes && (

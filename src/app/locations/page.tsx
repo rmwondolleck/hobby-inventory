@@ -29,6 +29,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { PageHeader } from '@/components/PageHeader';
 
 interface LocationData {
   id: string;
@@ -196,22 +197,25 @@ export default function LocationsPage() {
   return (
     <div className="min-h-screen bg-background">
       <div className="mx-auto max-w-7xl px-4 py-8">
-        <div className="flex items-center justify-between mb-6">
-          <h1 className="text-2xl font-bold text-foreground">Locations</h1>
-          <div className="flex gap-2">
-            <Button variant="default" size="sm" onClick={openAddDialog}>
-              + Add Location
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => openPrintLabel(locations.map((l) => l.id))}
-              disabled={locations.length === 0}
-            >
-              🖨️ Print All Labels
-            </Button>
-          </div>
-        </div>
+        <PageHeader
+          title="Locations"
+          description="Manage storage locations and hierarchy."
+          actions={
+            <div className="flex gap-2">
+              <Button variant="default" size="sm" onClick={openAddDialog}>
+                + Add Location
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => openPrintLabel(locations.map((l) => l.id))}
+                disabled={locations.length === 0}
+              >
+                🖨️ Print All Labels
+              </Button>
+            </div>
+          }
+        />
 
         {locations.length === 0 ? (
           <div className="text-center text-muted-foreground py-12">

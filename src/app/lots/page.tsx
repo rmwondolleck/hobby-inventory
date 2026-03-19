@@ -3,6 +3,7 @@ import prisma from '@/lib/db';
 import { safeParseJson } from '@/lib/utils';
 import { LotCard, type LotCardLot } from '@/features/lots/components/LotCard';
 import { LotFilterForm } from '@/features/lots/components/LotFilterForm';
+import { PageHeader } from '@/components/PageHeader';
 
 interface PageProps {
   searchParams: Promise<{
@@ -113,12 +114,10 @@ export default async function LotsPage({ searchParams }: PageProps) {
   return (
     <div className="min-h-screen bg-background">
       <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold text-foreground">Lots</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {total} lot{total !== 1 ? 's' : ''} found
-          </p>
-        </div>
+        <PageHeader
+          title="Lots"
+          description={`${total} lot${total !== 1 ? 's' : ''} found`}
+        />
 
         <div className="flex gap-8">
           <Suspense fallback={null}>
