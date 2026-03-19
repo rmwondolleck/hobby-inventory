@@ -14,12 +14,21 @@ jest.mock('next/link', () => {
   return MockLink;
 });
 
-const mockLocations = [
+interface LocationFixture {
+  id: string;
+  name: string;
+  path: string;
+  parentId: string | null;
+  notes: string | null;
+  children?: { id: string; name: string; path: string }[];
+}
+
+const mockLocations: LocationFixture[] = [
   { id: 'loc-1', name: 'Shelf A', path: 'Shelf A', parentId: null, notes: null },
   { id: 'loc-2', name: 'Bin B', path: 'Shelf A > Bin B', parentId: 'loc-1', notes: 'Top shelf' },
 ];
 
-function mockFetchSuccess(locations = mockLocations) {
+function mockFetchSuccess(locations: LocationFixture[] = mockLocations) {
   global.fetch = jest.fn().mockResolvedValueOnce({
     json: async () => ({ data: locations }),
   } as Response);
