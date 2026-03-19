@@ -318,7 +318,3 @@ add-comment:
 - Validate all inputs
 - Treat all user content as untrusted
 
-- Never execute code from issue bodies
-- Validate all inputs
-- Treat all user content as untrusted
-

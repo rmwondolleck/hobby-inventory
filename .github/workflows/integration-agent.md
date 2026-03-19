@@ -100,7 +100,26 @@ The orchestrator handles all workflow coordination. Your only responsibilities:
 
 ## Your Task
 
-### Step 0: Validate Feature PRs
+### Step 0: Rebase Epic Branch onto Main (REQUIRED — do this first, before any analysis or edits)
+
+Before doing anything else, sync the epic branch with the current state of `main`. This is critical — if `main` has moved forward since the epic branch was created (e.g., a previous epic or feature was merged), the `create-pull-request` patch will fail with "sha1 information is lacking" unless the epic branch is rebased first.
+
+```bash
+git fetch origin main
+git rebase origin/main
+```
+
+If the rebase produces conflicts, resolve them before proceeding — these are exactly the integration conflicts you need to address:
+
+```bash
+# For each conflicted file, resolve and stage
+git add <resolved-file>
+git rebase --continue
+```
+
+**Do not proceed to Step 0a until the rebase completes successfully.** Once complete, the epic branch will be a clean forward-port onto `main` and all subsequent edits will patch cleanly.
+
+### Step 0a: Validate Feature PRs
 Before reading any code, verify the inputs are sound:
 1. **Parse** `${{ github.event.inputs.feature_prs }}` into individual PR numbers
 2. **For each PR**, call `get_pull_request` to confirm:
@@ -257,26 +276,6 @@ This epic is ready for human review. Key accomplishments:
 2. Update project documentation
 3. Create follow-up issues for low-priority improvements
 ```
-
-### Step 3b: Rebase Epic Branch onto Main (REQUIRED before any edits)
-
-Before making any edits, sync the epic branch with the current state of `main`. This is critical — if main has moved forward since the epic branch was created (e.g., a previous epic was merged), the `create-pull-request` patch will fail unless the epic branch is rebased first.
-
-```bash
-git checkout ${{ github.event.inputs.epic_branch }}
-git fetch origin main
-git rebase origin/main
-```
-
-If rebase produces conflicts, resolve them as part of the synthesis work — these are exactly the integration conflicts you need to address. Use standard git conflict resolution:
-
-```bash
-# For each conflicted file, resolve and stage
-git add <resolved-file>
-git rebase --continue
-```
-
-Once complete, the epic branch will be a clean forward-port onto main and all subsequent edits will patch cleanly.
 
 ### Step 4: Make Consolidation Improvements (Optional)
 
