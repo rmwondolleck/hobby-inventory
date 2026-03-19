@@ -164,7 +164,7 @@ describe('DuplicatePartDialog', () => {
     it('calls POST /api/parts with correct payload and navigates to new part', async () => {
       (global.fetch as jest.Mock).mockResolvedValueOnce({
         ok: true,
-        json: async () => ({ data: { id: 'new-part-99' } }),
+        json: async () => ({ id: 'new-part-99' }),
       });
 
       renderDialog();
@@ -188,7 +188,7 @@ describe('DuplicatePartDialog', () => {
     it('calls onOpenChange(false) on successful submission', async () => {
       (global.fetch as jest.Mock).mockResolvedValueOnce({
         ok: true,
-        json: async () => ({ data: { id: 'new-part-99' } }),
+        json: async () => ({ id: 'new-part-99' }),
       });
 
       renderDialog();
@@ -200,7 +200,7 @@ describe('DuplicatePartDialog', () => {
     it('strips empty optional fields from payload', async () => {
       (global.fetch as jest.Mock).mockResolvedValueOnce({
         ok: true,
-        json: async () => ({ data: { id: 'new-part-100' } }),
+        json: async () => ({ id: 'new-part-100' }),
       });
 
       renderDialog(MINIMAL_PART);
@@ -217,7 +217,7 @@ describe('DuplicatePartDialog', () => {
     it('omits parameter rows with empty keys', async () => {
       (global.fetch as jest.Mock).mockResolvedValueOnce({
         ok: true,
-        json: async () => ({ data: { id: 'new-part-101' } }),
+        json: async () => ({ id: 'new-part-101' }),
       });
 
       renderDialog();

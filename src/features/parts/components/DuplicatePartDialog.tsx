@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, type FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import {
@@ -24,6 +24,7 @@ interface DuplicatePartDialogProps {
 interface ParameterRow {
   key: string;
   value: string;
+  originalType: 'string' | 'number' | 'boolean';
 }
 
 export function DuplicatePartDialog({ part, open, onOpenChange }: DuplicatePartDialogProps) {
@@ -32,6 +33,7 @@ export function DuplicatePartDialog({ part, open, onOpenChange }: DuplicatePartD
   const initialParams: ParameterRow[] = Object.entries(part.parameters).map(([key, value]) => ({
     key,
     value: String(value),
+    originalType: (typeof value === 'number' ? 'number' : typeof value === 'boolean' ? 'boolean' : 'string') as 'string' | 'number' | 'boolean',
   }));
 
   const [name, setName] = useState(`${part.name} (copy)`);
@@ -51,14 +53,14 @@ export function DuplicatePartDialog({ part, open, onOpenChange }: DuplicatePartD
   }
 
   function addParamRow() {
-    setParamRows((rows) => [...rows, { key: '', value: '' }]);
+    setParamRows((rows) => [...rows, { key: '', value: '', originalType: 'string' }]);
   }
 
   function removeParamRow(index: number) {
     setParamRows((rows) => rows.filter((_, i) => i !== index));
   }
 
-  async function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setError(null);
     setSubmitting(true);
@@ -68,10 +70,18 @@ export function DuplicatePartDialog({ part, open, onOpenChange }: DuplicatePartD
       .map((t) => t.trim())
       .filter(Boolean);
 
-    const parameters: Record<string, string> = {};
+    const parameters: Record<string, string | number | boolean> = {};
     for (const row of paramRows) {
       if (row.key.trim()) {
-        parameters[row.key.trim()] = row.value;
+        const raw = row.value;
+        let coerced: string | number | boolean = raw;
+        if (row.originalType === 'number') {
+          const n = Number(raw);
+          coerced = isNaN(n) ? raw : n;
+        } else if (row.originalType === 'boolean') {
+          coerced = raw === 'true' ? true : raw === 'false' ? false : raw;
+        }
+        parameters[row.key.trim()] = coerced;
       }
     }
 
@@ -95,9 +105,9 @@ export function DuplicatePartDialog({ part, open, onOpenChange }: DuplicatePartD
         throw new Error(json.message ?? json.error ?? 'Failed to create part');
       }
 
-      const json = (await res.json()) as { data: { id: string } };
+      const json = (await res.json()) as { id: string };
       onOpenChange(false);
-      router.push(`/parts/${json.data.id}`);
+      router.push(`/parts/${json.id}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An unexpected error occurred');
     } finally {
@@ -193,6 +203,7 @@ export function DuplicatePartDialog({ part, open, onOpenChange }: DuplicatePartD
                   variant="ghost"
                   size="sm"
                   onClick={() => removeParamRow(i)}
+                  aria-label="Remove parameter"
                   className="shrink-0 text-gray-400 hover:text-red-600"
                 >
                   ✕
