@@ -65,7 +65,7 @@ jest.mock('@/components/ui/select', () => {
   };
 });
 
-const mockLocations = [
+const mockLocations: { id: string; name: string; path: string; parentId: string | null; notes: string | null }[] = [
   { id: 'loc-1', name: 'Shelf A', path: 'Shelf A', parentId: null, notes: null },
   { id: 'loc-2', name: 'Bin B', path: 'Shelf A > Bin B', parentId: 'loc-1', notes: 'Top shelf' },
 ];
