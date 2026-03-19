@@ -271,8 +271,8 @@ describe('ProjectDetailClient — archive behaviour', () => {
 
     (global.fetch as jest.Mock).mockResolvedValueOnce({
       ok: false,
-      status: 500,
-      json: async () => ({ error: 'Cannot archive' }),
+      status: 409,
+      json: async () => ({ error: 'already_archived', message: 'Project is already archived' }),
     } as unknown as Response);
 
     await act(async () => {
@@ -280,7 +280,7 @@ describe('ProjectDetailClient — archive behaviour', () => {
     });
 
     await waitFor(() =>
-      expect(screen.getByText('Cannot archive')).toBeInTheDocument()
+      expect(screen.getByText('Project is already archived')).toBeInTheDocument()
     );
     expect(mockPush).not.toHaveBeenCalled();
   });
@@ -417,7 +417,7 @@ describe('ProjectDetailClient — Edit Project dialog', () => {
     (global.fetch as jest.Mock).mockResolvedValueOnce({
       ok: false,
       status: 400,
-      json: async () => ({ error: 'Invalid name' }),
+      json: async () => ({ error: 'validation_error', message: 'name must be a non-empty string' }),
     } as unknown as Response);
 
     await act(async () => {
@@ -425,7 +425,7 @@ describe('ProjectDetailClient — Edit Project dialog', () => {
     });
 
     await waitFor(() =>
-      expect(screen.getByText('Invalid name')).toBeInTheDocument()
+      expect(screen.getByText('name must be a non-empty string')).toBeInTheDocument()
     );
   });
 
