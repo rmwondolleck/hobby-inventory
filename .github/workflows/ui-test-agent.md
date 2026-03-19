@@ -46,6 +46,9 @@ network:
     - playwright
     - "binaries.prisma.sh"
     - "checkpoint.prisma.io"
+concurrency:
+  group: ui-test-agent-pr-${{ github.event.inputs.pr_number }}
+  cancel-in-progress: false
 steps:
   - name: Install Playwright browsers
     run: npx playwright install --with-deps chromium
