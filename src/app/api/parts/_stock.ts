@@ -13,14 +13,16 @@ export function computeStockFields(lots: LotForStock[]) {
     .filter((l) => l.quantityMode === 'exact')
     .reduce((sum, l) => sum + (l.quantity ?? 0), 0);
 
-  const allAllocations = lots.flatMap((l) => l.allocations ?? []);
+  const inStockExactAllocations = inStockLots
+    .filter((l) => l.quantityMode === 'exact')
+    .flatMap((l) => l.allocations ?? []);
 
-  const reservedQuantity = allAllocations
+  const reservedQuantity = inStockExactAllocations
     .filter((a) => a.status === 'reserved')
     .reduce((sum, a) => sum + (a.quantity ?? 0), 0);
 
-  const inUseQuantity = allAllocations
-    .filter((a) => a.status === 'in_use')
+  const inUseQuantity = inStockExactAllocations
+    .filter((a) => a.status === 'in_use' || a.status === 'deployed')
     .reduce((sum, a) => sum + (a.quantity ?? 0), 0);
 
   const scrappedQuantity = lots

@@ -112,6 +112,7 @@ function AllocationRow({
       <td className="py-2 text-sm">
         {transition && (
           <button
+            type="button"
             onClick={handleTransition}
             disabled={transitioning}
             className="rounded bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700 hover:bg-blue-100 disabled:opacity-50"

@@ -84,7 +84,7 @@ export async function GET(request: Request) {
           qualitativeStatus: true,
           status: true,
           allocations: {
-            where: { status: { in: ['reserved', 'in_use'] } },
+            where: { status: { in: ['reserved', 'in_use', 'deployed'] } },
             select: { quantity: true, status: true },
           },
         },
