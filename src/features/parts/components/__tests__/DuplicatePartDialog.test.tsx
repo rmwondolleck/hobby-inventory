@@ -130,9 +130,9 @@ describe('DuplicatePartDialog', () => {
       expect(screen.getAllByPlaceholderText('Key')).toHaveLength(3);
     });
 
-    it('removes a parameter row when ✕ is clicked', () => {
+    it('removes a parameter row when remove button is clicked', () => {
       renderDialog();
-      const removeButtons = screen.getAllByText('✕');
+      const removeButtons = screen.getAllByRole('button', { name: /remove parameter/i });
       fireEvent.click(removeButtons[0]);
       expect(screen.getAllByPlaceholderText('Key')).toHaveLength(1);
     });
