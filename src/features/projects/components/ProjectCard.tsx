@@ -45,6 +45,7 @@ export function ProjectCard({ project, isPinned = false, onPin }: ProjectCardPro
     >
       {onPin && (
         <button
+          type="button"
           onClick={(e: React.MouseEvent) => {
             e.preventDefault();
             e.stopPropagation();
