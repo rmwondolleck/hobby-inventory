@@ -88,6 +88,9 @@ const basePart: PartDetail = {
   lots: [],
 };
 
+/** Shape returned by PATCH /api/parts/[id] — does NOT include lots. */
+const { lots: _lots, ...basePatchPart } = basePart;
+
 function renderDialog(overrides?: Partial<typeof basePart>, open = true) {
   const onOpenChange = jest.fn();
   const onSave = jest.fn();
@@ -126,7 +129,8 @@ function makeFetchMock(patchResponse: { ok: boolean; body?: object }) {
         ok: patchResponse.ok,
         json: async () =>
           patchResponse.ok
-            ? { data: { ...basePart, name: 'Updated Name' } }
+            // Matches real PATCH response: no `lots` field
+            ? { data: { ...basePatchPart, name: 'Updated Name' } }
             : patchResponse.body ?? {},
       });
     }
@@ -261,7 +265,7 @@ describe('EditPartDialog', () => {
       expect(body.parameters).toEqual({ voltage: '3.3V', frequency: '240MHz' });
     });
 
-    it('calls onSave with updated part data on success', async () => {
+    it('calls onSave with updated part data on success, preserving lots from original part', async () => {
       const { onSave, onOpenChange } = renderDialog();
       const form = screen.getByRole('button', { name: /Save changes/i }).closest('form')!;
 
@@ -270,7 +274,11 @@ describe('EditPartDialog', () => {
       });
 
       await waitFor(() => {
-        expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ name: 'Updated Name' }));
+        expect(onSave).toHaveBeenCalledWith(expect.objectContaining({
+          name: 'Updated Name',
+          // lots is NOT returned by PATCH, so it must be preserved from the original part
+          lots: basePart.lots,
+        }));
         expect(onOpenChange).toHaveBeenCalledWith(false);
       });
     });

@@ -37,6 +37,9 @@ interface EditPartDialogProps {
   onSave: (updated: PartDetail) => void;
 }
 
+/** Sentinel used for Radix Select when no category is selected. */
+const NONE_CATEGORY = '__none__';
+
 function paramsToRows(parameters: Record<string, unknown>): ParamRow[] {
   return Object.entries(parameters).map(([key, value]) => ({
     key,
@@ -57,7 +60,7 @@ function rowsToParams(rows: ParamRow[]): Record<string, string> {
 
 export function EditPartDialog({ open, onOpenChange, part, onSave }: EditPartDialogProps) {
   const [name, setName] = useState(part.name);
-  const [category, setCategory] = useState(part.category ?? '');
+  const [category, setCategory] = useState(part.category ?? NONE_CATEGORY);
   const [manufacturer, setManufacturer] = useState(part.manufacturer ?? '');
   const [mpn, setMpn] = useState(part.mpn ?? '');
   const [notes, setNotes] = useState(part.notes ?? '');
@@ -72,7 +75,7 @@ export function EditPartDialog({ open, onOpenChange, part, onSave }: EditPartDia
   useEffect(() => {
     if (open) {
       setName(part.name);
-      setCategory(part.category ?? '');
+      setCategory(part.category ?? NONE_CATEGORY);
       setManufacturer(part.manufacturer ?? '');
       setMpn(part.mpn ?? '');
       setNotes(part.notes ?? '');
@@ -128,7 +131,7 @@ export function EditPartDialog({ open, onOpenChange, part, onSave }: EditPartDia
 
     const body = {
       name: name.trim(),
-      category: category.trim() || null,
+      category: category === NONE_CATEGORY ? null : category.trim() || null,
       manufacturer: manufacturer.trim() || null,
       mpn: mpn.trim() || null,
       notes: notes.trim() || null,
@@ -148,8 +151,8 @@ export function EditPartDialog({ open, onOpenChange, part, onSave }: EditPartDia
         throw new Error((err as { message?: string }).message ?? 'Failed to update part');
       }
 
-      const json = await res.json() as { data: PartDetail };
-      onSave(json.data);
+      const json = await res.json() as { data: Omit<PartDetail, 'lots'> };
+      onSave({ ...part, ...json.data });
       onOpenChange(false);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An unexpected error occurred');
@@ -190,7 +193,7 @@ export function EditPartDialog({ open, onOpenChange, part, onSave }: EditPartDia
                 <SelectValue placeholder="Select a category…" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">— None —</SelectItem>
+                <SelectItem value={NONE_CATEGORY}>— None —</SelectItem>
                 {categories.map((c) => (
                   <SelectItem key={c.name} value={c.name}>
                     {c.name}
