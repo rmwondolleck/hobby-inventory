@@ -23,7 +23,7 @@
 #
 # Synthesizes all feature PRs in an epic into one polished PR for human review
 #
-# gh-aw-metadata: {"schema_version":"v2","frontmatter_hash":"34a42fb14301794c25cc67d160c8e5593e16a74d33d1c7884513f4388015aa48","compiler_version":"v0.57.2","strict":true}
+# gh-aw-metadata: {"schema_version":"v2","frontmatter_hash":"1f5a95b9494d56718be9e780a991b3629b8d336c35b88224c0c91193b56a9b28","compiler_version":"v0.57.2","strict":true}
 
 name: "Integration Agent (Epic Synthesis)"
 "on":
@@ -52,7 +52,7 @@ concurrency:
   cancel-in-progress: false
   group: integration-agent-epic-${{ github.event.inputs.epic_number }}
 
-run-name: "Integration Agent (Epic Synthesis)"
+run-name: "Integration Agent — Epic #${{ github.event.inputs.epic_number }}"
 
 jobs:
   activation:
@@ -835,7 +835,7 @@ jobs:
       - name: Execute GitHub Copilot CLI
         id: agentic_execution
         # Copilot CLI tool arguments (sorted):
-        timeout-minutes: 30
+        timeout-minutes: 20
         run: |
           set -o pipefail
           touch /tmp/gh-aw/agent-step-summary.md

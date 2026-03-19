@@ -65,6 +65,7 @@ network:
 concurrency:
   group: integration-agent-epic-${{ github.event.inputs.epic_number }}
   cancel-in-progress: false
+run-name: "Integration Agent — Epic #${{ github.event.inputs.epic_number }}"
 checkout:
   ref: ${{ github.event.inputs.epic_branch }}
 ---
