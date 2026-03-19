@@ -15,7 +15,7 @@ jest.mock('next/link', () => {
 });
 
 const mockLocations = [
-  { id: 'loc-1', name: 'Shelf A', path: 'Shelf A', parentId: null, notes: null },
+  { id: 'loc-1', name: 'Shelf A', path: 'Shelf A', parentId: null, notes: '' },
   { id: 'loc-2', name: 'Bin B', path: 'Shelf A > Bin B', parentId: 'loc-1', notes: 'Top shelf' },
 ];
 
@@ -62,7 +62,7 @@ describe('LocationsPage', () => {
   });
 
   it('location links use the correct location id in the href', async () => {
-    mockFetchSuccess([{ id: 'abc-123', name: 'Test Location', path: 'Test Location', parentId: null, notes: null }]);
+    mockFetchSuccess([{ id: 'abc-123', name: 'Test Location', path: 'Test Location', parentId: null, notes: '' }]);
     render(<LocationsPage />);
 
     await waitFor(() => expect(screen.queryByText(/loading/i)).not.toBeInTheDocument());
