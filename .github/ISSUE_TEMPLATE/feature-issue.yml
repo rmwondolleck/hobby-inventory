@@ -1,0 +1,143 @@
+name: "🎯 Feature Issue"
+description: "A mid-level issue implementing a distinct feature — consumed directly by the coding-agent"
+labels: []
+body:
+  # ── Parent Epic ───────────────────────────────────────────────────────
+  - type: input
+    id: parent-epic
+    attributes:
+      label: Parent Epic
+      description: "The epic this issue belongs to (e.g. `#2`). The orchestrator uses this to track epic-level completion."
+      placeholder: "#"
+    validations:
+      required: true
+
+  # ── Goal ──────────────────────────────────────────────────────────────
+  - type: textarea
+    id: goal
+    attributes:
+      label: Goal
+      description: >
+        1–2 sentences: what outcome is needed and why.
+        This is the first thing the coding-agent reads (Step 1: "What outcome is needed").
+      placeholder: "Implement CRUD API routes for the Part entity so the frontend can list, create, update, and archive parts."
+    validations:
+      required: true
+
+  # ── Context for Agent ─────────────────────────────────────────────────
+  - type: textarea
+    id: agent-context
+    attributes:
+      label: Context for Agent
+      description: >
+        Concrete file paths and symbol names the coding-agent should read
+        before writing code. Reduces research time and prevents the agent
+        from re-inventing patterns that already exist.
+      placeholder: |
+        **Read first**
+        - `prisma/schema.prisma` → `Part` model (fields, relations, indexes)
+        - `src/lib/types/index.ts` → existing shared types
+        - `src/app/api/health/route.ts` → reference for API route pattern
+
+        **Follow the pattern from**
+        - `src/app/api/locations/route.ts` (if it exists) — same CRUD shape
+
+        **Key symbols**
+        - `PartListItem`, `PartDetail` in `src/features/parts/types.ts`
+        - `prisma` client imported from `@/lib/db`
+    validations:
+      required: true
+
+  # ── Acceptance Criteria ───────────────────────────────────────────────
+  - type: textarea
+    id: acceptance-criteria
+    attributes:
+      label: Acceptance Criteria
+      description: >
+        3–5 testable checkboxes. The test-agent uses these as verification
+        targets when it adds tests to the PR. Each criterion should be
+        independently verifiable via an API call, a type check, or a unit test.
+      placeholder: |
+        - [ ] `GET /api/parts` returns `{ data: Part[], total: number }` with status 200
+        - [ ] `POST /api/parts` creates a part and returns 201 with the created object
+        - [ ] `PATCH /api/parts/[id]` updates fields and returns 200
+        - [ ] `DELETE /api/parts/[id]` soft-deletes (sets `archivedAt`) and returns 200
+        - [ ] All endpoints validate required fields and return 400 on bad input
+      value: |
+        - [ ] 
+        - [ ] 
+        - [ ] 
+    validations:
+      required: true
+
+  # ── Dependencies ──────────────────────────────────────────────────────
+  - type: textarea
+    id: dependencies
+    attributes:
+      label: Dependencies
+      description: >
+        Issues that must be closed before this one can start.
+        Use `Depends on #X` — the orchestrator's Task 3 scans for this
+        exact pattern to determine `ready` vs `blocked` status.
+      placeholder: |
+        Depends on #8
+        Depends on #9
+    validations:
+      required: false
+
+  # ── Not In Scope ──────────────────────────────────────────────────────
+  - type: textarea
+    id: not-in-scope
+    attributes:
+      label: Not In Scope
+      description: >
+        Explicit exclusions so the coding-agent doesn't over-build.
+        The agent reads this as "Out of Scope: What NOT to do" in Step 1.
+      placeholder: |
+        - No frontend UI in this issue (separate issue)
+        - No pagination — will be added in #13
+        - No full-text search — basic filter only
+    validations:
+      required: false
+
+  # ── Design Decisions ──────────────────────────────────────────────────
+  - type: textarea
+    id: design-decisions
+    attributes:
+      label: Design Decisions
+      description: >
+        Constraints the coding-agent must respect and not override.
+        Include rationale so the agent understands *why* (reduces
+        the chance of "clever" deviations).
+      placeholder: |
+        - **Soft-delete over hard-delete**: Set `archivedAt` timestamp instead of removing rows. Rationale: preserves referential integrity for lots and events that reference this part.
+        - **JSON stored as TEXT**: SQLite has no native JSON column — store `parameters` and `tags` as JSON strings, parse in application code.
+    validations:
+      required: false
+
+  # ── Implementation Labels ─────────────────────────────────────────────
+  - type: dropdown
+    id: labels
+    attributes:
+      label: Implementation Scope
+      description: >
+        Select all that apply. The coding-agent uses these labels in Step 2
+        to determine which file categories to create.
+      multiple: true
+      options:
+        - "api"
+        - "backend"
+        - "db"
+        - "frontend"
+    validations:
+      required: true
+
+  # ── Notes ─────────────────────────────────────────────────────────────
+  - type: textarea
+    id: notes
+    attributes:
+      label: Additional Notes
+      description: "API examples, edge cases, links to spec sections, or open questions."
+    validations:
+      required: false
+

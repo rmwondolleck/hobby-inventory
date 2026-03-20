@@ -1,0 +1,112 @@
+name: "🔧 Sub-Issue"
+description: "A granular, independently-implementable task broken out from a feature issue — the agent-execution bridge"
+labels: ["sub-issue"]
+body:
+  # ── Parent Issue ──────────────────────────────────────────────────────
+  - type: input
+    id: parent-issue
+    attributes:
+      label: Parent Issue
+      description: "The feature issue this sub-issue belongs to (e.g. `#9`). Used by the orchestrator to track rollup progress."
+      placeholder: "#"
+    validations:
+      required: true
+
+  # ── Summary ───────────────────────────────────────────────────────────
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: >
+        What, how, and why in concise prose. State the key constraint
+        up front. This mirrors the `## Summary` section of a plan-prompt
+        (see `docs/templates/plan-prompt.md`). The coding-agent reads
+        this as its primary orientation before looking at Steps.
+      placeholder: |
+        Add `categoryId String?` as an optional FK on `Part` pointing to `Category.id`.
+        The existing `Part.category String?` stays as a denormalized display convenience;
+        the new FK gives template access. No validation is performed against the category
+        schema — `Part.parameters` remains free-form.
+    validations:
+      required: true
+
+  # ── Steps ─────────────────────────────────────────────────────────────
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps
+      description: >
+        Numbered implementation steps. Each step MUST be anchored to a
+        specific file path and symbol. This is the format the coding-agent
+        follows in its implementation loop, and what a planning agent
+        produces as output.
+      placeholder: |
+        ### 1. Add FK to schema — `prisma/schema.prisma`
+
+        - Add `categoryId String?` on the `Part` model
+        - Add `@relation` pointing to `Category.id`
+        - Add `@@index([categoryId])`
+        - Run `npx prisma migrate dev --name add_part_category_fk`
+
+        ### 2. Update API route — `src/app/api/parts/route.ts`
+
+        - Accept `categoryId` in the POST body
+        - Include `{ category: true }` in Prisma queries
+        - Keep `category` string and `categoryId` in sync on writes
+
+        ### 3. Update types — `src/features/parts/types.ts`
+
+        - Add optional `category?: { id: string; name: string; parameterSchema: Record<string, unknown> }` to `PartDetail`
+      render: markdown
+    validations:
+      required: true
+
+  # ── Further Considerations ────────────────────────────────────────────
+  - type: textarea
+    id: further-considerations
+    attributes:
+      label: Further Considerations
+      description: >
+        Edge cases, sync concerns, alternatives considered, and future
+        implications. The coding-agent treats these as advisory — things
+        to be aware of but not necessarily act on in this sub-issue.
+      placeholder: |
+        1. **Sync helper** — a small function in the write path keeps `category` string and `categoryId` in sync so the UI never manages both fields.
+        2. **Template mutability** — editing a category's `parameterSchema` after parts exist does not retroactively change those parts.
+    validations:
+      required: false
+
+  # ── Acceptance Criteria ───────────────────────────────────────────────
+  - type: textarea
+    id: acceptance-criteria
+    attributes:
+      label: Acceptance Criteria
+      description: >
+        1–3 focused checkboxes scoped to THIS sub-issue only.
+        Keep them tight — the parent feature issue carries the
+        broader ACs.
+      placeholder: |
+        - [ ] Migration runs cleanly from empty state
+        - [ ] `GET /api/parts/[id]` includes `category` object in response
+      value: |
+        - [ ] 
+    validations:
+      required: true
+
+  # ── Implementation Labels ─────────────────────────────────────────────
+  - type: dropdown
+    id: labels
+    attributes:
+      label: Implementation Scope
+      description: >
+        Select all that apply. The coding-agent uses these labels
+        to determine which file categories to create.
+      multiple: true
+      options:
+        - "api"
+        - "backend"
+        - "db"
+        - "frontend"
+    validations:
+      required: true
+

@@ -1,0 +1,14 @@
+# Issue template chooser configuration
+# Disables blank issues so all work items follow the three-tier structure
+# that the orchestrator, coding-agent, and test-agent expect.
+
+blank_issues_enabled: false
+
+contact_links:
+  - name: "💡 Weekly Feature Suggestions"
+    url: "https://github.com/rmwondolleck/hobby-inventory/issues?q=is%3Aissue+label%3Afeature-suggestions"
+    about: "Browse AI-generated feature suggestions from the feature-suggester workflow"
+  - name: "📋 Work Queue Dashboard"
+    url: "https://github.com/rmwondolleck/hobby-inventory/issues/28"
+    about: "View current orchestrator state — active work, blocked issues, and epic progress"
+

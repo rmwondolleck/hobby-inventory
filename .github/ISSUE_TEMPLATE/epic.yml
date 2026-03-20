@@ -1,0 +1,125 @@
+name: "🏔️ Epic"
+description: "A milestone grouping multiple feature issues into a shippable vertical slice"
+labels: ["epic"]
+body:
+  # ── Overview ──────────────────────────────────────────────────────────
+  - type: textarea
+    id: overview
+    attributes:
+      label: Overview
+      description: >
+        2–3 sentences stating the goal of this epic and why it matters.
+        The orchestrator displays this in the Work Queue's Epic Integration Status table.
+      placeholder: |
+        This epic delivers [capability] so that [user benefit].
+        It builds on Epic #N and unblocks Epic #M.
+    validations:
+      required: true
+
+  # ── Sub-Issues ────────────────────────────────────────────────────────
+  - type: textarea
+    id: sub-issues
+    attributes:
+      label: Sub-Issues
+      description: >
+        Checklist of child issues. Use `[blocks #Y]` and `[depends on #X]`
+        annotations — the orchestrator (Task 3) parses these patterns to
+        build the dependency graph automatically.
+      placeholder: |
+        - [ ] #__ Title of first issue
+        - [ ] #__ Title of second issue [depends on #__]
+        - [ ] #__ Title of third issue [blocks #__]
+        - [ ] #__ Title of fourth issue [depends on #__, #__]
+      value: |
+        - [ ] 
+        - [ ] 
+        - [ ] 
+    validations:
+      required: true
+
+  # ── Dependency Graph ──────────────────────────────────────────────────
+  - type: textarea
+    id: dependency-graph
+    attributes:
+      label: Dependency Graph
+      description: >
+        ASCII diagram showing issue ordering within this epic and any
+        cross-epic prerequisites. The orchestrator uses this to determine
+        which issues are `ready` vs `blocked`.
+      placeholder: |
+        #A (schema) ──┬──► #B (API) ──► #D (UI)
+                      │
+                      └──► #C (seed)
+      render: text
+    validations:
+      required: false
+
+  # ── Acceptance Criteria ───────────────────────────────────────────────
+  - type: textarea
+    id: acceptance-criteria
+    attributes:
+      label: Acceptance Criteria
+      description: >
+        Top-level epic ACs — each independently verifiable.
+        These are checked during epic-completion verification
+        (see docs/epic1-completion-verification.md for the pattern).
+      placeholder: |
+        - [ ] AC-1: Description of first verifiable outcome
+        - [ ] AC-2: Description of second verifiable outcome
+        - [ ] AC-3: Description of third verifiable outcome
+      value: |
+        - [ ] 
+        - [ ] 
+        - [ ] 
+    validations:
+      required: true
+
+  # ── Epic Branch ───────────────────────────────────────────────────────
+  - type: input
+    id: epic-branch
+    attributes:
+      label: Epic Branch
+      description: >
+        The long-lived branch all feature PRs in this epic target.
+        The integration-agent merges this branch into `main` as a single
+        polished PR when all sub-issues reach `ready-to-merge`.
+      placeholder: "epic/N-short-name"
+    validations:
+      required: true
+
+  # ── Agent Context ─────────────────────────────────────────────────────
+  - type: textarea
+    id: agent-context
+    attributes:
+      label: Agent Context
+      description: >
+        Explicit list of docs, schema files, source paths, and key symbols
+        that agents MUST read before working on any issue in this epic.
+        Use plain paths + symbol names (resilient to line-number drift).
+      placeholder: |
+        **Docs**
+        - `docs/domain-model.md` — entity definitions, relationships, validation rules
+        - `docs/state-transitions.md` — Stock / Project / Allocation state machines
+
+        **Schema**
+        - `prisma/schema.prisma` — all models
+
+        **Source**
+        - `src/lib/types/index.ts` — shared TypeScript types
+        - `src/features/parts/types.ts` → `PartDetail`, `PartListItem`
+
+        **Key Constraints**
+        - SQLite database (no native JSON column — stored as TEXT)
+        - Prisma ORM — all DB access via `@/lib/db`
+    validations:
+      required: true
+
+  # ── Notes ─────────────────────────────────────────────────────────────
+  - type: textarea
+    id: notes
+    attributes:
+      label: Additional Notes
+      description: "Any extra context, links to designs, or open questions."
+    validations:
+      required: false
+

@@ -216,6 +216,33 @@ See [GitHub Issues](https://github.com/rmwondolleck/hobby-inventory/issues) for 
 3. **Projects & Compatibility** (#3) - Projects, allocations, parameters
 4. **Intake & Usability** (#4) - Manual intake, CSV import, UI
 
+### Issue & Plan Templates
+
+All work items follow a three-tier hierarchy designed to be machine-parseable by the agentic pipeline (orchestrator → coding-agent → test-agent → build-agent → integration-agent) while remaining human-readable.
+
+| Tier | Template | Purpose | Key Consumer |
+|------|----------|---------|--------------|
+| **Epic** | `.github/ISSUE_TEMPLATE/epic.yml` | Milestone grouping multiple feature issues into a shippable vertical slice | Orchestrator (epic-completion tracking, integration-agent dispatch) |
+| **Feature Issue** | `.github/ISSUE_TEMPLATE/feature-issue.yml` | A distinct feature with acceptance criteria, dependencies, and scope boundaries | Coding-agent (Step 1: reads Goal, ACs, Not In Scope), Test-agent (verification targets) |
+| **Sub-Issue** | `.github/ISSUE_TEMPLATE/sub-issue.yml` | Granular, independently-implementable task broken from a feature issue | Coding-agent (follows Steps section linearly) |
+
+**Plan Prompts** — For agent runs outside GitHub Issues (Copilot Chat, local planning), copy `docs/templates/plan-prompt.md` to the repo root and rename to `plan-<epicN>-<feature-slug>.prompt.md`. The format is intentionally identical to the Sub-Issue template so agents parse both the same way.
+
+**How issues flow through the pipeline:**
+
+```
+Epic created (with sub-issues checklist)
+  └─► Feature Issues created (with dependencies, ACs, labels)
+        └─► Orchestrator detects `ready` issues (dependencies met)
+              └─► coding-agent → test-agent → build-agent → Copilot review
+                    └─► All issues `ready-to-merge` → integration-agent → ONE epic PR
+```
+
+**Key conventions:**
+- Use `Depends on #X` in the Dependencies field — the orchestrator scans for this exact pattern
+- Apply labels `api`, `backend`, `db`, `frontend` — the coding-agent uses these to decide which files to create
+- List file paths + symbol names in "Context for Agent" — reduces agent research time
+
 ## License
 
 MIT
