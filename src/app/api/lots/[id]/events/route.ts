@@ -5,17 +5,7 @@ import type { EventType } from '@/lib/types';
 
 type RouteParams = { params: Promise<{ id: string }> };
 
-const VALID_EVENT_TYPES: EventType[] = [
-  'created',
-  'received',
-  'moved',
-  'allocated',
-  'installed',
-  'returned',
-  'lost',
-  'scrapped',
-  'edited',
-];
+const VALID_EVENT_TYPES: EventType[] = ['edited'];
 
 export async function GET(_request: Request, { params }: RouteParams) {
   const { id } = await params;

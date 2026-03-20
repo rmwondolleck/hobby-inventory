@@ -339,3 +339,118 @@ describe('PartDetailClient — Adjust button visibility', () => {
   });
 });
 
+// ── AdjustLotDialog behavior ──────────────────────────────────────────────────
+
+describe('PartDetailClient — AdjustLotDialog behavior', () => {
+  async function openAdjustDialog() {
+    setupFetch(makePart([{ ...baseLot, quantity: 10, quantityMode: 'exact' }]));
+    render(<PartDetailClient />);
+    await waitFor(() => screen.getByRole('button', { name: /adjust/i }));
+    fireEvent.click(screen.getByRole('button', { name: /adjust/i }));
+    await waitFor(() => screen.getByRole('dialog'));
+  }
+
+  it('opens the dialog when Adjust is clicked', async () => {
+    await openAdjustDialog();
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+    expect(screen.getByText(/adjust quantity/i)).toBeInTheDocument();
+  });
+
+  it('shows a validation error when decimal consume value is entered', async () => {
+    await openAdjustDialog();
+    fireEvent.change(screen.getByLabelText(/consume/i), { target: { value: '1.5' } });
+    fireEvent.submit(screen.getByRole('button', { name: /^save$/i }).closest('form')!);
+    await waitFor(() =>
+      expect(screen.getByText(/consume amount must be a non-negative integer/i)).toBeInTheDocument(),
+    );
+  });
+
+  it('shows a validation error when no change is entered', async () => {
+    await openAdjustDialog();
+    fireEvent.submit(screen.getByRole('button', { name: /^save$/i }).closest('form')!);
+    await waitFor(() =>
+      expect(screen.getByText(/no change/i)).toBeInTheDocument(),
+    );
+  });
+
+  it('shows a validation error when consume exceeds current quantity', async () => {
+    await openAdjustDialog();
+    fireEvent.change(screen.getByLabelText(/consume/i), { target: { value: '20' } });
+    fireEvent.submit(screen.getByRole('button', { name: /^save$/i }).closest('form')!);
+    await waitFor(() =>
+      expect(screen.getByText(/cannot consume more than current quantity/i)).toBeInTheDocument(),
+    );
+  });
+
+  it('calls POST /api/lots/:id/adjust and triggers a refresh on success', async () => {
+    const part = makePart([{ ...baseLot, quantity: 10, quantityMode: 'exact' }]);
+    let fetchCallCount = 0;
+    global.fetch = jest.fn().mockImplementation((url: string, opts?: RequestInit) => {
+      fetchCallCount++;
+      if (fetchCallCount === 1) {
+        // Initial part load
+        return Promise.resolve({ ok: true, json: async () => ({ data: part }) } as Response);
+      }
+      if (typeof url === 'string' && url.includes('/adjust')) {
+        // Adjust endpoint
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({ data: { ...baseLot, quantity: 7 } }),
+        } as Response);
+      }
+      // Refresh part load
+      return Promise.resolve({ ok: true, json: async () => ({ data: part }) } as Response);
+    });
+
+    render(<PartDetailClient />);
+    await waitFor(() => screen.getByRole('button', { name: /adjust/i }));
+    fireEvent.click(screen.getByRole('button', { name: /adjust/i }));
+    await waitFor(() => screen.getByRole('dialog'));
+
+    fireEvent.change(screen.getByLabelText(/consume/i), { target: { value: '3' } });
+    fireEvent.click(screen.getByRole('button', { name: /^save$/i }));
+
+    await waitFor(() => {
+      const calls = (global.fetch as jest.Mock).mock.calls;
+      const adjustCall = calls.find(
+        ([url, opts]: [string, RequestInit]) =>
+          typeof url === 'string' && url.includes('/adjust') && opts?.method === 'POST',
+      );
+      expect(adjustCall).toBeDefined();
+      const reqBody = JSON.parse(adjustCall[1].body as string);
+      expect(reqBody.delta).toBe(-3);
+    });
+
+    // After success, a re-fetch of the part should be triggered
+    await waitFor(() => expect(fetchCallCount).toBeGreaterThanOrEqual(3));
+  });
+
+  it('shows an error message when the adjust API call fails', async () => {
+    global.fetch = jest.fn().mockImplementation((url: string) => {
+      if (typeof url === 'string' && url.includes('/adjust')) {
+        return Promise.resolve({
+          ok: false,
+          json: async () => ({ message: 'Insufficient stock' }),
+        } as Response);
+      }
+      return Promise.resolve({
+        ok: true,
+        json: async () => ({ data: makePart([{ ...baseLot, quantity: 10, quantityMode: 'exact' }]) }),
+      } as Response);
+    });
+
+    render(<PartDetailClient />);
+    await waitFor(() => screen.getByRole('button', { name: /adjust/i }));
+    fireEvent.click(screen.getByRole('button', { name: /adjust/i }));
+    await waitFor(() => screen.getByRole('dialog'));
+
+    fireEvent.change(screen.getByLabelText(/consume/i), { target: { value: '3' } });
+    fireEvent.click(screen.getByRole('button', { name: /^save$/i }));
+
+    await waitFor(() =>
+      expect(screen.getByText('Insufficient stock')).toBeInTheDocument(),
+    );
+  });
+});
+
+
