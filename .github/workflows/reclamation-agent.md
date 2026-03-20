@@ -87,25 +87,24 @@ is:pr is:open label:integrated base:epic/<N>-<slug>
 
 For each result:
 - Confirm it is NOT in the Active Work table as an in-progress item
-- **First** emit a `close-pull-request` safe output — do this before any label changes so the `required-labels: [integrated]` guard is still satisfied:
-  ```yaml
-  close-pull-request:
-    target: <pr_number>
-    comment: |
-      🧹 Closed by reclamation-agent: this feature PR was incorporated into
-      Epic PR #<epic_pr_number>, which has been merged to `main`.
-      Individual feature PRs are closed automatically after epic integration.
+- **First** call `close_pull_request` — use this exact field name, not `close_issue` (PRs and issues are different tools):
+  ```json
+  {
+    "pull_request_number": <pr_number>,
+    "body": "🧹 Closed by reclamation-agent: this feature PR was incorporated into Epic PR #<epic_pr_number>, which has been merged to `main`. Individual feature PRs are closed automatically after epic integration."
+  }
   ```
-- **Then** emit a `remove-labels` safe output — only after the close, never before:
-  ```yaml
-  remove-labels:
-    target: <pr_number>
-    labels: [integrated, ready-to-merge]
+- **Then**, only after the close succeeds, call `remove_labels`:
+  ```json
+  {
+    "item_number": <pr_number>,
+    "labels": ["integrated", "ready-to-merge"]
+  }
   ```
 
-> **Important**: `close-pull-request` is a valid safe output and IS available. Always emit it
-> first. Emitting `remove-labels` before `close-pull-request` strips the `required-labels: [integrated]`
-> guard and prevents the close from working.
+> **Critical**: The tool for closing PRs is `close_pull_request` with field `pull_request_number`.
+> Do NOT use `close_issue` or `item_number` for this step — `close_issue` will always fail with
+> "No issue number available" on a PR. Remove labels only after a successful close.
 
 #### 3c. Find Development Issues to Close
 
