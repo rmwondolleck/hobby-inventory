@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { safeParseJson } from '@/lib/utils';
+import { computeStockFields } from '../_stock';
 
 type RouteParams = { params: Promise<{ id: string }> };
 
@@ -12,7 +13,11 @@ export async function GET(_request: Request, { params }: RouteParams) {
     include: {
       lots: {
         include: {
-          allocations: true,
+          allocations: {
+            include: {
+              project: { select: { id: true, name: true, status: true } },
+            },
+          },
           location: { select: { id: true, name: true, path: true } },
         },
       },
@@ -26,9 +31,12 @@ export async function GET(_request: Request, { params }: RouteParams) {
     );
   }
 
+  const stockFields = computeStockFields(part.lots);
+
   return NextResponse.json({
     data: {
       ...part,
+      ...stockFields,
       tags: safeParseJson<string[]>(part.tags, []),
       parameters: safeParseJson<Record<string, unknown>>(part.parameters, {}),
       lots: part.lots.map((lot: { source: string } & Record<string, unknown>) => ({

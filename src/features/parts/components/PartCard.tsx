@@ -62,7 +62,7 @@ export function PartCard({ part }: PartCardProps) {
           {hasQualitativeStock ? (
             <QualitativeDisplay />
           ) : hasExactStock ? (
-            <span>{part.totalQuantity} in stock</span>
+            <span>{part.availableQuantity} available</span>
           ) : (
             <span className="text-muted-foreground">No stock</span>
           )}

@@ -46,6 +46,59 @@ beforeEach(() => {
 // ─── GET /api/parts ───────────────────────────────────────────────────────────
 
 describe('GET /api/parts', () => {
+  it('returns computed stock fields (available/reserved/inUse/scrapped) in each part', async () => {
+    const partWithLots = {
+      ...basePart,
+      lots: [
+        {
+          quantity: 20,
+          quantityMode: 'exact',
+          qualitativeStatus: null,
+          status: 'in_stock',
+          allocations: [
+            { quantity: 5, status: 'reserved' },
+            { quantity: 3, status: 'in_use' },
+          ],
+        },
+        {
+          quantity: 4,
+          quantityMode: 'exact',
+          qualitativeStatus: null,
+          status: 'scrapped',
+          allocations: [],
+        },
+      ],
+    };
+    mockFindMany.mockResolvedValue([partWithLots]);
+    mockCount.mockResolvedValue(1);
+
+    const res = await GET(makeRequest('http://localhost/api/parts'));
+    const json = await res.json();
+    const part = json.data[0];
+
+    expect(part.totalQuantity).toBe(20);
+    expect(part.availableQuantity).toBe(12); // 20 - 5 - 3
+    expect(part.reservedQuantity).toBe(5);
+    expect(part.inUseQuantity).toBe(3);
+    expect(part.scrappedQuantity).toBe(4);
+    expect(part.lotCount).toBe(2);
+  });
+
+  it('returns zero stock counts for parts with no lots', async () => {
+    mockFindMany.mockResolvedValue([{ ...basePart, lots: [] }]);
+    mockCount.mockResolvedValue(1);
+
+    const res = await GET(makeRequest('http://localhost/api/parts'));
+    const json = await res.json();
+    const part = json.data[0];
+
+    expect(part.totalQuantity).toBe(0);
+    expect(part.availableQuantity).toBe(0);
+    expect(part.reservedQuantity).toBe(0);
+    expect(part.inUseQuantity).toBe(0);
+    expect(part.scrappedQuantity).toBe(0);
+  });
+
   it('returns 200 with data array, total, limit, and offset', async () => {
     mockFindMany.mockResolvedValue([basePart]);
     mockCount.mockResolvedValue(1);

@@ -80,9 +80,7 @@ export function PartDetailClient() {
     );
   }
 
-  const totalQuantity = part.lots
-    .filter((l) => l.quantityMode === 'exact' && l.status === 'in_stock')
-    .reduce((sum, l) => sum + (l.quantity ?? 0), 0);
+  const { availableQuantity, reservedQuantity, inUseQuantity, scrappedQuantity } = part;
 
   // Aggregate allocations by project across all lots
   const projectAllocations = new Map<
@@ -115,14 +113,33 @@ export function PartDetailClient() {
           <div className="flex items-center gap-4">
             {part.archivedAt && <Badge variant="secondary">Archived</Badge>}
             <div className="text-right">
-              <div className="text-3xl font-bold text-foreground">{totalQuantity}</div>
-              <div className="text-sm text-muted-foreground">in stock</div>
+              <div className="text-3xl font-bold text-foreground">{availableQuantity}</div>
+              <div className="text-sm text-muted-foreground">available</div>
             </div>
           </div>
         }
       />
 
-      {/* Tags */}
+      {/* Quantity breakdown stat cards */}
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <div className="rounded-lg border border-green-200 bg-green-50 p-3 text-center">
+          <div className="text-2xl font-bold text-green-700">{availableQuantity}</div>
+          <div className="text-xs font-medium text-green-600">Available</div>
+        </div>
+        <div className="rounded-lg border border-yellow-200 bg-yellow-50 p-3 text-center">
+          <div className="text-2xl font-bold text-yellow-700">{reservedQuantity}</div>
+          <div className="text-xs font-medium text-yellow-600">Reserved</div>
+        </div>
+        <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-center">
+          <div className="text-2xl font-bold text-blue-700">{inUseQuantity}</div>
+          <div className="text-xs font-medium text-blue-600">In-Use</div>
+        </div>
+        <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-center">
+          <div className="text-2xl font-bold text-red-700">{scrappedQuantity}</div>
+          <div className="text-xs font-medium text-red-600">Scrapped</div>
+        </div>
+      </div>
+
       {part.tags.length > 0 && (
         <div className="flex flex-wrap gap-1.5">
           {part.tags.map((tag) => (
