@@ -12,7 +12,6 @@ tools:
     toolsets: [default]
 safe-outputs:
   close-pull-request:
-    required-labels: [ready-to-merge]
     target: "*"
     max: 30
   close-issue:
