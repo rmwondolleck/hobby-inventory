@@ -64,6 +64,7 @@ This document defines the core domain model for the Hobby Inventory system. All 
 
 **Optional Fields:**
 - `category` (string): Grouping/classification (e.g., "Microcontrollers", "Fasteners")
+- `categoryId` (String?): Foreign key to Category (parameter template)
 - `manufacturer` (string): Brand/maker
 - `mpn` (string): Manufacturer Part Number
 - `tags` (string[]): Flexible labels for filtering
@@ -73,6 +74,7 @@ This document defines the core domain model for the Hobby Inventory system. All 
 
 **Relationships:**
 - `Part → Lot` (1:N): A part can have multiple purchased lots
+- `Part → Category` (N:1): A part optionally belongs to one category template
 
 **JSON Example:**
 ```json
@@ -349,6 +351,7 @@ This document defines the core domain model for the Hobby Inventory system. All 
 | Relationship | Type | Description |
 |-------------|------|-------------|
 | Part → Lot | 1:N | One part can have multiple purchased lots |
+| Part → Category | N:1 | A part optionally belongs to one category (parameter template) |
 | Lot → Part | N:1 | Each lot belongs to exactly one part |
 | Lot → Location | N:1 | Each lot is stored at one current location |
 | Location → Lot | 1:N | A location can contain multiple lots |
@@ -414,6 +417,10 @@ This document defines the core domain model for the Hobby Inventory system. All 
 - Allocations are mutable (can return parts, change quantity)
 - Events are immutable (history)
 - Allocations track current project state, Events track history
+
+### Why is Category a parameter template, not a schema enforcer?
+
+> For a single-user hobby system, schema enforcement adds friction without meaningful benefit. The real value is UX: pre-populating the parameter editor with the keys common to a category. `Part.parameters` remains free-form — users can add, remove, or rename any key at any time.
 
 ---
 
