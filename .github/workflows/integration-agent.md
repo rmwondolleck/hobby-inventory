@@ -30,6 +30,10 @@ tools:
   github:
     toolsets: [default]
 safe-outputs:
+  add-labels:
+    allowed: [integrated]
+    target: "*"
+    max: 30
   add-comment:
     target: "*"
     max: 5
@@ -356,7 +360,20 @@ add-comment:
     **No action needed on this PR.** Review and merge the epic PR to complete this epic.
     This PR will be closed automatically when the epic branch is merged into main.
 ```
-Repeat for each PR number in `${{ github.event.inputs.feature_prs }}`.
+
+Immediately after posting the comment on each feature PR, apply the `integrated` label to it:
+```yaml
+add-labels:
+  target: <feature_pr_number>
+  labels: [integrated]
+```
+
+Repeat both the comment and the label for every PR number in `${{ github.event.inputs.feature_prs }}`.
+
+> **Why `integrated`?** The reclamation agent uses this label as both its search filter
+> (`is:pr is:open label:integrated base:epic/<N>-<slug>`) and its `required-labels` safety
+> guard on `close-pull-request`. Stamping it here means only PRs the integration agent has
+> explicitly processed can be closed — no accidental mass-close of unrelated PRs.
 ### Step 6: Report to Orchestrator (CRITICAL)
 
 Add a comment to the **Work Queue issue** (#${{ github.event.inputs.state_issue_number }}):

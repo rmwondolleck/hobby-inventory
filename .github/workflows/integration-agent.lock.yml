@@ -23,7 +23,7 @@
 #
 # Synthesizes all feature PRs in an epic into one polished PR for human review
 #
-# gh-aw-metadata: {"schema_version":"v2","frontmatter_hash":"b7f9d9c4582e4d2280035aa33f3c36ed470609b5c6c216f07e1d15f6c654f509","compiler_version":"v0.57.2","strict":true}
+# gh-aw-metadata: {"schema_version":"v2","frontmatter_hash":"e6077a72301dae2e0790a43475b004bc169bb1c867c45efdf38ca05e3f1c468f","compiler_version":"v0.57.2","strict":true}
 
 name: "Integration Agent (Epic Synthesis)"
 "on":
@@ -145,7 +145,7 @@ jobs:
           cat "/opt/gh-aw/prompts/safe_outputs_prompt.md"
           cat << 'GH_AW_PROMPT_EOF'
           <safe-output-tools>
-          Tools: add_comment, create_issue, missing_tool, missing_data, noop
+          Tools: add_comment, create_issue, add_labels, missing_tool, missing_data, noop
           </safe-output-tools>
           <github-context>
           The following GitHub context information is available for this workflow:
@@ -346,7 +346,7 @@ jobs:
           mkdir -p /tmp/gh-aw/safeoutputs
           mkdir -p /tmp/gh-aw/mcp-logs/safeoutputs
           cat > /opt/gh-aw/safeoutputs/config.json << 'GH_AW_SAFE_OUTPUTS_CONFIG_EOF'
-          {"add_comment":{"max":5,"target":"*"},"create-epic-pr":{"description":"Create a pull request from the epic branch to main. Use this instead of create_pull_request to support epics with more than 100 files changed.","inputs":{"body":{"default":null,"description":"PR body in markdown","required":true,"type":"string"},"epic_branch":{"default":null,"description":"Source branch to create PR from (e.g., epic/8-name)","required":true,"type":"string"},"labels":{"default":null,"description":"Comma-separated label names (e.g., 'epic-integration,synthesis')","required":false,"type":"string"},"title":{"default":null,"description":"PR title","required":true,"type":"string"}}},"create_issue":{"max":1},"missing_data":{},"missing_tool":{},"noop":{"max":1}}
+          {"add_comment":{"max":5,"target":"*"},"add_labels":{"allowed":["integrated"],"max":30,"target":"*"},"create-epic-pr":{"description":"Create a pull request from the epic branch to main. Use this instead of create_pull_request to support epics with more than 100 files changed.","inputs":{"body":{"default":null,"description":"PR body in markdown","required":true,"type":"string"},"epic_branch":{"default":null,"description":"Source branch to create PR from (e.g., epic/8-name)","required":true,"type":"string"},"labels":{"default":null,"description":"Comma-separated label names (e.g., 'epic-integration,synthesis')","required":false,"type":"string"},"title":{"default":null,"description":"PR title","required":true,"type":"string"}}},"create_issue":{"max":1},"missing_data":{},"missing_tool":{},"noop":{"max":1}}
           GH_AW_SAFE_OUTPUTS_CONFIG_EOF
           cat > /opt/gh-aw/safeoutputs/tools.json << 'GH_AW_SAFE_OUTPUTS_TOOLS_EOF'
           [
@@ -435,6 +435,35 @@ jobs:
                 "type": "object"
               },
               "name": "add_comment"
+            },
+            {
+              "description": "Add labels to an existing GitHub issue or pull request for categorization and filtering. Labels must already exist in the repository. For creating new issues with labels, use create_issue with the labels property instead. CONSTRAINTS: Maximum 30 label(s) can be added. Only these labels are allowed: [\"integrated\"]. Target: *.",
+              "inputSchema": {
+                "additionalProperties": false,
+                "properties": {
+                  "integrity": {
+                    "description": "Trustworthiness level of the message source (e.g., \"low\", \"medium\", \"high\").",
+                    "type": "string"
+                  },
+                  "item_number": {
+                    "description": "Issue or PR number to add labels to. This is the numeric ID from the GitHub URL (e.g., 456 in github.com/owner/repo/issues/456). If omitted, adds labels to the issue or PR that triggered this workflow. Only works for issue or pull_request event triggers. For schedule, workflow_dispatch, or other triggers, item_number is required — omitting it will silently skip the label operation.",
+                    "type": "number"
+                  },
+                  "labels": {
+                    "description": "Label names to add (e.g., ['bug', 'priority-high']). Labels must exist in the repository.",
+                    "items": {
+                      "type": "string"
+                    },
+                    "type": "array"
+                  },
+                  "secrecy": {
+                    "description": "Confidentiality level of the message content (e.g., \"public\", \"internal\", \"private\").",
+                    "type": "string"
+                  }
+                },
+                "type": "object"
+              },
+              "name": "add_labels"
             },
             {
               "description": "Report that a tool or capability needed to complete the task is not available, or share any information you deem important about missing functionality or limitations. Use this when you cannot accomplish what was requested because the required functionality is missing or access is restricted.",
@@ -575,6 +604,25 @@ jobs:
                 },
                 "item_number": {
                   "issueOrPRNumber": true
+                },
+                "repo": {
+                  "type": "string",
+                  "maxLength": 256
+                }
+              }
+            },
+            "add_labels": {
+              "defaultMax": 5,
+              "fields": {
+                "item_number": {
+                  "issueOrPRNumber": true
+                },
+                "labels": {
+                  "required": true,
+                  "type": "array",
+                  "itemType": "string",
+                  "itemSanitize": true,
+                  "itemMaxLength": 128
                 },
                 "repo": {
                   "type": "string",
@@ -1281,7 +1329,7 @@ jobs:
           GH_AW_ALLOWED_DOMAINS: "*.jsr.io,api.business.githubcopilot.com,api.enterprise.githubcopilot.com,api.github.com,api.githubcopilot.com,api.individual.githubcopilot.com,api.npms.io,api.snapcraft.io,archive.ubuntu.com,azure.archive.ubuntu.com,binaries.prisma.sh,bun.sh,cdn.jsdelivr.net,checkpoint.prisma.io,crl.geotrust.com,crl.globalsign.com,crl.identrust.com,crl.sectigo.com,crl.thawte.com,crl.usertrust.com,crl.verisign.com,crl3.digicert.com,crl4.digicert.com,crls.ssl.com,deb.nodesource.com,deno.land,esm.sh,fonts.googleapis.com,fonts.gstatic.com,get.pnpm.io,github.com,googleapis.deno.dev,googlechromelabs.github.io,host.docker.internal,json-schema.org,json.schemastore.org,jsr.io,keyserver.ubuntu.com,nodejs.org,npm.pkg.github.com,npmjs.com,npmjs.org,ocsp.digicert.com,ocsp.geotrust.com,ocsp.globalsign.com,ocsp.identrust.com,ocsp.sectigo.com,ocsp.ssl.com,ocsp.thawte.com,ocsp.usertrust.com,ocsp.verisign.com,packagecloud.io,packages.cloud.google.com,packages.microsoft.com,ppa.launchpad.net,raw.githubusercontent.com,registry.bower.io,registry.npmjs.com,registry.npmjs.org,registry.yarnpkg.com,repo.yarnpkg.com,s.symcb.com,s.symcd.com,security.ubuntu.com,skimdb.npmjs.com,storage.googleapis.com,telemetry.enterprise.githubcopilot.com,telemetry.vercel.com,ts-crl.ws.symantec.com,ts-ocsp.ws.symantec.com,www.npmjs.com,www.npmjs.org,yarnpkg.com"
           GITHUB_SERVER_URL: ${{ github.server_url }}
           GITHUB_API_URL: ${{ github.api_url }}
-          GH_AW_SAFE_OUTPUTS_HANDLER_CONFIG: "{\"add_comment\":{\"max\":5,\"target\":\"*\"},\"create_issue\":{\"labels\":[\"integration-report\"],\"max\":1,\"title_prefix\":\"[Integration] \"},\"missing_data\":{},\"missing_tool\":{}}"
+          GH_AW_SAFE_OUTPUTS_HANDLER_CONFIG: "{\"add_comment\":{\"max\":5,\"target\":\"*\"},\"add_labels\":{\"allowed\":[\"integrated\"],\"max\":30,\"target\":\"*\"},\"create_issue\":{\"labels\":[\"integration-report\"],\"max\":1,\"title_prefix\":\"[Integration] \"},\"missing_data\":{},\"missing_tool\":{}}"
         with:
           github-token: ${{ secrets.GH_AW_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
           script: |

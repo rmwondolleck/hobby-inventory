@@ -12,7 +12,7 @@ tools:
     toolsets: [default]
 safe-outputs:
   close-pull-request:
-    required-labels: [ready-to-merge]
+    required-labels: [integrated]
     target: "*"
     max: 30
   close-issue:
@@ -20,7 +20,7 @@ safe-outputs:
     target: "*"
     max: 30
   remove-labels:
-    allowed: [in-progress, ready-to-merge, awaiting-integration, blocked, needs-work]
+    allowed: [in-progress, ready-to-merge, awaiting-integration, blocked, needs-work, integrated]
     target: "*"
     max: 50
   add-comment:
@@ -82,7 +82,7 @@ Use `get_pull_request` on the epic PR number listed. Confirm `state: closed` and
 
 Search for open PRs that were part of this epic's pipeline:
 ```
-is:pr is:open label:ready-to-merge base:epic/<N>-<slug>
+is:pr is:open label:integrated base:epic/<N>-<slug>
 ```
 
 For each result:
@@ -93,7 +93,7 @@ For each result:
   Epic PR #<epic_pr_number>, which has been merged to `main`.
   Individual feature PRs are closed automatically after epic integration.
   ```
-- Remove its `ready-to-merge` label (use `remove-labels` safe output)
+- Remove its `integrated` and `ready-to-merge` labels if present (use `remove-labels` safe output)
 
 #### 3c. Find Development Issues to Close
 
@@ -155,7 +155,7 @@ All previously completed epics have already been fully reclaimed.
 
 1. **NEVER touch Active Work items** — if an issue or PR appears in the Active Work table with any stage other than `merged`, leave it alone
 2. **NEVER close anything unless its epic PR is confirmed merged to `main`** — always call `get_pull_request` to verify before proceeding
-3. **Only close PRs via the `close-pull-request` safe output** — the `required-labels: [ready-to-merge]` constraint is a hard safety guard
+3. **Only close PRs via the `close-pull-request` safe output** — the `required-labels: [integrated]` constraint is a hard safety guard; only PRs explicitly stamped by the integration agent can be closed
 4. **Only close issues via the `close-issue` safe output** — the `required-labels: [in-progress, ready-to-merge]` constraint is a hard safety guard
 5. **Always add a closing comment** — never close silently; the comment must reference the epic PR number
 6. **Respect the Work Queue as the source of truth** — it overrides any label-based inferences
