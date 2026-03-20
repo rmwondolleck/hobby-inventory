@@ -84,7 +84,6 @@ describe('AppShell', () => {
     expect(screen.getByText('Locations')).toBeInTheDocument();
     expect(screen.getByText('Projects')).toBeInTheDocument();
     expect(screen.getByText('Import')).toBeInTheDocument();
-    expect(screen.getByText('Labels')).toBeInTheDocument();
   });
 
   describe('theme toggle button', () => {

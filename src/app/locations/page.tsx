@@ -87,13 +87,6 @@ export default function LocationsPage() {
       });
   }, []);
 
-  const openPrintLabel = (ids: string[], size = 'medium') => {
-    window.open(
-      `/print/labels?type=location&ids=${encodeURIComponent(ids.join(','))}&size=${encodeURIComponent(size)}`,
-      '_blank',
-      'noopener,noreferrer'
-    );
-  };
 
   const openEditDialog = (location: LocationData) => {
     setEditingLocation(location);
@@ -201,19 +194,9 @@ export default function LocationsPage() {
           title="Locations"
           description="Manage storage locations and hierarchy."
           actions={
-            <div className="flex gap-2">
-              <Button variant="default" size="sm" onClick={openAddDialog}>
-                + Add Location
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => openPrintLabel(locations.map((l) => l.id))}
-                disabled={locations.length === 0}
-              >
-                🖨️ Print All Labels
-              </Button>
-            </div>
+            <Button variant="default" size="sm" onClick={openAddDialog}>
+              + Add Location
+            </Button>
           }
         />
 
@@ -249,45 +232,15 @@ export default function LocationsPage() {
                     {location.notes ?? '—'}
                   </TableCell>
                   <TableCell>
-                    <div className="flex gap-1.5 flex-wrap">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => openEditDialog(location)}
-                        title="Edit this location"
-                      >
-                        <PencilIcon className="size-4" />
-                        <span className="sr-only">Edit</span>
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => openPrintLabel([location.id])}
-                        title="Print label for this location"
-                      >
-                        🏷️ Label
-                      </Button>
-                      {(location.children?.length ?? 0) > 0 && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => openPrintLabel((location.children ?? []).map((c) => c.id))}
-                          title="Print labels for all child locations"
-                        >
-                          🏷️ Children
-                        </Button>
-                      )}
-                      <Button variant="outline" size="sm" asChild>
-                        <Link
-                          href={`/print/labels?type=lot&locationId=${encodeURIComponent(location.id)}&size=medium`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          title="Print labels for all lots at this location"
-                        >
-                          🏷️ Lots
-                        </Link>
-                      </Button>
-                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => openEditDialog(location)}
+                      title="Edit this location"
+                    >
+                      <PencilIcon className="size-4" />
+                      <span className="sr-only">Edit</span>
+                    </Button>
                   </TableCell>
                 </TableRow>
               ))}

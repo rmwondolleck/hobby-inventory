@@ -10,7 +10,6 @@ import {
   MapPin,
   Wrench,
   Upload,
-  Printer,
   LayoutDashboard,
   Sun,
   Moon,
@@ -28,7 +27,6 @@ const navigation = [
   { name: 'Locations', href: '/locations', icon: MapPin },
   { name: 'Projects', href: '/projects', icon: Wrench },
   { name: 'Import', href: '/import', icon: Upload },
-  { name: 'Labels', href: '/print/labels', icon: Printer },
 ];
 
 export function AppShell({ children }: { children: ReactNode }) {
