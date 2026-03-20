@@ -13,6 +13,10 @@ export interface PartListItem {
   createdAt: string;
   updatedAt: string;
   totalQuantity: number;
+  availableQuantity: number;
+  reservedQuantity: number;
+  inUseQuantity: number;
+  scrappedQuantity: number;
   qualitativeStatuses: string[];
   lotCount: number;
 }
@@ -67,6 +71,13 @@ export interface PartDetail {
   archivedAt?: string | null;
   createdAt: string;
   updatedAt: string;
+  totalQuantity: number;
+  availableQuantity: number;
+  reservedQuantity: number;
+  inUseQuantity: number;
+  scrappedQuantity: number;
+  qualitativeStatuses: string[];
+  lotCount: number;
   lots: LotWithDetails[];
 }
 

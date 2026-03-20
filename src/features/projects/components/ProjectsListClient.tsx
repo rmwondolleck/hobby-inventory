@@ -1,9 +1,38 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { useForm, Controller } from 'react-hook-form';
+import { z } from 'zod';
+import { zodResolver } from '@hookform/resolvers/zod';
 import type { ProjectListItem, ProjectFilters } from '../types';
 import type { ProjectStatus } from '@/lib/types';
 import { ProjectCard } from './ProjectCard';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/components/ui/dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
+
+const PROJECT_STATUS_VALUES = ['idea', 'planned', 'active', 'deployed', 'retired'] as const;
+
+const newProjectSchema = z.object({
+  name: z.string().min(1, 'Name is required'),
+  status: z.enum(PROJECT_STATUS_VALUES),
+  tags: z.string(),
+  notes: z.string(),
+});
+
+type NewProjectFormData = z.infer<typeof newProjectSchema>;
 
 const PROJECT_STATUSES: Array<{ value: ProjectStatus; label: string }> = [
   { value: 'idea', label: 'Idea' },
@@ -12,6 +41,150 @@ const PROJECT_STATUSES: Array<{ value: ProjectStatus; label: string }> = [
   { value: 'deployed', label: 'Deployed' },
   { value: 'retired', label: 'Retired' },
 ];
+
+function NewProjectDialog({ onCreated }: { onCreated: (project: ProjectListItem) => void }) {
+  const [open, setOpen] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+
+  const {
+    register,
+    handleSubmit,
+    control,
+    reset,
+    formState: { errors, isSubmitting },
+  } = useForm<NewProjectFormData>({
+    resolver: zodResolver(newProjectSchema),
+    defaultValues: {
+      name: '',
+      status: 'idea',
+      tags: '',
+      notes: '',
+    },
+  });
+
+  const onSubmit = async (data: NewProjectFormData) => {
+    setSubmitError(null);
+    try {
+      const body = {
+        name: data.name,
+        status: data.status,
+        tags: data.tags ? data.tags.split(',').map((t) => t.trim()).filter(Boolean) : [],
+        notes: data.notes || undefined,
+      };
+
+      const res = await fetch('/api/projects', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+
+      if (!res.ok) {
+        const err = (await res.json().catch(() => ({}))) as { error?: string };
+        throw new Error(err.error ?? 'Failed to create project');
+      }
+
+      const json = (await res.json()) as { data: ProjectListItem };
+      onCreated(json.data);
+      reset();
+      setOpen(false);
+    } catch (err) {
+      setSubmitError(err instanceof Error ? err.message : 'Unknown error');
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={(next) => { setOpen(next); if (!next) { reset(); setSubmitError(null); } }}>
+      <button
+        onClick={() => setOpen(true)}
+        className="rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1"
+      >
+        + New Project
+      </button>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>New Project</DialogTitle>
+        </DialogHeader>
+        <form onSubmit={handleSubmit(onSubmit)} className="mt-2 space-y-4">
+          <div>
+            <label className="mb-1 block text-sm font-medium text-gray-700">
+              Name <span className="text-red-500">*</span>
+            </label>
+            <input
+              {...register('name')}
+              type="text"
+              placeholder="e.g. RC Car Build"
+              className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm placeholder:text-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            />
+            {errors.name && (
+              <p className="mt-1 text-xs text-red-600">{errors.name.message}</p>
+            )}
+          </div>
+
+          <div>
+            <label className="mb-1 block text-sm font-medium text-gray-700">Status</label>
+            <Controller
+              name="status"
+              control={control}
+              render={({ field }) => (
+                <Select value={field.value} onValueChange={field.onChange}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {PROJECT_STATUSES.map((s) => (
+                      <SelectItem key={s.value} value={s.value}>
+                        {s.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            />
+          </div>
+
+          <div>
+            <label className="mb-1 block text-sm font-medium text-gray-700">
+              Tags{' '}
+              <span className="font-normal text-gray-400">(comma-separated)</span>
+            </label>
+            <input
+              {...register('tags')}
+              type="text"
+              placeholder="e.g. rc, electronics, hobby"
+              className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm placeholder:text-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            />
+          </div>
+
+          <div>
+            <label className="mb-1 block text-sm font-medium text-gray-700">Notes</label>
+            <Textarea {...register('notes')} placeholder="Optional notes…" rows={3} />
+          </div>
+
+          {submitError && (
+            <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{submitError}</p>
+          )}
+
+          <DialogFooter>
+            <button
+              type="button"
+              onClick={() => { reset(); setSubmitError(null); setOpen(false); }}
+              className="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 disabled:opacity-50"
+            >
+              {isSubmitting ? 'Creating…' : 'Create Project'}
+            </button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
 
 function SearchInput({
   value,
@@ -155,6 +328,7 @@ export function ProjectsListClient() {
   });
 
   const sidebarInitialized = useRef(false);
+  const refreshControllerRef = useRef<AbortController | null>(null);
 
   const fetchProjects = useCallback(async (currentFilters: ProjectFilters, signal: AbortSignal) => {
     setLoading(true);
@@ -193,6 +367,17 @@ export function ProjectsListClient() {
     return () => controller.abort();
   }, [fetchProjects, filters]);
 
+  useEffect(() => {
+    return () => { refreshControllerRef.current?.abort(); };
+  }, []);
+
+  const handleProjectCreated = useCallback((_project: ProjectListItem) => {
+    refreshControllerRef.current?.abort();
+    const controller = new AbortController();
+    refreshControllerRef.current = controller;
+    fetchProjects(filters, controller.signal);
+  }, [fetchProjects, filters]);
+
   return (
     <div className="flex gap-6">
       <FilterSidebar
@@ -202,10 +387,15 @@ export function ProjectsListClient() {
       />
 
       <div className="min-w-0 flex-1">
-        <SearchInput
-          value={filters.search}
-          onChange={(search) => setFilters((f) => ({ ...f, search }))}
-        />
+        <div className="flex items-center gap-3">
+          <div className="flex-1">
+            <SearchInput
+              value={filters.search}
+              onChange={(search) => setFilters((f) => ({ ...f, search }))}
+            />
+          </div>
+          <NewProjectDialog onCreated={handleProjectCreated} />
+        </div>
 
         <div className="mt-4">
           {loading ? (
