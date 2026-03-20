@@ -75,10 +75,10 @@ interface AdjustLotDialogProps {
   lot: LotWithDetails;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onQuantityUpdated: (lotId: string, newQuantity: number) => void;
+  onSuccess: () => void;
 }
 
-function AdjustLotDialog({ lot, open, onOpenChange, onQuantityUpdated }: AdjustLotDialogProps) {
+function AdjustLotDialog({ lot, open, onOpenChange, onSuccess }: AdjustLotDialogProps) {
   const [consumeAmount, setConsumeAmount] = useState('');
   const [addAmount, setAddAmount] = useState('');
   const [notes, setNotes] = useState('');
@@ -97,14 +97,14 @@ function AdjustLotDialog({ lot, open, onOpenChange, onQuantityUpdated }: AdjustL
 
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    const consume = consumeAmount ? parseInt(consumeAmount, 10) : 0;
-    const add = addAmount ? parseInt(addAmount, 10) : 0;
+    const consume = consumeAmount === '' ? 0 : Number(consumeAmount);
+    const add = addAmount === '' ? 0 : Number(addAmount);
 
-    if (!Number.isFinite(consume) || consume < 0) {
+    if (!Number.isFinite(consume) || !Number.isInteger(consume) || consume < 0) {
       setFormError('Consume amount must be a non-negative integer.');
       return;
     }
-    if (!Number.isFinite(add) || add < 0) {
+    if (!Number.isFinite(add) || !Number.isInteger(add) || add < 0) {
       setFormError('Add amount must be a non-negative integer.');
       return;
     }
@@ -125,27 +125,17 @@ function AdjustLotDialog({ lot, open, onOpenChange, onQuantityUpdated }: AdjustL
     setFormError(null);
 
     try {
-      const patchRes = await fetch(`/api/lots/${lot.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ quantity: newQty }),
-      });
-      if (!patchRes.ok) {
-        const errData = (await patchRes.json()) as { message?: string };
-        throw new Error(errData.message ?? 'Failed to update lot quantity');
-      }
-
-      const eventRes = await fetch(`/api/lots/${lot.id}/events`, {
+      const res = await fetch(`/api/lots/${lot.id}/adjust`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ type: 'edited', delta, notes: notes || undefined }),
+        body: JSON.stringify({ delta, notes: notes || undefined }),
       });
-      if (!eventRes.ok) {
-        const errData = (await eventRes.json()) as { message?: string };
-        throw new Error(errData.message ?? 'Failed to record lot event');
+      if (!res.ok) {
+        const errData = (await res.json()) as { message?: string };
+        throw new Error(errData.message ?? 'Failed to adjust lot quantity');
       }
 
-      onQuantityUpdated(lot.id, newQty);
+      onSuccess();
       reset();
       onOpenChange(false);
     } catch (err) {
@@ -173,6 +163,7 @@ function AdjustLotDialog({ lot, open, onOpenChange, onQuantityUpdated }: AdjustL
               id="consume-amount"
               type="number"
               min={0}
+              step={1}
               max={currentQty}
               placeholder={`e.g. 50${unitLabel}`}
               value={consumeAmount}
@@ -187,6 +178,7 @@ function AdjustLotDialog({ lot, open, onOpenChange, onQuantityUpdated }: AdjustL
               id="add-amount"
               type="number"
               min={0}
+              step={1}
               placeholder={`e.g. 100${unitLabel}`}
               value={addAmount}
               onChange={(e) => { setAddAmount(e.target.value); setConsumeAmount(''); setFormError(null); }}
@@ -252,16 +244,6 @@ export function PartDetailClient() {
   useEffect(() => {
     loadPart();
   }, [loadPart, refreshKey]);
-
-  function updateLotQuantity(lotId: string, newQuantity: number) {
-    setPart((prev) => {
-      if (!prev) return prev;
-      return {
-        ...prev,
-        lots: prev.lots.map((l) => (l.id === lotId ? { ...l, quantity: newQuantity } : l)),
-      };
-    });
-  }
 
   if (loading) {
     return (
@@ -494,7 +476,10 @@ export function PartDetailClient() {
           lot={selectedLot}
           open={true}
           onOpenChange={(open) => { if (!open) setAdjustLotId(null); }}
-          onQuantityUpdated={updateLotQuantity}
+          onSuccess={() => {
+            setAdjustLotId(null);
+            setRefreshKey((k) => k + 1);
+          }}
         />
       )}
 

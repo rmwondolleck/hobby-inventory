@@ -136,13 +136,13 @@ describe('POST /api/lots/[id]/events', () => {
     (mockPrisma.lot.findUnique as jest.Mock).mockResolvedValue({ id: 'lot-1' });
     mockCreateEvent.mockResolvedValue(createdEvent);
 
-    await POST(makePostRequest('lot-1', { type: 'received', delta: 10, notes: 'restock' }), {
+    await POST(makePostRequest('lot-1', { type: 'edited', delta: 10, notes: 'restock' }), {
       params: Promise.resolve({ id: 'lot-1' }),
     });
 
     expect(mockCreateEvent).toHaveBeenCalledWith({
       lotId: 'lot-1',
-      type: 'received',
+      type: 'edited',
       delta: 10,
       notes: 'restock',
     });
@@ -152,14 +152,14 @@ describe('POST /api/lots/[id]/events', () => {
     (mockPrisma.lot.findUnique as jest.Mock).mockResolvedValue({ id: 'lot-1' });
     mockCreateEvent.mockResolvedValue({ ...createdEvent, delta: undefined, notes: undefined });
 
-    const res = await POST(makePostRequest('lot-1', { type: 'scrapped' }), {
+    const res = await POST(makePostRequest('lot-1', { type: 'edited' }), {
       params: Promise.resolve({ id: 'lot-1' }),
     });
 
     expect(res.status).toBe(201);
     expect(mockCreateEvent).toHaveBeenCalledWith({
       lotId: 'lot-1',
-      type: 'scrapped',
+      type: 'edited',
       delta: undefined,
       notes: undefined,
     });
@@ -271,18 +271,28 @@ describe('POST /api/lots/[id]/events', () => {
     expect(body.error).toBe('invalid_body');
   });
 
-  it('accepts all valid event types', async () => {
-    const validTypes = ['created', 'received', 'moved', 'allocated', 'installed', 'returned', 'lost', 'scrapped', 'edited'];
+  it('accepts the edited event type', async () => {
+    (mockPrisma.lot.findUnique as jest.Mock).mockResolvedValue({ id: 'lot-1' });
+    mockCreateEvent.mockResolvedValue({ ...createdEvent, type: 'edited' });
 
-    for (const type of validTypes) {
+    const res = await POST(makePostRequest('lot-1', { type: 'edited' }), {
+      params: Promise.resolve({ id: 'lot-1' }),
+    });
+
+    expect(res.status).toBe(201);
+  });
+
+  it('returns 400 for non-edited event types', async () => {
+    const nonEditedTypes = ['created', 'received', 'moved', 'allocated', 'installed', 'returned', 'lost', 'scrapped'];
+
+    for (const type of nonEditedTypes) {
       (mockPrisma.lot.findUnique as jest.Mock).mockResolvedValue({ id: 'lot-1' });
-      mockCreateEvent.mockResolvedValue({ ...createdEvent, type });
 
       const res = await POST(makePostRequest('lot-1', { type }), {
         params: Promise.resolve({ id: 'lot-1' }),
       });
 
-      expect(res.status).toBe(201);
+      expect(res.status).toBe(400);
     }
   });
 });
