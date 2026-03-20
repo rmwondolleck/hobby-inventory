@@ -30,25 +30,6 @@ tools:
   github:
     toolsets: [default]
 safe-outputs:
-  create-pull-request:
-    title-prefix: ""
-    labels: [epic-integration, synthesis]
-    draft: false
-    base-branch: "main"
-    protected-files: fallback-to-issue
-    allowed-files:
-      - "**/*"
-      - "package.json"
-      - "package-lock.json"
-      - "prisma/schema.prisma"
-      - "prisma/migrations/**"
-      - "jest.config.ts"
-      - "jest.setup.ts"
-      - "postcss.config.js"
-      - "next.config.js"
-      - "tailwind.config.ts"
-      - "tsconfig.json"
-      - "README.md"
   add-comment:
     target: "*"
     max: 5
@@ -56,6 +37,57 @@ safe-outputs:
     title-prefix: "[Integration] "
     labels: [integration-report]
     max: 1
+  jobs:
+    create-epic-pr:
+      description: "Create a pull request from the epic branch to main. Use this instead of create_pull_request to support epics with more than 100 files changed."
+      runs-on: ubuntu-latest
+      inputs:
+        title:
+          type: string
+          description: "PR title"
+          required: true
+        body:
+          type: string
+          description: "PR body in markdown"
+          required: true
+        epic_branch:
+          type: string
+          description: "Source branch to create PR from (e.g., epic/8-name)"
+          required: true
+        labels:
+          type: string
+          description: "Comma-separated label names (e.g., 'epic-integration,synthesis')"
+      permissions:
+        pull-requests: write
+      steps:
+        - name: Create PR from epic branch
+          env:
+            GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          run: |
+            ITEM=$(jq -r '[.items[] | select(.type == "create_epic_pr")][0]' "$GH_AW_AGENT_OUTPUT")
+            TITLE=$(echo "$ITEM" | jq -r '.title')
+            BODY=$(echo "$ITEM" | jq -r '.body')
+            EPIC_BRANCH=$(echo "$ITEM" | jq -r '.epic_branch')
+            LABELS=$(echo "$ITEM" | jq -r '.labels // ""')
+
+            echo "$BODY" > /tmp/epic-pr-body.md
+
+            LABEL_ARGS=()
+            if [ -n "$LABELS" ]; then
+              IFS=',' read -ra LABEL_ARRAY <<< "$LABELS"
+              for label in "${LABEL_ARRAY[@]}"; do
+                label="${label# }"; label="${label% }"
+                [ -n "$label" ] && LABEL_ARGS+=(--label "$label")
+              done
+            fi
+
+            gh pr create \
+              --repo "$GITHUB_REPOSITORY" \
+              --title "$TITLE" \
+              --body-file /tmp/epic-pr-body.md \
+              --head "$EPIC_BRANCH" \
+              --base "main" \
+              ${LABEL_ARGS[@]+"${LABEL_ARGS[@]}"}
 network:
   allowed:
     - defaults
@@ -279,76 +311,43 @@ This epic is ready for human review. Key accomplishments:
 
 ### Step 4: Make Consolidation Improvements (Optional)
 
-If you identified easy fixes during analysis:
+If you identified easy fixes during analysis, you MAY document them in the PR body (see Step 5) or in a follow-up issue. However, do NOT use the `edit` tool to make code changes in this run — the integration agent runs in an isolated sandbox environment. Any local file edits are not automatically committed and cannot be pushed to the epic branch by this workflow (which operates read-only on the codebase). Direct code consolidation should be handled in a separate follow-up PR after the epic is merged.
 
-1. **Consolidate duplicates** - Remove duplicate code, keep single source
-2. **Fix inconsistencies** - Standardize patterns
-3. **Add missing pieces** - Small gaps like missing validation
-
-Use the `edit` tool to make these improvements on the epic branch.
-
-**Only make changes that are:**
-- Low risk (won't break features)
-- Clearly beneficial (remove duplication)
-- Well-understood (you analyzed the code)
+**Document any consolidation opportunities in the synthesis report instead:**
+- List duplicate code that should be consolidated
+- Describe inconsistencies to be fixed
+- Note missing pieces to be added
 
 **Do NOT make:**
+- Direct file edits via the `edit` tool (they will not reach the PR)
 - Major refactors
 - Architectural changes
 - New features not in the issues
 
 ### Step 5: Create Epic PR
 
-Create ONE PR from epic branch to main:
+Create ONE PR from the epic branch to main using the `create_epic_pr` safe output. This custom output bypasses the 100-file limit and creates the PR directly from the existing epic branch.
 
-**Title**: `feat(epic-${{ github.event.inputs.epic_number }}): [Epic Name] - Complete Integration`
+**Output the following (fill in actual values from your analysis):**
 
-**Body**:
-```markdown
-## 🎯 Epic ${{ github.event.inputs.epic_number }}: [Epic Name]
-
-This PR integrates all features from Epic ${{ github.event.inputs.epic_number }} into main.
-
-### Features Included
-- #5 - Domain model
-- #6 - State transitions  
-- #7 - Service skeleton
-- #8 - Database migrations
-
-### Integration Analysis
-
-[Include synthesis report from Step 3]
-
-### How to Review
-
-1. **Read the synthesis report above** - Understand what's included
-2. **Check the consolidations** - Review any code changes made during integration
-3. **Run tests locally** - `npm test`
-4. **Approve and merge** - This completes Epic ${{ github.event.inputs.epic_number }}
-
-### Closes
-- Closes #5
-- Closes #6
-- Closes #7
-- Closes #8
-
----
-*This PR was synthesized by the integration-agent from individual feature PRs.*
-*Individual PRs will be closed automatically when this merges.*
+```json
+{
+  "type": "create_epic_pr",
+  "title": "feat(epic-${{ github.event.inputs.epic_number }}): [Epic Name] - Complete Integration",
+  "body": "## 🎯 Epic ${{ github.event.inputs.epic_number }}: [Epic Name]\n\nThis PR integrates all features from Epic ${{ github.event.inputs.epic_number }} into main.\n\n### Features Included\n- #PR1 - Feature 1\n- #PR2 - Feature 2\n\n### Integration Analysis\n[Include synthesis report from Step 3]\n\n### How to Review\n1. Read the synthesis report above\n2. Run tests locally - `npm test`\n3. Approve and merge\n\n### Closes\n- Closes #5\n\n---\n*Synthesized by integration-agent*",
+  "epic_branch": "${{ github.event.inputs.epic_branch }}",
+  "labels": "epic-integration,synthesis"
+}
 ```
 
-Use `create-pull-request` safe output:
-```yaml
----
-create-pull-request:
-  title: "feat(epic-${{ github.event.inputs.epic_number }}): [Epic Name] - Complete Integration"
-  body: |
-    [Full body as above]
----
+After the `create_epic_pr` output is processed, the workflow will create the PR and you can find the PR number by running:
+```bash
+gh pr list --repo "$GITHUB_REPOSITORY" --head "${{ github.event.inputs.epic_branch }}" --base main --json number --jq '.[0].number'
 ```
+Use this number when reporting to the Work Queue in Step 6.
 
 ### Step 5b: Cross-link Feature PRs to Epic PR
-After the epic PR is created, add a brief comment to each feature PR so anyone looking at it knows where the work landed:
+After the epic PR is created, add a brief comment to each feature PR so anyone looking at it knows where the work landed. Use the PR number obtained from Step 5:
 ```yaml
 add-comment:
   target: <feature_pr_number>
