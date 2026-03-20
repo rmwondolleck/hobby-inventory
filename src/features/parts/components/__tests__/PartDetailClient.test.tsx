@@ -111,6 +111,13 @@ function makePart(lots: LotWithDetails[] = [], overrides: Partial<PartDetail> = 
     archivedAt: null,
     createdAt: '2024-01-01',
     updatedAt: '2024-01-01',
+    totalQuantity: 0,
+    availableQuantity: 0,
+    reservedQuantity: 0,
+    inUseQuantity: 0,
+    scrappedQuantity: 0,
+    qualitativeStatuses: [],
+    lotCount: lots.length,
     lots,
     ...overrides,
   };

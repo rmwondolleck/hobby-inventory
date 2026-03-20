@@ -85,6 +85,13 @@ const basePart: PartDetail = {
   archivedAt: null,
   createdAt: '2024-01-01T00:00:00Z',
   updatedAt: '2024-01-01T00:00:00Z',
+  totalQuantity: 0,
+  availableQuantity: 0,
+  reservedQuantity: 0,
+  inUseQuantity: 0,
+  scrappedQuantity: 0,
+  qualitativeStatuses: [],
+  lotCount: 0,
   lots: [],
 };
 

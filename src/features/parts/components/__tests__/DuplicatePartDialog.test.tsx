@@ -23,6 +23,13 @@ const PART: PartDetail = {
   archivedAt: null,
   createdAt: '2024-01-01T00:00:00.000Z',
   updatedAt: '2024-01-01T00:00:00.000Z',
+  totalQuantity: 0,
+  availableQuantity: 0,
+  reservedQuantity: 0,
+  inUseQuantity: 0,
+  scrappedQuantity: 0,
+  qualitativeStatuses: [],
+  lotCount: 0,
   lots: [],
 };
 
@@ -38,6 +45,13 @@ const MINIMAL_PART: PartDetail = {
   archivedAt: null,
   createdAt: '2024-01-01T00:00:00.000Z',
   updatedAt: '2024-01-01T00:00:00.000Z',
+  totalQuantity: 0,
+  availableQuantity: 0,
+  reservedQuantity: 0,
+  inUseQuantity: 0,
+  scrappedQuantity: 0,
+  qualitativeStatuses: [],
+  lotCount: 0,
   lots: [],
 };
 
