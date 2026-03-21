@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, type FormEvent } from 'react';
+import { useState, useEffect, type FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import {
@@ -13,6 +13,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { CategoryCombobox, type CategoryOptionWithSchema } from './CategoryCombobox';
 import type { PartDetail } from '../types';
 
 interface DuplicatePartDialogProps {
@@ -25,6 +26,7 @@ interface ParameterRow {
   key: string;
   value: string;
   originalType: 'string' | 'number' | 'boolean';
+  fromTemplate?: boolean;
 }
 
 export function DuplicatePartDialog({ part, open, onOpenChange }: DuplicatePartDialogProps) {
@@ -43,12 +45,44 @@ export function DuplicatePartDialog({ part, open, onOpenChange }: DuplicatePartD
   const [notes, setNotes] = useState(part.notes ?? '');
   const [tagsInput, setTagsInput] = useState(part.tags.join(', '));
   const [paramRows, setParamRows] = useState<ParameterRow[]>(initialParams);
+  const [categories, setCategories] = useState<CategoryOptionWithSchema[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Load categories (with schemas) on mount
+  useEffect(() => {
+    const req = fetch('/api/categories?includeDefaults=true');
+    if (!req || typeof req.then !== 'function') return;
+    req
+      .then((res) => res.json())
+      .then((data) => {
+        const db: CategoryOptionWithSchema[] = (
+          data.data ?? []
+        ).map((c: { id: string; name: string; parameterSchema: Record<string, unknown> }) => ({
+          id: c.id,
+          name: c.name,
+          parameterSchema: c.parameterSchema ?? {},
+        }));
+        const defaults: CategoryOptionWithSchema[] = (data.defaults ?? []).map(
+          (c: { name: string; parameterSchema: Record<string, unknown> }) => ({
+            id: null,
+            name: c.name,
+            parameterSchema: c.parameterSchema ?? {},
+          })
+        );
+        const dbNames = new Set(db.map((c) => c.name));
+        setCategories([...db, ...defaults.filter((d) => !dbNames.has(d.name))]);
+      })
+      .catch(() => {});
+  }, []);
+
   function updateParamRow(index: number, field: 'key' | 'value', val: string) {
     setParamRows((rows) =>
-      rows.map((row, i) => (i === index ? { ...row, [field]: val } : row)),
+      rows.map((row, i) =>
+        i === index
+          ? { ...row, [field]: val, fromTemplate: field === 'key' ? false : row.fromTemplate }
+          : row
+      ),
     );
   }
 
@@ -60,10 +94,43 @@ export function DuplicatePartDialog({ part, open, onOpenChange }: DuplicatePartD
     setParamRows((rows) => rows.filter((_, i) => i !== index));
   }
 
+  function handleCategorySelect(cat: CategoryOptionWithSchema | null) {
+    if (!cat) return;
+    const schemaKeys = Object.keys(cat.parameterSchema);
+    if (schemaKeys.length === 0) return;
+    setParamRows((current) => {
+      const existingKeys = new Set(current.map((r) => r.key.trim()).filter(Boolean));
+      const newRows: ParameterRow[] = schemaKeys
+        .filter((k) => !existingKeys.has(k))
+        .map((k) => ({ key: k, value: '', originalType: 'string' as const, fromTemplate: true }));
+      return newRows.length > 0 ? [...current, ...newRows] : current;
+    });
+  }
+
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setError(null);
     setSubmitting(true);
+
+    const categoryName = category.trim() || undefined;
+
+    // If a new (non-existing) category was typed, upsert it first
+    if (categoryName) {
+      const isExisting = categories.some(
+        (c) => c.name.toLowerCase() === categoryName.toLowerCase()
+      );
+      if (!isExisting) {
+        try {
+          await fetch('/api/categories/upsert-by-name', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name: categoryName }),
+          });
+        } catch {
+          // Non-fatal: the POST /api/parts route will handle category resolution
+        }
+      }
+    }
 
     const tags = tagsInput
       .split(',')
@@ -91,7 +158,7 @@ export function DuplicatePartDialog({ part, open, onOpenChange }: DuplicatePartD
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name: name.trim(),
-          category: category.trim() || undefined,
+          category: categoryName,
           manufacturer: manufacturer.trim() || undefined,
           mpn: mpn.trim() || undefined,
           notes: notes.trim() || undefined,
@@ -135,10 +202,12 @@ export function DuplicatePartDialog({ part, open, onOpenChange }: DuplicatePartD
 
           <div className="space-y-1.5">
             <Label htmlFor="dup-category">Category</Label>
-            <Input
+            <CategoryCombobox
               id="dup-category"
               value={category}
-              onChange={(e) => setCategory(e.target.value)}
+              onValueChange={setCategory}
+              onCategorySelect={handleCategorySelect}
+              categories={categories}
             />
           </div>
 
@@ -192,12 +261,14 @@ export function DuplicatePartDialog({ part, open, onOpenChange }: DuplicatePartD
                   onChange={(e) => updateParamRow(i, 'key', e.target.value)}
                   className="flex-1"
                 />
-                <Input
-                  placeholder="Value"
-                  value={row.value}
-                  onChange={(e) => updateParamRow(i, 'value', e.target.value)}
-                  className="flex-1"
-                />
+                <div className="relative flex-1">
+                  <Input
+                    placeholder={row.fromTemplate && !row.value ? 'Template key — enter value' : 'Value'}
+                    value={row.value}
+                    onChange={(e) => updateParamRow(i, 'value', e.target.value)}
+                    className={row.fromTemplate && !row.value ? 'border-dashed' : ''}
+                  />
+                </div>
                 <Button
                   type="button"
                   variant="ghost"
