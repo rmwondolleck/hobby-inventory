@@ -2,7 +2,7 @@
 description: Central coordinator that manages work queue, dispatches agents, and tracks state via a dedicated tracking issue
 on:
   # Primary: Scheduled polling to check progress and dispatch new work
-  schedule: every 2 hours on weekdays
+  schedule: every 2 hours
   # Secondary: React to completions reported by agents
   issue_comment:
     types: [created]
