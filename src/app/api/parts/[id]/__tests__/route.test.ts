@@ -8,6 +8,10 @@ jest.mock('@/lib/db', () => ({
       findUnique: jest.fn(),
       update: jest.fn(),
     },
+    category: {
+      findUnique: jest.fn(),
+      upsert: jest.fn(),
+    },
   },
 }));
 
@@ -15,11 +19,15 @@ import prisma from '@/lib/db';
 
 const mockFindUnique = prisma.part.findUnique as jest.Mock;
 const mockUpdate = prisma.part.update as jest.Mock;
+const mockCategoryFindUnique = prisma.category.findUnique as jest.Mock;
+const mockCategoryUpsert = prisma.category.upsert as jest.Mock;
 
 const basePart = {
   id: 'cltest001',
   name: 'Test Resistor',
   category: 'passive',
+  categoryId: null,
+  categoryRecord: null,
   manufacturer: 'Yageo',
   mpn: 'RC0402FR-0710KL',
   tags: '["resistor","0402"]',
@@ -36,6 +44,8 @@ function makeParams(id: string) {
 
 beforeEach(() => {
   jest.clearAllMocks();
+  mockCategoryFindUnique.mockResolvedValue(null);
+  mockCategoryUpsert.mockResolvedValue({ id: 'cat001', name: 'passive', parameterSchema: '{}' });
 });
 
 // ─── GET /api/parts/[id] ──────────────────────────────────────────────────────
@@ -340,5 +350,146 @@ describe('DELETE /api/parts/[id]', () => {
 
     expect(json.data.tags).toEqual(['resistor', '0402']);
     expect(json.data.parameters).toEqual({ resistance: '10k' });
+  });
+});
+
+// ─── GET /api/parts/[id] — categoryRecord field ───────────────────────────────
+
+describe('GET /api/parts/[id] (categoryRecord)', () => {
+  it('includes categoryRecord: null when part has no linked category', async () => {
+    mockFindUnique.mockResolvedValue({ ...basePart, lots: [], categoryRecord: null });
+
+    const res = await GET(new Request('http://localhost/api/parts/cltest001'), makeParams('cltest001'));
+    const json = await res.json();
+
+    expect(json.data.categoryRecord).toBeNull();
+  });
+
+  it('includes categoryRecord with parsed parameterSchema when linked', async () => {
+    mockFindUnique.mockResolvedValue({
+      ...basePart,
+      lots: [],
+      categoryId: 'cat001',
+      categoryRecord: { id: 'cat001', name: 'Resistors', parameterSchema: '{"resistance":{"type":"string"}}' },
+    });
+
+    const res = await GET(new Request('http://localhost/api/parts/cltest001'), makeParams('cltest001'));
+    const json = await res.json();
+
+    expect(json.data.categoryRecord).toEqual({
+      id: 'cat001',
+      name: 'Resistors',
+      parameterSchema: { resistance: { type: 'string' } },
+    });
+  });
+
+  it('gracefully handles malformed categoryRecord.parameterSchema (returns {})', async () => {
+    mockFindUnique.mockResolvedValue({
+      ...basePart,
+      lots: [],
+      categoryRecord: { id: 'cat001', name: 'Resistors', parameterSchema: '{bad-json}' },
+    });
+
+    const res = await GET(new Request('http://localhost/api/parts/cltest001'), makeParams('cltest001'));
+    const json = await res.json();
+
+    expect(json.data.categoryRecord.parameterSchema).toEqual({});
+  });
+});
+
+// ─── PATCH /api/parts/[id] — category sync ───────────────────────────────────
+
+describe('PATCH /api/parts/[id] (category sync)', () => {
+  it('syncs category string when categoryId is provided', async () => {
+    mockCategoryFindUnique.mockResolvedValue({ id: 'cat001', name: 'Capacitors', parameterSchema: '{}' });
+    const updated = { ...basePart, categoryId: 'cat001', category: 'Capacitors' };
+    mockFindUnique.mockResolvedValue(basePart);
+    mockUpdate.mockResolvedValue(updated);
+
+    const req = new Request('http://localhost/api/parts/cltest001', {
+      method: 'PATCH',
+      body: JSON.stringify({ categoryId: 'cat001' }),
+    });
+
+    await PATCH(req, makeParams('cltest001'));
+
+    expect(mockUpdate).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ categoryId: 'cat001', category: 'Capacitors' }),
+    }));
+  });
+
+  it('does not overwrite explicit category when both categoryId and category are provided', async () => {
+    mockCategoryFindUnique.mockResolvedValue({ id: 'cat001', name: 'Capacitors', parameterSchema: '{}' });
+    const updated = { ...basePart, categoryId: 'cat001', category: 'My Override' };
+    mockFindUnique.mockResolvedValue(basePart);
+    mockUpdate.mockResolvedValue(updated);
+
+    const req = new Request('http://localhost/api/parts/cltest001', {
+      method: 'PATCH',
+      body: JSON.stringify({ categoryId: 'cat001', category: 'My Override' }),
+    });
+
+    await PATCH(req, makeParams('cltest001'));
+
+    // category should come from explicit body, not from the fetched record
+    expect(mockUpdate).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ categoryId: 'cat001', category: 'My Override' }),
+    }));
+  });
+
+  it('upserts category and sets categoryId when only category string is provided', async () => {
+    mockCategoryUpsert.mockResolvedValue({ id: 'cat002', name: 'Sensors', parameterSchema: '{}' });
+    const updated = { ...basePart, categoryId: 'cat002', category: 'Sensors' };
+    mockFindUnique.mockResolvedValue(basePart);
+    mockUpdate.mockResolvedValue(updated);
+
+    const req = new Request('http://localhost/api/parts/cltest001', {
+      method: 'PATCH',
+      body: JSON.stringify({ category: 'Sensors' }),
+    });
+
+    await PATCH(req, makeParams('cltest001'));
+
+    expect(mockCategoryUpsert).toHaveBeenCalledWith(expect.objectContaining({
+      where: { name: 'Sensors' },
+    }));
+    expect(mockUpdate).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ categoryId: 'cat002', category: 'Sensors' }),
+    }));
+  });
+
+  it('clears categoryId when categoryId: null is provided', async () => {
+    const updated = { ...basePart, categoryId: null };
+    mockFindUnique.mockResolvedValue({ ...basePart, categoryId: 'cat001' });
+    mockUpdate.mockResolvedValue(updated);
+
+    const req = new Request('http://localhost/api/parts/cltest001', {
+      method: 'PATCH',
+      body: JSON.stringify({ categoryId: null }),
+    });
+
+    await PATCH(req, makeParams('cltest001'));
+
+    expect(mockUpdate).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ categoryId: null }),
+    }));
+  });
+
+  it('does not upsert category when category: null is provided', async () => {
+    const updated = { ...basePart, category: null };
+    mockFindUnique.mockResolvedValue(basePart);
+    mockUpdate.mockResolvedValue(updated);
+
+    const req = new Request('http://localhost/api/parts/cltest001', {
+      method: 'PATCH',
+      body: JSON.stringify({ category: null }),
+    });
+
+    await PATCH(req, makeParams('cltest001'));
+
+    expect(mockCategoryUpsert).not.toHaveBeenCalled();
+    expect(mockUpdate).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ category: null }),
+    }));
   });
 });
