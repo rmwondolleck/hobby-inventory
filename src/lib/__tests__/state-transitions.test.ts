@@ -10,6 +10,7 @@ import {
   getTransitionError,
   validateTransition,
   isTerminalState,
+  deriveStatusFromQuantity,
 } from '../state-transitions';
 
 // ─── Stock Status Transitions ─────────────────────────────────────────────────
@@ -265,3 +266,53 @@ describe('isTerminalState', () => {
     expect(isTerminalState('unknown' as 'stock', 'in_stock')).toBe(false);
   });
 });
+
+// ─── deriveStatusFromQuantity ─────────────────────────────────────────────────
+
+describe('deriveStatusFromQuantity', () => {
+  it('transitions in_stock → out when quantity reaches 0', () => {
+    expect(deriveStatusFromQuantity('in_stock', 0, 'exact')).toBe('out');
+  });
+
+  it('transitions low → out when quantity reaches 0', () => {
+    expect(deriveStatusFromQuantity('low', 0, 'exact')).toBe('out');
+  });
+
+  it('transitions out → in_stock when quantity becomes positive', () => {
+    expect(deriveStatusFromQuantity('out', 5, 'exact')).toBe('in_stock');
+  });
+
+  it('returns null when in_stock and quantity stays positive (no change)', () => {
+    expect(deriveStatusFromQuantity('in_stock', 10, 'exact')).toBeNull();
+  });
+
+  it('returns null when already out and quantity is still 0 (no redundant transition)', () => {
+    expect(deriveStatusFromQuantity('out', 0, 'exact')).toBeNull();
+  });
+
+  it('returns null for reserved status — auto-transition never touches reserved', () => {
+    expect(deriveStatusFromQuantity('reserved', 0, 'exact')).toBeNull();
+  });
+
+  it('returns null for installed status', () => {
+    expect(deriveStatusFromQuantity('installed', 0, 'exact')).toBeNull();
+  });
+
+  it('returns null for lost status', () => {
+    expect(deriveStatusFromQuantity('lost', 0, 'exact')).toBeNull();
+  });
+
+  it('returns null for scrapped status (terminal state)', () => {
+    expect(deriveStatusFromQuantity('scrapped', 0, 'exact')).toBeNull();
+  });
+
+  it('returns null for qualitative mode regardless of quantity', () => {
+    expect(deriveStatusFromQuantity('in_stock', 0, 'qualitative')).toBeNull();
+    expect(deriveStatusFromQuantity('out', 5, 'qualitative')).toBeNull();
+  });
+
+  it('returns null when newQty is null', () => {
+    expect(deriveStatusFromQuantity('in_stock', null, 'exact')).toBeNull();
+  });
+});
+

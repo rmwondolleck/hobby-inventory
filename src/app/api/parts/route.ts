@@ -45,6 +45,14 @@ function matchesParameterFilters(
   return true;
 }
 
+/**
+ * Match a part's tags array against the filter list.
+ * All requested tags must be present (AND logic).
+ */
+function matchesTagFilters(tags: string[], filters: string[]): boolean {
+  return filters.every(f => tags.includes(f));
+}
+
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
 
@@ -55,6 +63,11 @@ export async function GET(request: Request) {
   const archived = searchParams.get('archived');
   const paramFilters = parseParameterFilters(searchParams);
   const hasParamFilters = Object.keys(paramFilters).length > 0;
+  const tagFilters = (searchParams.get('tags') ?? '')
+    .split(',')
+    .map(t => t.trim())
+    .filter(Boolean);
+  const hasTagFilters = tagFilters.length > 0;
 
   try {
     const where = {
@@ -91,14 +104,17 @@ export async function GET(request: Request) {
       },
     };
 
-    // When parameter filters are present, fetch all matching (without pagination)
+    // When parameter or tag filters are present, fetch all matching (without pagination)
     // and apply in-memory filtering, then paginate manually.
-    if (hasParamFilters) {
+    if (hasParamFilters || hasTagFilters) {
       const all = await prisma.part.findMany({ where, orderBy: { createdAt: 'desc' }, include: lotInclude });
 
-      const filtered = all.filter((part: { parameters: string }) => {
+      const filtered = all.filter((part: { parameters: string; tags: string }) => {
         const params = safeParseJson<Record<string, unknown>>(part.parameters, {});
-        return matchesParameterFilters(params, paramFilters);
+        const tags = safeParseJson<string[]>(part.tags, []);
+        const passesParams = !hasParamFilters || matchesParameterFilters(params, paramFilters);
+        const passesTags = !hasTagFilters || matchesTagFilters(tags, tagFilters);
+        return passesParams && passesTags;
       });
 
       const total = filtered.length;

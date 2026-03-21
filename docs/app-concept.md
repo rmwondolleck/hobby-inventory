@@ -49,7 +49,6 @@ The app uses a persistent left-side navigation rail (desktop) or bottom tab bar 
 | 📍 | **Locations** | Manage physical storage hierarchy |
 | 🔧 | **Projects** | Track build projects and allocations |
 | ⬆️ | **Import** | Bulk import from CSV |
-| 🖨 | **Labels** | Print location and lot labels |
 
 A global **search bar** (cmd+K / ctrl+K) provides instant cross-entity lookup across parts, lots, and locations.
 
@@ -66,8 +65,7 @@ A global **search bar** (cmd+K / ctrl+K) provides instant cross-entity lookup ac
 │   └── /locations/[id]      Location detail + contents
 ├── /projects                Projects list
 │   └── /projects/[id]       Project detail + allocations
-├── /import                  CSV import wizard
-└── /print/labels            Label generator
+└── /import                  CSV import wizard
 ```
 
 ---
@@ -344,22 +342,6 @@ Events are immutable log entries that record every change to a lot's stock. They
 
 ---
 
-### 4.6 Print Labels
-
-**Goal:** Generate physical labels for storage bins and lot QR codes.
-
-**Steps:**
-
-1. Navigate to `/print/labels`
-2. Choose label type: Location Labels / Lot Labels
-3. Select items to include (multi-select from a list or search)
-4. Choose label format (size, QR vs. text-only)
-5. Preview renders labels in a print-ready grid
-6. Print via browser print dialog
-
-**UI pattern:** Split-pane layout — selection list on left, label preview on right. Labels render as CSS print-optimized cards.
-
----
 
 ## 5. UI Component Inventory
 
