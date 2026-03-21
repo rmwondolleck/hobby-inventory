@@ -57,9 +57,46 @@ const MINIMAL_PART: PartDetail = {
 
 const mockOnOpenChange = jest.fn();
 
+jest.mock('../CategoryCombobox', () => ({
+  CategoryCombobox: ({
+    id,
+    value,
+    onValueChange,
+  }: {
+    id?: string;
+    value: string;
+    onValueChange: (v: string) => void;
+    onCategorySelect?: (cat: unknown) => void;
+    categories?: unknown[];
+    placeholder?: string;
+  }) => (
+    <input
+      id={id}
+      data-testid="category-combobox"
+      value={value}
+      onChange={(e) => onValueChange(e.target.value)}
+    />
+  ),
+}));
+
 beforeEach(() => {
   jest.clearAllMocks();
-  global.fetch = jest.fn();
+  // Default: categories endpoint returns the PART's category so it's treated as "existing".
+  // Individual tests can override with mockResolvedValueOnce for POST calls.
+  global.fetch = jest.fn().mockImplementation((url: string) => {
+    if (typeof url === 'string' && url.includes('/api/categories')) {
+      return Promise.resolve({
+        ok: true,
+        json: async () => ({
+          data: [{ id: 'cat-mc', name: 'Microcontrollers', parameterSchema: {} }],
+          defaults: [],
+        }),
+      });
+    }
+    // Non-categories calls return a rejected-ish promise by default;
+    // individual tests override this with mockResolvedValueOnce.
+    return Promise.resolve({ ok: false, json: async () => ({}) });
+  });
 });
 
 function renderDialog(part: PartDetail = PART, open = true) {
@@ -175,18 +212,37 @@ describe('DuplicatePartDialog', () => {
   });
 
   describe('form submission — success', () => {
-    it('calls POST /api/parts with correct payload and navigates to new part', async () => {
-      (global.fetch as jest.Mock).mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({ id: 'new-part-99' }),
+    function makeSuccessFetch(returnBody: object = { id: 'new-part-99' }) {
+      return jest.fn().mockImplementation((url: string, opts?: RequestInit) => {
+        if (typeof url === 'string' && url.includes('/api/categories')) {
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({
+              data: [{ id: 'cat-mc', name: 'Microcontrollers', parameterSchema: {} }],
+              defaults: [],
+            }),
+          });
+        }
+        if (opts?.method === 'POST') {
+          return Promise.resolve({ ok: true, json: async () => returnBody });
+        }
+        return Promise.resolve({ ok: true, json: async () => ({}) });
       });
+    }
+
+    it('calls POST /api/parts with correct payload and navigates to new part', async () => {
+      global.fetch = makeSuccessFetch();
 
       renderDialog();
       fireEvent.click(screen.getByRole('button', { name: /save as new part/i }));
 
       await waitFor(() => expect(mockPush).toHaveBeenCalledWith('/parts/new-part-99'));
 
-      const [url, opts] = (global.fetch as jest.Mock).mock.calls[0];
+      const postCalls = (global.fetch as jest.Mock).mock.calls.filter(
+        ([url, opts]: [string, RequestInit]) => opts?.method === 'POST' && url === '/api/parts'
+      );
+      expect(postCalls).toHaveLength(1);
+      const [url, opts] = postCalls[0];
       expect(url).toBe('/api/parts');
       expect(opts.method).toBe('POST');
 
@@ -200,10 +256,7 @@ describe('DuplicatePartDialog', () => {
     });
 
     it('calls onOpenChange(false) on successful submission', async () => {
-      (global.fetch as jest.Mock).mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({ id: 'new-part-99' }),
-      });
+      global.fetch = makeSuccessFetch();
 
       renderDialog();
       fireEvent.click(screen.getByRole('button', { name: /save as new part/i }));
@@ -212,16 +265,21 @@ describe('DuplicatePartDialog', () => {
     });
 
     it('strips empty optional fields from payload', async () => {
-      (global.fetch as jest.Mock).mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({ id: 'new-part-100' }),
-      });
+      global.fetch = makeSuccessFetch({ id: 'new-part-100' });
 
       renderDialog(MINIMAL_PART);
       fireEvent.click(screen.getByRole('button', { name: /save as new part/i }));
 
-      await waitFor(() => expect(global.fetch).toHaveBeenCalled());
-      const body = JSON.parse((global.fetch as jest.Mock).mock.calls[0][1].body);
+      await waitFor(() => {
+        const postCalls = (global.fetch as jest.Mock).mock.calls.filter(
+          ([url, opts]: [string, RequestInit]) => opts?.method === 'POST' && url === '/api/parts'
+        );
+        expect(postCalls).toHaveLength(1);
+      });
+      const postCall = (global.fetch as jest.Mock).mock.calls.find(
+        ([url, opts]: [string, RequestInit]) => opts?.method === 'POST' && url === '/api/parts'
+      );
+      const body = JSON.parse(postCall[1].body);
       expect(body.category).toBeUndefined();
       expect(body.manufacturer).toBeUndefined();
       expect(body.mpn).toBeUndefined();
@@ -229,29 +287,52 @@ describe('DuplicatePartDialog', () => {
     });
 
     it('omits parameter rows with empty keys', async () => {
-      (global.fetch as jest.Mock).mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({ id: 'new-part-101' }),
-      });
+      global.fetch = makeSuccessFetch({ id: 'new-part-101' });
 
       renderDialog();
       // Add a row with empty key
       fireEvent.click(screen.getByRole('button', { name: /add parameter/i }));
       fireEvent.click(screen.getByRole('button', { name: /save as new part/i }));
 
-      await waitFor(() => expect(global.fetch).toHaveBeenCalled());
-      const body = JSON.parse((global.fetch as jest.Mock).mock.calls[0][1].body);
+      await waitFor(() => {
+        const postCalls = (global.fetch as jest.Mock).mock.calls.filter(
+          ([url, opts]: [string, RequestInit]) => opts?.method === 'POST' && url === '/api/parts'
+        );
+        expect(postCalls).toHaveLength(1);
+      });
+      const postCall = (global.fetch as jest.Mock).mock.calls.find(
+        ([url, opts]: [string, RequestInit]) => opts?.method === 'POST' && url === '/api/parts'
+      );
+      const body = JSON.parse(postCall[1].body);
       // Only the two original keyed params should be present
       expect(Object.keys(body.parameters)).toEqual(['voltage', 'pins']);
     });
   });
 
   describe('form submission — error handling', () => {
-    it('shows error message when API returns non-ok response with message field', async () => {
-      (global.fetch as jest.Mock).mockResolvedValueOnce({
-        ok: false,
-        json: async () => ({ message: 'Name is required' }),
+    function makeErrorFetch(errorBody: object, rejects = false, rejectValue?: unknown) {
+      return jest.fn().mockImplementation((url: string, opts?: RequestInit) => {
+        if (typeof url === 'string' && url.includes('/api/categories')) {
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({
+              data: [{ id: 'cat-mc', name: 'Microcontrollers', parameterSchema: {} }],
+              defaults: [],
+            }),
+          });
+        }
+        if (opts?.method === 'POST') {
+          if (rejects) {
+            return Promise.reject(rejectValue ?? new Error('Network failure'));
+          }
+          return Promise.resolve({ ok: false, json: async () => errorBody });
+        }
+        return Promise.resolve({ ok: true, json: async () => ({}) });
       });
+    }
+
+    it('shows error message when API returns non-ok response with message field', async () => {
+      global.fetch = makeErrorFetch({ message: 'Name is required' });
 
       renderDialog();
       fireEvent.click(screen.getByRole('button', { name: /save as new part/i }));
@@ -262,10 +343,7 @@ describe('DuplicatePartDialog', () => {
     });
 
     it('shows error message when API returns non-ok response with error field', async () => {
-      (global.fetch as jest.Mock).mockResolvedValueOnce({
-        ok: false,
-        json: async () => ({ error: 'Internal server error' }),
-      });
+      global.fetch = makeErrorFetch({ error: 'Internal server error' });
 
       renderDialog();
       fireEvent.click(screen.getByRole('button', { name: /save as new part/i }));
@@ -276,10 +354,7 @@ describe('DuplicatePartDialog', () => {
     });
 
     it('shows fallback error when API returns no message', async () => {
-      (global.fetch as jest.Mock).mockResolvedValueOnce({
-        ok: false,
-        json: async () => ({}),
-      });
+      global.fetch = makeErrorFetch({});
 
       renderDialog();
       fireEvent.click(screen.getByRole('button', { name: /save as new part/i }));
@@ -290,7 +365,7 @@ describe('DuplicatePartDialog', () => {
     });
 
     it('shows error when fetch throws a network error', async () => {
-      (global.fetch as jest.Mock).mockRejectedValueOnce(new Error('Network failure'));
+      global.fetch = makeErrorFetch({}, true, new Error('Network failure'));
 
       renderDialog();
       fireEvent.click(screen.getByRole('button', { name: /save as new part/i }));
@@ -301,7 +376,7 @@ describe('DuplicatePartDialog', () => {
     });
 
     it('shows generic error for non-Error throws', async () => {
-      (global.fetch as jest.Mock).mockRejectedValueOnce('oops');
+      global.fetch = makeErrorFetch({}, true, 'oops');
 
       renderDialog();
       fireEvent.click(screen.getByRole('button', { name: /save as new part/i }));
@@ -312,10 +387,7 @@ describe('DuplicatePartDialog', () => {
     });
 
     it('does not navigate on error', async () => {
-      (global.fetch as jest.Mock).mockResolvedValueOnce({
-        ok: false,
-        json: async () => ({ message: 'Bad request' }),
-      });
+      global.fetch = makeErrorFetch({ message: 'Bad request' });
 
       renderDialog();
       fireEvent.click(screen.getByRole('button', { name: /save as new part/i }));
