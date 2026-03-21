@@ -38,6 +38,7 @@ network:
 concurrency:
   group: build-agent-pr-${{ github.event.inputs.pr_number }}
   cancel-in-progress: false
+run-name: "Build Agent — PR #${{ github.event.inputs.pr_number }} / Issue #${{ github.event.inputs.issue_number }}"
 ---
 
 # Build Agent

@@ -49,6 +49,7 @@ network:
 concurrency:
   group: ui-test-agent-pr-${{ github.event.inputs.pr_number }}
   cancel-in-progress: false
+run-name: "UI Test Agent — PR #${{ github.event.inputs.pr_number }} (${{ github.event.inputs.scope }})"
 steps:
   - name: Install Playwright browsers
     run: npx playwright install --with-deps chromium

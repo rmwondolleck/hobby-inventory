@@ -75,6 +75,7 @@ network:
 concurrency:
   group: coding-agent-issue-${{ github.event.inputs.issue_number }}
   cancel-in-progress: false
+run-name: "Coding Agent — Issue #${{ github.event.inputs.issue_number }} (${{ github.event.inputs.epic_branch }})"
 ---
 
 # Coding Agent

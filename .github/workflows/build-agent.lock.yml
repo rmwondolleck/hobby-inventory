@@ -23,7 +23,7 @@
 #
 # Validates builds, runs tests, and reports results to orchestrator
 #
-# gh-aw-metadata: {"schema_version":"v2","frontmatter_hash":"5c426456b511c7eee22fbe431b3b04bfddf449d3d330bf0bcc2b6b75b64c0ca0","compiler_version":"v0.57.2","strict":true}
+# gh-aw-metadata: {"schema_version":"v2","frontmatter_hash":"a2068894d7e70e795c95ad96daff7b291685d76965be42363b3e5f51349e0a31","compiler_version":"v0.57.2","strict":true}
 
 name: "Build Agent"
 "on":
@@ -48,7 +48,7 @@ concurrency:
   cancel-in-progress: false
   group: build-agent-pr-${{ github.event.inputs.pr_number }}
 
-run-name: "Build Agent"
+run-name: "Build Agent — PR #${{ github.event.inputs.pr_number }} / Issue #${{ github.event.inputs.issue_number }}"
 
 jobs:
   activation:

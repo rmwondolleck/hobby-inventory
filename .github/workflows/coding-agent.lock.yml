@@ -23,7 +23,7 @@
 #
 # Implements features from GitHub issues, creates PRs, and reports completion to orchestrator
 #
-# gh-aw-metadata: {"schema_version":"v2","frontmatter_hash":"160ee8ffdf1a3fb6653ae8de4d776b4d61d724a8aff943317ca6060ed551c5ab","compiler_version":"v0.57.2","strict":true}
+# gh-aw-metadata: {"schema_version":"v2","frontmatter_hash":"c76fd09c55439f0b1c329c5ad04aba582a6f02ae7d1d1705195d1bc267573e57","compiler_version":"v0.57.2","strict":true}
 
 name: "Coding Agent"
 "on":
@@ -57,7 +57,7 @@ concurrency:
   cancel-in-progress: false
   group: coding-agent-issue-${{ github.event.inputs.issue_number }}
 
-run-name: "Coding Agent"
+run-name: "Coding Agent — Issue #${{ github.event.inputs.issue_number }} (${{ github.event.inputs.epic_branch }})"
 
 jobs:
   activation:
