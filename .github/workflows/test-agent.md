@@ -39,6 +39,7 @@ safe-outputs:
       - "src/**/*.spec.tsx"
       - "jest.config.ts"
       - "jest.setup.ts"
+      - "src/lib/state-transitions.ts"
   add-comment:
     target: "*"
     max: 3
