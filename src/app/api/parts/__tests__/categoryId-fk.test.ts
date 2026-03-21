@@ -12,6 +12,10 @@ jest.mock('@/lib/db', () => ({
       count: jest.fn(),
       create: jest.fn(),
     },
+    category: {
+      upsert: jest.fn(),
+      findUnique: jest.fn(),
+    },
     $transaction: jest.fn(),
   },
 }));
@@ -22,6 +26,8 @@ const mockFindMany = prisma.part.findMany as jest.Mock;
 const mockCount = prisma.part.count as jest.Mock;
 const mockCreate = prisma.part.create as jest.Mock;
 const mockTransaction = prisma.$transaction as jest.Mock;
+const mockCategoryUpsert = prisma.category.upsert as jest.Mock;
+const mockCategoryFindUnique = prisma.category.findUnique as jest.Mock;
 
 function makeRequest(url: string, options?: RequestInit): Request {
   return new Request(url, options);
@@ -101,14 +107,20 @@ describe('GET /api/parts — categoryId FK field', () => {
   });
 });
 
-// ─── POST /api/parts — categoryId is not set by POST ─────────────────────────
+// ─── POST /api/parts — categoryId is resolved and synced via resolveCategorySync ─
 
 describe('POST /api/parts — categoryId FK field', () => {
-  it('creates a part without categoryId (route does not accept categoryId yet)', async () => {
+  it('creates a part and resolves categoryId via upsert-by-name when category string is supplied', async () => {
+    mockCategoryUpsert.mockResolvedValue({
+      id: 'cat-resistors-001',
+      name: 'Resistors',
+      parameterSchema: '{}',
+    });
     const created = {
       ...basePart,
       id: 'clnew001',
-      categoryId: null,
+      category: 'Resistors',
+      categoryId: 'cat-resistors-001',
     };
     mockCreate.mockResolvedValue(created);
 
@@ -121,12 +133,20 @@ describe('POST /api/parts — categoryId FK field', () => {
     expect(res.status).toBe(201);
 
     const json = await res.json();
-    // categoryId is not accepted by POST — it defaults to null
-    expect(json).toHaveProperty('categoryId', null);
+    expect(json).toHaveProperty('categoryId', 'cat-resistors-001');
   });
 
-  it('does not forward a categoryId even if caller supplies it in body', async () => {
-    const created = { ...basePart, id: 'clnew002', categoryId: null };
+  it('accepts categoryId from caller body and syncs category string via FK lookup', async () => {
+    mockCategoryFindUnique.mockResolvedValue({
+      id: 'cat-resistors-001',
+      name: 'Resistors',
+    });
+    const created = {
+      ...basePart,
+      id: 'clnew002',
+      category: 'Resistors',
+      categoryId: 'cat-resistors-001',
+    };
     mockCreate.mockResolvedValue(created);
 
     const res = await POST(
@@ -135,14 +155,13 @@ describe('POST /api/parts — categoryId FK field', () => {
         body: JSON.stringify({
           name: 'New Resistor',
           category: 'Resistors',
-          categoryId: 'cat-resistors-001', // caller attempts to set FK
+          categoryId: 'cat-resistors-001',
         }),
       })
     );
     expect(res.status).toBe(201);
 
-    // Verify the create call does NOT include categoryId
     const createCall = mockCreate.mock.calls[0][0];
-    expect(createCall.data).not.toHaveProperty('categoryId');
+    expect(createCall.data).toHaveProperty('categoryId', 'cat-resistors-001');
   });
 });

@@ -90,7 +90,7 @@ jest.mock('@/components/ui/popover', () => {
     children: React.ReactNode;
   }) => {
     const { open, onOpenChange } = React.useContext(PopoverCtx);
-    const child = React.Children.only(children) as React.ReactElement;
+    const child = React.Children.only(children) as React.ReactElement<{ onClick?: (e: React.MouseEvent) => void }>;
     return React.cloneElement(child, {
       onClick: (e: React.MouseEvent) => {
         onOpenChange(!open);
@@ -208,12 +208,12 @@ describe('CategoryCombobox', () => {
     it('renders the trigger button with placeholder when no value', () => {
       renderCombobox({ value: '' });
       expect(screen.getByRole('combobox')).toBeInTheDocument();
-      expect(screen.getByText('Select or type a category…')).toBeInTheDocument();
+      expect(screen.getByText('Select or type a category\u2026')).toBeInTheDocument();
     });
 
     it('renders a custom placeholder', () => {
-      renderCombobox({ value: '', placeholder: 'Pick one…' });
-      expect(screen.getByText('Pick one…')).toBeInTheDocument();
+      renderCombobox({ value: '', placeholder: 'Pick one\u2026' });
+      expect(screen.getByText('Pick one\u2026')).toBeInTheDocument();
     });
 
     it('renders the current value in the trigger button', () => {
@@ -280,13 +280,13 @@ describe('CategoryCombobox', () => {
       expect(texts.some((t) => t.toLowerCase().includes('resistors'))).toBe(true);
     });
 
-    it('shows "Use …" create option when input has no exact match', () => {
+    it('shows "Use \u2026" create option when input has no exact match', () => {
       renderCombobox({ value: '' });
       fireEvent.click(screen.getByRole('combobox'));
       fireEvent.change(screen.getByTestId('command-input'), {
         target: { value: 'NewCategory' },
       });
-      // "Use" text and the new name should appear (quotes are HTML entities → curly quotes)
+      // "Use" text and the new name should appear (quotes are HTML entities \u2192 curly quotes)
       expect(screen.getByText('Use')).toBeInTheDocument();
       // The create item has data-value="__create__NewCategory"
       expect(
@@ -294,7 +294,7 @@ describe('CategoryCombobox', () => {
       ).toBeInTheDocument();
     });
 
-    it('does NOT show "Use …" option when input exactly matches a category', () => {
+    it('does NOT show "Use \u2026" option when input exactly matches a category', () => {
       renderCombobox({ value: '' });
       fireEvent.click(screen.getByRole('combobox'));
       fireEvent.change(screen.getByTestId('command-input'), {
@@ -303,7 +303,7 @@ describe('CategoryCombobox', () => {
       expect(screen.queryByText('Use')).not.toBeInTheDocument();
     });
 
-    it('does NOT show "Use …" option when input is empty', () => {
+    it('does NOT show "Use \u2026" option when input is empty', () => {
       renderCombobox({ value: '' });
       fireEvent.click(screen.getByRole('combobox'));
       expect(screen.queryByText('Use')).not.toBeInTheDocument();
@@ -385,7 +385,7 @@ describe('CategoryCombobox', () => {
       fireEvent.change(screen.getByTestId('command-input'), {
         target: { value: 'Res' },
       });
-      // Not an exact match and not empty → no callback
+      // Not an exact match and not empty \u2192 no callback
       expect(onCategorySelect).not.toHaveBeenCalled();
     });
   });
@@ -419,7 +419,7 @@ describe('CategoryCombobox', () => {
         />
       );
       expect(screen.getByRole('combobox')).toHaveTextContent(
-        'Select or type a category…'
+        'Select or type a category\u2026'
       );
     });
   });
