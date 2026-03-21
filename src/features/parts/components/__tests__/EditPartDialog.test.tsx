@@ -69,6 +69,29 @@ jest.mock('@/components/ui/select', () => ({
 jest.mock('lucide-react', () => ({
   PlusIcon: () => <span data-testid="plus-icon" />,
   TrashIcon: () => <span data-testid="trash-icon" />,
+  BookOpenIcon: () => <span data-testid="book-open-icon" />,
+}));
+
+jest.mock('../CategoryCombobox', () => ({
+  CategoryCombobox: ({
+    id,
+    value,
+    onValueChange,
+  }: {
+    id?: string;
+    value: string;
+    onValueChange: (v: string) => void;
+    onCategorySelect?: (cat: unknown) => void;
+    categories?: unknown[];
+    placeholder?: string;
+  }) => (
+    <input
+      id={id}
+      data-testid="category-combobox"
+      value={value}
+      onChange={(e) => onValueChange(e.target.value)}
+    />
+  ),
 }));
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
