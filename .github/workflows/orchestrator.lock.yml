@@ -23,7 +23,7 @@
 #
 # Central coordinator that manages work queue, dispatches agents, and tracks state via a dedicated tracking issue
 #
-# gh-aw-metadata: {"schema_version":"v2","frontmatter_hash":"5c2b28a0e9ed2ae3f5305b58bcf8e27e87e0539398032633cddb3d9a54483488","compiler_version":"v0.57.2","strict":true}
+# gh-aw-metadata: {"schema_version":"v2","frontmatter_hash":"1947de315087092b9dd4adc3e46adec85a68fcfcedf9258a49b9f4cb2169a5a0","compiler_version":"v0.57.2","strict":true}
 
 name: "Development Orchestrator"
 "on":
@@ -34,8 +34,8 @@ name: "Development Orchestrator"
     types:
     - submitted
   schedule:
-  - cron: "27 */2 * * 1-5"
-    # Friendly format: every 2 hours on weekdays (scattered)
+  - cron: "27 */2 * * *"
+    # Friendly format: every 2 hours (scattered)
   workflow_dispatch:
 
 permissions: {}
