@@ -17,7 +17,7 @@ import {
 } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { cn } from '@/components/ui/utils';
-import { Input } from '@/components/ui/input';
+import { CommandPalette } from '@/components/CommandPalette';
 
 const navigation = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard },
@@ -33,7 +33,21 @@ export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const { resolvedTheme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
+  const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
+
   useEffect(() => setMounted(true), []);
+
+  // Global cmd+K / ctrl+K keyboard shortcut
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        setCommandPaletteOpen(v => !v);
+      }
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   return (
     <div className="flex h-screen bg-background">
@@ -47,16 +61,19 @@ export function AppShell({ children }: { children: ReactNode }) {
           <p className="text-xs text-muted-foreground mt-1">Maker&apos;s Workshop</p>
         </div>
 
-        {/* Global search */}
+        {/* Global search trigger */}
         <div className="p-4 border-b border-sidebar-border">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
-            <Input
-              type="text"
-              placeholder="Search... (⌘K)"
-              className="pl-9 bg-sidebar-accent"
-            />
-          </div>
+          <button
+            type="button"
+            onClick={() => setCommandPaletteOpen(true)}
+            className="flex w-full items-center gap-2 rounded-md border border-sidebar-border bg-sidebar-accent px-3 py-2 text-sm text-muted-foreground hover:border-primary/50 hover:text-foreground transition-colors"
+          >
+            <Search className="size-4 shrink-0" />
+            <span className="flex-1 text-left">Search…</span>
+            <kbd className="hidden rounded border border-border bg-muted px-1.5 py-0.5 text-xs sm:inline-block">
+              ⌘K
+            </kbd>
+          </button>
         </div>
 
         {/* Navigation */}
@@ -102,6 +119,8 @@ export function AppShell({ children }: { children: ReactNode }) {
       <main className="flex-1 overflow-auto">
         {children}
       </main>
+
+      <CommandPalette open={commandPaletteOpen} onOpenChange={setCommandPaletteOpen} />
     </div>
   );
 }

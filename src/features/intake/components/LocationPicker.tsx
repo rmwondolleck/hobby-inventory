@@ -4,6 +4,30 @@ import { useState, useEffect, useRef } from 'react';
 import { cn } from '@/lib/utils';
 import type { LocationOption } from '../types';
 
+// ─── Recent locations localStorage helpers ────────────────────────────────────
+
+const RECENT_LOCATIONS_KEY = 'recent-locations';
+const MAX_RECENT_LOCATIONS = 5;
+
+interface RecentLocation { id: string; name: string; path: string }
+
+function getRecentLocations(): RecentLocation[] {
+  try {
+    return JSON.parse(localStorage.getItem(RECENT_LOCATIONS_KEY) || '[]');
+  } catch {
+    return [];
+  }
+}
+
+function addRecentLocation(loc: RecentLocation): RecentLocation[] {
+  const current = getRecentLocations().filter(l => l.id !== loc.id);
+  const updated = [loc, ...current].slice(0, MAX_RECENT_LOCATIONS);
+  localStorage.setItem(RECENT_LOCATIONS_KEY, JSON.stringify(updated));
+  return updated;
+}
+
+// ─── Component ────────────────────────────────────────────────────────────────
+
 interface LocationPickerProps {
   value: LocationOption | null;
   onChange: (location: LocationOption | null) => void;
@@ -27,7 +51,13 @@ export function LocationPicker({ value, onChange }: LocationPickerProps) {
   const [newName, setNewName] = useState('');
   const [newParentId, setNewParentId] = useState<string>('');
   const [isCreating, setIsCreating] = useState(false);
+  const [recentLocations, setRecentLocations] = useState<RecentLocation[]>([]);
   const containerRef = useRef<HTMLDivElement>(null);
+
+  // Load recent locations on mount (client-only, guarded against SSR)
+  useEffect(() => {
+    setRecentLocations(getRecentLocations());
+  }, []);
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -59,6 +89,8 @@ export function LocationPicker({ value, onChange }: LocationPickerProps) {
   };
 
   const handleSelect = (loc: LocationOption) => {
+    const updated = addRecentLocation({ id: loc.id, name: loc.name, path: loc.path });
+    setRecentLocations(updated);
     onChange(loc);
     setIsOpen(false);
     setFilter('');
@@ -154,6 +186,28 @@ export function LocationPicker({ value, onChange }: LocationPickerProps) {
               className="w-full rounded-md border border-gray-200 px-2 py-1.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
             />
           </div>
+
+          {/* Recently used chips — filtered to locations still present in the tree */}
+          {recentLocations.filter(r => flat.some(l => l.id === r.id)).length > 0 && (
+            <div className="border-b border-gray-100 px-3 py-2">
+              <p className="mb-1.5 text-xs font-medium text-gray-400">Recently used</p>
+              <div className="flex flex-wrap gap-1.5">
+                {recentLocations
+                  .filter(r => flat.some(l => l.id === r.id))
+                  .map(loc => (
+                    <button
+                      key={loc.id}
+                      type="button"
+                      title={loc.path}
+                      onClick={() => handleSelect({ id: loc.id, name: loc.name, path: loc.path, parentId: null, children: [] })}
+                      className="rounded-full border border-gray-200 bg-gray-50 px-2.5 py-0.5 text-xs text-gray-700 hover:border-blue-400 hover:bg-blue-50 hover:text-blue-700 transition-colors"
+                    >
+                      {loc.name}
+                    </button>
+                  ))}
+              </div>
+            </div>
+          )}
 
           {isLoading ? (
             <div className="px-3 py-3 text-sm text-gray-500">Loading…</div>

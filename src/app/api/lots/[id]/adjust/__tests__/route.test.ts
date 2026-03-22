@@ -222,3 +222,84 @@ describe('POST /api/lots/[id]/adjust', () => {
     expect(body.error).toBe('invalid_body');
   });
 });
+
+// ─── Auto status transition on quantity change ────────────────────────────────
+
+describe('POST /api/lots/[id]/adjust — auto status transition', () => {
+  it('sets status to out and writes status_changed event when quantity reaches 0', async () => {
+    const lot = { id: 'lot-1', quantity: 5, quantityMode: 'exact', status: 'in_stock' };
+    (mockPrisma.lot.findUnique as jest.Mock).mockResolvedValue(lot);
+
+    const updateResult = { ...lot, quantity: 0, status: 'out' };
+    const editedEvent = { id: 'evt-1', lotId: 'lot-1', type: 'edited', delta: -5, notes: null };
+    const statusEvent = { id: 'evt-2', lotId: 'lot-1', type: 'status_changed', delta: 0, notes: 'Auto-updated from quantity change' };
+    (mockPrisma.$transaction as jest.Mock).mockResolvedValue([updateResult, editedEvent, statusEvent]);
+
+    const res = await POST(makeRequest('lot-1', { delta: -5 }), { params: Promise.resolve({ id: 'lot-1' }) });
+    expect(res.status).toBe(200);
+
+    const transactionCall = (mockPrisma.$transaction as jest.Mock).mock.calls[0][0];
+    // 3 operations: lot update + edited event + status_changed event
+    expect(transactionCall).toHaveLength(3);
+
+    const updateCall = (mockPrisma.lot.update as jest.Mock).mock.calls[0][0];
+    expect(updateCall.data).toMatchObject({ quantity: 0, status: 'out' });
+
+    const eventCalls = (mockPrisma.event.create as jest.Mock).mock.calls;
+    const statusChangedCall = eventCalls.find(
+      (c: [{ data: { type: string } }]) => c[0].data.type === 'status_changed',
+    );
+    expect(statusChangedCall).toBeDefined();
+    expect(statusChangedCall![0].data.notes).toBe('Auto-updated from quantity change');
+  });
+
+  it('sets status to in_stock when restocking from 0', async () => {
+    const lot = { id: 'lot-2', quantity: 0, quantityMode: 'exact', status: 'out' };
+    (mockPrisma.lot.findUnique as jest.Mock).mockResolvedValue(lot);
+
+    const updateResult = { ...lot, quantity: 10, status: 'in_stock' };
+    (mockPrisma.$transaction as jest.Mock).mockResolvedValue([updateResult, {}, {}]);
+
+    const res = await POST(makeRequest('lot-2', { delta: 10 }), { params: Promise.resolve({ id: 'lot-2' }) });
+    expect(res.status).toBe(200);
+
+    const updateCall = (mockPrisma.lot.update as jest.Mock).mock.calls[0][0];
+    expect(updateCall.data).toMatchObject({ quantity: 10, status: 'in_stock' });
+  });
+
+  it('does not change status for reserved lots even when quantity reaches 0', async () => {
+    const lot = { id: 'lot-3', quantity: 3, quantityMode: 'exact', status: 'reserved' };
+    (mockPrisma.lot.findUnique as jest.Mock).mockResolvedValue(lot);
+
+    const updateResult = { ...lot, quantity: 0 };
+    (mockPrisma.$transaction as jest.Mock).mockResolvedValue([updateResult, {}]);
+
+    const res = await POST(makeRequest('lot-3', { delta: -3 }), { params: Promise.resolve({ id: 'lot-3' }) });
+    expect(res.status).toBe(200);
+
+    const transactionCall = (mockPrisma.$transaction as jest.Mock).mock.calls[0][0];
+    // Only 2 operations: lot update + edited event (no status_changed)
+    expect(transactionCall).toHaveLength(2);
+
+    const updateCall = (mockPrisma.lot.update as jest.Mock).mock.calls[0][0];
+    expect(updateCall.data).not.toHaveProperty('status');
+  });
+
+  it('does not change status when in_stock lot quantity stays positive', async () => {
+    const lot = { id: 'lot-4', quantity: 10, quantityMode: 'exact', status: 'in_stock' };
+    (mockPrisma.lot.findUnique as jest.Mock).mockResolvedValue(lot);
+
+    const updateResult = { ...lot, quantity: 7 };
+    (mockPrisma.$transaction as jest.Mock).mockResolvedValue([updateResult, {}]);
+
+    const res = await POST(makeRequest('lot-4', { delta: -3 }), { params: Promise.resolve({ id: 'lot-4' }) });
+    expect(res.status).toBe(200);
+
+    const transactionCall = (mockPrisma.$transaction as jest.Mock).mock.calls[0][0];
+    expect(transactionCall).toHaveLength(2);
+
+    const updateCall = (mockPrisma.lot.update as jest.Mock).mock.calls[0][0];
+    expect(updateCall.data).not.toHaveProperty('status');
+  });
+});
+

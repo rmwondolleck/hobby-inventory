@@ -185,3 +185,36 @@ export function isTerminalState(type: StatusType, status: string): boolean {
   if (!known.includes(type)) return false;
   return getValidTransitions(type, status).length === 0;
 }
+
+// ============================================================================
+// Auto-Derive Stock Status from Quantity
+// ============================================================================
+
+/**
+ * Derive a new StockStatus from a quantity change.
+ * Only applies when current status is in_stock, low, or out.
+ * Returns null when no status change is needed.
+ *
+ * Rules (exact mode only):
+ *   qty → 0  and status is not already 'out'  → 'out'
+ *   qty → >0 and status is 'out'               → 'in_stock'
+ *   all other cases                            → null (no change)
+ */
+export function deriveStatusFromQuantity(
+  currentStatus: StockStatus,
+  newQty: number | null,
+  quantityMode: 'exact' | 'qualitative'
+): StockStatus | null {
+  const autoTransitionStatuses: StockStatus[] = ['in_stock', 'low', 'out'];
+  if (!autoTransitionStatuses.includes(currentStatus)) return null;
+  if (quantityMode !== 'exact' || newQty === null) return null;
+
+  if (newQty === 0 && currentStatus !== 'out') {
+    return isValidStockTransition(currentStatus, 'out') ? 'out' : null;
+  }
+  if (newQty > 0 && currentStatus === 'out') {
+    return isValidStockTransition('out', 'in_stock') ? 'in_stock' : null;
+  }
+  return null;
+}
+

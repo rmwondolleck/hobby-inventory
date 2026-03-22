@@ -178,7 +178,11 @@ export async function POST(request: Request) {
   }
 
   const lotStatus = (status ?? 'in_stock') as string;
-  if (!VALID_STATUSES.includes(lotStatus)) {
+  // Auto-derive initial status when caller didn't supply one explicitly
+  const initialStatus = !status && mode === 'exact' && typeof quantity === 'number' && quantity === 0
+    ? 'out'
+    : lotStatus;
+  if (!VALID_STATUSES.includes(initialStatus)) {
     return NextResponse.json(
       {
         error: 'validation_error',
@@ -230,7 +234,7 @@ export async function POST(request: Request) {
           ? (qualitativeStatus as string)
           : null,
       unit: unit && typeof unit === 'string' ? unit : null,
-      status: lotStatus,
+      status: initialStatus,
       locationId:
         locationId !== undefined && locationId !== null ? (locationId as string) : null,
       source: JSON.stringify(parsedSource),
