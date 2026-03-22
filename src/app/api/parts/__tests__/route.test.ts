@@ -668,6 +668,211 @@ describe('GET /api/parts (categoryRecord)', () => {
     });
   });
 
+  it('accepts categoryId and syncs category string from the fetched record', async () => {
+    mockCategoryFindUnique.mockResolvedValue({ id: 'cat001', name: 'Resistors', parameterSchema: '{}' });
+    mockCreate.mockResolvedValue({ ...basePart, id: 'clnew002', categoryId: 'cat001', category: 'Resistors' });
+
+    const req = makeRequest('http://localhost/api/parts', {
+      method: 'POST',
+      body: JSON.stringify({ name: 'R1', categoryId: 'cat001' }),
+    });
+
+    await POST(req);
+
+    const createArgs = mockCreate.mock.calls[0][0].data;
+    expect(createArgs.categoryId).toBe('cat001');
+    expect(createArgs.category).toBe('Resistors');
+    expect(mockCategoryUpsert).not.toHaveBeenCalled();
+  });
+
+  it('accepts category string and upserts category, setting categoryId', async () => {
+    mockCategoryUpsert.mockResolvedValue({ id: 'cat002', name: 'Capacitors', parameterSchema: '{}' });
+    mockCreate.mockResolvedValue({ ...basePart, id: 'clnew003', categoryId: 'cat002', category: 'Capacitors' });
+
+    const req = makeRequest('http://localhost/api/parts', {
+      method: 'POST',
+      body: JSON.stringify({ name: 'C1', category: 'Capacitors' }),
+    });
+
+    await POST(req);
+
+    expect(mockCategoryUpsert).toHaveBeenCalledWith(expect.objectContaining({
+      where: { name: 'Capacitors' },
+    }));
+    const createArgs = mockCreate.mock.calls[0][0].data;
+    expect(createArgs.categoryId).toBe('cat002');
+    expect(createArgs.category).toBe('Capacitors');
+  });
+
+  it('sets category/categoryId to null when neither is provided', async () => {
+    mockCreate.mockResolvedValue({ ...basePart, id: 'clnew004', categoryId: null, category: null });
+
+    const req = makeRequest('http://localhost/api/parts', {
+      method: 'POST',
+      body: JSON.stringify({ name: 'Bare Part 2' }),
+    });
+
+    await POST(req);
+
+    const createArgs = mockCreate.mock.calls[0][0].data;
+    expect(createArgs.categoryId).toBeNull();
+    expect(createArgs.category).toBeNull();
+    expect(mockCategoryUpsert).not.toHaveBeenCalled();
+    expect(mockCategoryFindUnique).not.toHaveBeenCalled();
+  });
+});
+
+<<<<<<< HEAD
+=======
+// ─── GET /api/parts — categoryRecord field ────────────────────────────────────
+
+describe('GET /api/parts (categoryRecord)', () => {
+  it('includes categoryRecord: null when part has no category', async () => {
+    mockFindMany.mockResolvedValue([{ ...basePart, categoryRecord: null }]);
+    mockCount.mockResolvedValue(1);
+
+    const res = await GET(makeRequest('http://localhost/api/parts'));
+    const json = await res.json();
+
+    expect(json.data[0].categoryRecord).toBeNull();
+  });
+
+  it('includes categoryRecord with parsed parameterSchema when linked', async () => {
+    const partWithCategory = {
+      ...basePart,
+      categoryId: 'cat001',
+      categoryRecord: {
+        id: 'cat001',
+        name: 'Resistors',
+        parameterSchema: '{"resistance":{"type":"string"}}',
+      },
+    };
+    mockFindMany.mockResolvedValue([partWithCategory]);
+    mockCount.mockResolvedValue(1);
+
+    const res = await GET(makeRequest('http://localhost/api/parts'));
+    const json = await res.json();
+
+    expect(json.data[0].categoryRecord).toEqual({
+      id: 'cat001',
+      name: 'Resistors',
+      parameterSchema: { resistance: { type: 'string' } },
+    });
+  });
+
+  it('gracefully handles malformed categoryRecord.parameterSchema (returns {})', async () => {
+    const partWithBadSchema = {
+      ...basePart,
+      categoryId: 'cat001',
+      categoryRecord: { id: 'cat001', name: 'Resistors', parameterSchema: '{bad-json}' },
+    };
+    mockFindMany.mockResolvedValue([partWithBadSchema]);
+    mockCount.mockResolvedValue(1);
+
+    const res = await GET(makeRequest('http://localhost/api/parts'));
+    const json = await res.json();
+
+    expect(json.data[0].categoryRecord.parameterSchema).toEqual({});
+  });
+});
+
+>>>>>>> 0313f5536172027576396e889fbee9f9295007f4
+// ─── GET /api/parts — tags filter ─────────────────────────────────────────────
+
+describe('GET /api/parts — tags filter', () => {
+  const wifiPart = {
+    ...basePart,
+    id: 'clwifi001',
+    name: 'ESP32',
+    tags: '["wifi","bluetooth","microcontroller"]',
+    parameters: '{}',
+  };
+  const btOnlyPart = {
+    ...basePart,
+    id: 'clbt001',
+    name: 'nRF52840',
+    tags: '["bluetooth","microcontroller"]',
+    parameters: '{}',
+  };
+  const untaggedPart = {
+    ...basePart,
+    id: 'cluntag001',
+    name: 'Resistor',
+    tags: '["resistor"]',
+    parameters: '{}',
+  };
+
+  it('returns only parts matching a single tag filter', async () => {
+    mockFindMany.mockResolvedValue([wifiPart, btOnlyPart, untaggedPart]);
+
+    const res = await GET(makeRequest('http://localhost/api/parts?tags=wifi'));
+    expect(res.status).toBe(200);
+
+    const json = await res.json();
+    expect(json.data).toHaveLength(1);
+    expect(json.data[0].id).toBe('clwifi001');
+    expect(json.total).toBe(1);
+  });
+
+  it('returns only parts matching ALL tags in a multi-tag AND filter', async () => {
+    mockFindMany.mockResolvedValue([wifiPart, btOnlyPart, untaggedPart]);
+
+    const res = await GET(makeRequest('http://localhost/api/parts?tags=wifi,bluetooth'));
+    expect(res.status).toBe(200);
+
+    const json = await res.json();
+    // Only wifiPart has both wifi AND bluetooth
+    expect(json.data).toHaveLength(1);
+    expect(json.data[0].id).toBe('clwifi001');
+    expect(json.total).toBe(1);
+  });
+
+  it('returns all parts when no tags param is provided (no regression)', async () => {
+    mockFindMany.mockResolvedValue([wifiPart, btOnlyPart, untaggedPart]);
+    mockCount.mockResolvedValue(3);
+
+    const res = await GET(makeRequest('http://localhost/api/parts'));
+    expect(res.status).toBe(200);
+
+    const json = await res.json();
+    expect(json.data).toHaveLength(3);
+    expect(json.total).toBe(3);
+  });
+
+  it('applies tag filter together with category filter', async () => {
+    const sensorWifi = {
+      ...basePart,
+      id: 'clsensor001',
+      name: 'Sensor',
+      category: 'Sensors',
+      tags: '["wifi","sensor"]',
+      parameters: '{}',
+    };
+    // mockFindMany already applies the category WHERE clause server-side;
+    // simulate it returning only Sensors-category parts
+    mockFindMany.mockResolvedValue([sensorWifi]);
+
+    const res = await GET(makeRequest('http://localhost/api/parts?tags=wifi&category=Sensors'));
+    expect(res.status).toBe(200);
+
+    const json = await res.json();
+    expect(json.data).toHaveLength(1);
+    expect(json.data[0].id).toBe('clsensor001');
+  });
+
+  it('returns empty data when no parts match the tag filter', async () => {
+    mockFindMany.mockResolvedValue([untaggedPart]);
+
+    const res = await GET(makeRequest('http://localhost/api/parts?tags=nonexistent'));
+    expect(res.status).toBe(200);
+
+    const json = await res.json();
+    expect(json.data).toHaveLength(0);
+    expect(json.total).toBe(0);
+  });
+});
+
+
   it('gracefully handles malformed categoryRecord.parameterSchema (returns {})', async () => {
     const partWithBadSchema = {
       ...basePart,
