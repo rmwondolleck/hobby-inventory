@@ -7,8 +7,10 @@ import { AppShell } from '../AppShell';
 
 // Mock next/navigation
 const mockPathname = jest.fn(() => '/');
+const mockPush = jest.fn();
 jest.mock('next/navigation', () => ({
   usePathname: () => mockPathname(),
+  useRouter: () => ({ push: mockPush, replace: jest.fn(), prefetch: jest.fn() }),
 }));
 
 // Mock next/link
@@ -144,6 +146,34 @@ describe('AppShell', () => {
     });
   });
 
+  describe('navigation link hrefs', () => {
+    const expectedRoutes = [
+      { name: 'Dashboard', href: '/' },
+      { name: 'Intake', href: '/intake' },
+      { name: 'Parts', href: '/parts' },
+      { name: 'Lots', href: '/lots' },
+      { name: 'Locations', href: '/locations' },
+      { name: 'Projects', href: '/projects' },
+      { name: 'Import', href: '/import' },
+    ];
+
+    it('renders exactly 7 navigation links', () => {
+      render(<AppShell><div /></AppShell>);
+      const navLinks = screen.getAllByRole('link').filter(
+        (link) => expectedRoutes.some((r) => r.name === link.textContent?.trim())
+      );
+      expect(navLinks).toHaveLength(7);
+    });
+
+    expectedRoutes.forEach(({ name, href }) => {
+      it(`"${name}" link points to "${href}"`, () => {
+        render(<AppShell><div /></AppShell>);
+        const link = screen.getByText(name).closest('a');
+        expect(link).toHaveAttribute('href', href);
+      });
+    });
+  });
+
   describe('navigation active state', () => {
     it('marks Dashboard as active when pathname is "/"', () => {
       mockPathname.mockReturnValue('/');
@@ -164,6 +194,47 @@ describe('AppShell', () => {
       render(<AppShell><div /></AppShell>);
       const dashboardLink = screen.getByText('Dashboard').closest('a');
       expect(dashboardLink?.className).not.toContain('bg-sidebar-primary');
+    });
+
+    const nonDashboardRoutes = [
+      { name: 'Intake', href: '/intake' },
+      { name: 'Lots', href: '/lots' },
+      { name: 'Locations', href: '/locations' },
+      { name: 'Projects', href: '/projects' },
+      { name: 'Import', href: '/import' },
+    ];
+
+    nonDashboardRoutes.forEach(({ name, href }) => {
+      it(`marks ${name} as active when pathname is "${href}"`, () => {
+        mockPathname.mockReturnValue(href);
+        render(<AppShell><div /></AppShell>);
+        const link = screen.getByText(name).closest('a');
+        expect(link?.className).toContain('bg-sidebar-primary');
+      });
+
+      it(`marks ${name} as active on deep path "${href}/123"`, () => {
+        mockPathname.mockReturnValue(`${href}/123`);
+        render(<AppShell><div /></AppShell>);
+        const link = screen.getByText(name).closest('a');
+        expect(link?.className).toContain('bg-sidebar-primary');
+      });
+    });
+
+    it('does not mark Dashboard as active on any non-root path', () => {
+      mockPathname.mockReturnValue('/intake');
+      render(<AppShell><div /></AppShell>);
+      const dashboardLink = screen.getByText('Dashboard').closest('a');
+      expect(dashboardLink?.className).not.toContain('bg-sidebar-primary');
+    });
+
+    it('marks only one nav item as active at a time', () => {
+      mockPathname.mockReturnValue('/locations');
+      render(<AppShell><div /></AppShell>);
+      const activeLinks = screen
+        .getAllByRole('link')
+        .filter((link) => link.className.includes('bg-sidebar-primary'));
+      expect(activeLinks).toHaveLength(1);
+      expect(activeLinks[0].textContent?.trim()).toBe('Locations');
     });
   });
 });
