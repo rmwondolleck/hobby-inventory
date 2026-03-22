@@ -23,7 +23,7 @@
 #
 # Implements features from GitHub issues, creates PRs, and reports completion to orchestrator
 #
-# gh-aw-metadata: {"schema_version":"v2","frontmatter_hash":"160ee8ffdf1a3fb6653ae8de4d776b4d61d724a8aff943317ca6060ed551c5ab","compiler_version":"v0.57.2","strict":true}
+# gh-aw-metadata: {"schema_version":"v2","frontmatter_hash":"c76fd09c55439f0b1c329c5ad04aba582a6f02ae7d1d1705195d1bc267573e57","compiler_version":"v0.57.2","strict":true}
 
 name: "Coding Agent"
 "on":
@@ -56,8 +56,6 @@ permissions: {}
 concurrency:
   cancel-in-progress: false
   group: coding-agent-issue-${{ github.event.inputs.issue_number }}
-
-run-name: "Coding Agent"
 
 jobs:
   activation:
@@ -311,6 +309,27 @@ jobs:
           ref: ${{ github.event.inputs.epic_branch }}
       - name: Create gh-aw temp directory
         run: bash /opt/gh-aw/actions/create_gh_aw_tmp_dir.sh
+      - name: Activation Summary
+        run: |
+          {
+            echo "## Activation Parameters"
+            echo ""
+            echo "| Parameter | Value |"
+            echo "|-----------|-------|"
+            echo "| Issue | #${ISSUE_NUMBER} |"
+            echo "| Epic Branch | ${EPIC_BRANCH} |"
+            echo "| Remediation Mode | ${REMEDIATION_MODE} |"
+            if [ -n "${REMEDIATION_PR}" ]; then
+              echo "| Remediation PR | #${REMEDIATION_PR} |"
+            fi
+            echo "| Work Queue Issue | #${STATE_ISSUE_NUMBER} |"
+          } >> "$GITHUB_STEP_SUMMARY"
+        env:
+          ISSUE_NUMBER: ${{ github.event.inputs.issue_number }}
+          EPIC_BRANCH: ${{ github.event.inputs.epic_branch }}
+          REMEDIATION_MODE: ${{ github.event.inputs.remediation_mode }}
+          REMEDIATION_PR: ${{ github.event.inputs.remediation_pr }}
+          STATE_ISSUE_NUMBER: ${{ github.event.inputs.state_issue_number }}
       - name: Configure Git credentials
         env:
           REPO_NAME: ${{ github.repository }}
@@ -1340,4 +1359,3 @@ jobs:
           name: safe-output-items
           path: /tmp/safe-output-items.jsonl
           if-no-files-found: warn
-

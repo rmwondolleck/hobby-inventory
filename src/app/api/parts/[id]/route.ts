@@ -21,6 +21,7 @@ export async function GET(_request: Request, { params }: RouteParams) {
           location: { select: { id: true, name: true, path: true } },
         },
       },
+      categoryRecord: { select: { id: true, name: true, parameterSchema: true } },
     },
   });
 
@@ -39,6 +40,9 @@ export async function GET(_request: Request, { params }: RouteParams) {
       ...stockFields,
       tags: safeParseJson<string[]>(part.tags, []),
       parameters: safeParseJson<Record<string, unknown>>(part.parameters, {}),
+      categoryRecord: part.categoryRecord
+        ? { ...part.categoryRecord, parameterSchema: safeParseJson<Record<string, unknown>>(part.categoryRecord.parameterSchema, {}) }
+        : null,
       lots: part.lots.map((lot: { source: string } & Record<string, unknown>) => ({
         ...lot,
         source: safeParseJson<Record<string, unknown>>(lot.source, {}),
@@ -82,6 +86,26 @@ export async function PATCH(request: Request, { params }: RouteParams) {
 
   if ('category' in body) {
     updateData.category = body.category === null ? null : String(body.category).trim();
+  }
+  if ('categoryId' in body) {
+    if (body.categoryId === null) {
+      updateData.categoryId = null;
+    } else if (typeof body.categoryId === 'string' && body.categoryId.trim()) {
+      updateData.categoryId = body.categoryId.trim();
+      // Sync category string to the Category.name when categoryId is provided
+      const catRecord = await prisma.category.findUnique({ where: { id: updateData.categoryId as string } });
+      if (catRecord && !('category' in body)) {
+        updateData.category = catRecord.name;
+      }
+    }
+  } else if ('category' in body && updateData.category && typeof updateData.category === 'string') {
+    // Upsert category by name and sync categoryId
+    const catRecord = await prisma.category.upsert({
+      where: { name: updateData.category },
+      update: {},
+      create: { name: updateData.category, parameterSchema: '{}' },
+    });
+    updateData.categoryId = catRecord.id;
   }
   if ('manufacturer' in body) {
     updateData.manufacturer = body.manufacturer === null ? null : String(body.manufacturer).trim();

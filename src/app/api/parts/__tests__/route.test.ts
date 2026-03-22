@@ -8,6 +8,10 @@ jest.mock('@/lib/db', () => ({
       count: jest.fn(),
       create: jest.fn(),
     },
+    category: {
+      findUnique: jest.fn(),
+      upsert: jest.fn(),
+    },
     $transaction: jest.fn(),
   },
 }));
@@ -18,6 +22,8 @@ const mockFindMany = prisma.part.findMany as jest.Mock;
 const mockCount = prisma.part.count as jest.Mock;
 const mockCreate = prisma.part.create as jest.Mock;
 const mockTransaction = prisma.$transaction as jest.Mock;
+const mockCategoryFindUnique = prisma.category.findUnique as jest.Mock;
+const mockCategoryUpsert = prisma.category.upsert as jest.Mock;
 
 function makeRequest(url: string, options?: RequestInit): Request {
   return new Request(url, options);
@@ -27,6 +33,8 @@ const basePart = {
   id: 'cltest001',
   name: 'Test Resistor',
   category: 'Resistors',
+  categoryId: null,
+  categoryRecord: null,
   manufacturer: 'Yageo',
   mpn: 'RC0402FR-0710KL',
   tags: '["resistor","0402"]',
@@ -41,6 +49,8 @@ const basePart = {
 beforeEach(() => {
   jest.clearAllMocks();
   mockTransaction.mockImplementation((queries: Promise<unknown>[]) => Promise.all(queries));
+  mockCategoryUpsert.mockResolvedValue({ id: 'cat001', name: 'Resistors', parameterSchema: '{}' });
+  mockCategoryFindUnique.mockResolvedValue(null);
 });
 
 // ─── GET /api/parts ───────────────────────────────────────────────────────────
@@ -558,8 +568,116 @@ describe('POST /api/parts', () => {
     const json = await res.json();
     expect(json.error).toBe('internal_error');
   });
+
+  it('accepts categoryId and syncs category string from the fetched record', async () => {
+    mockCategoryFindUnique.mockResolvedValue({ id: 'cat001', name: 'Resistors', parameterSchema: '{}' });
+    mockCreate.mockResolvedValue({ ...basePart, id: 'clnew002', categoryId: 'cat001', category: 'Resistors' });
+
+    const req = makeRequest('http://localhost/api/parts', {
+      method: 'POST',
+      body: JSON.stringify({ name: 'R1', categoryId: 'cat001' }),
+    });
+
+    await POST(req);
+
+    const createArgs = mockCreate.mock.calls[0][0].data;
+    expect(createArgs.categoryId).toBe('cat001');
+    expect(createArgs.category).toBe('Resistors');
+    expect(mockCategoryUpsert).not.toHaveBeenCalled();
+  });
+
+  it('accepts category string and upserts category, setting categoryId', async () => {
+    mockCategoryUpsert.mockResolvedValue({ id: 'cat002', name: 'Capacitors', parameterSchema: '{}' });
+    mockCreate.mockResolvedValue({ ...basePart, id: 'clnew003', categoryId: 'cat002', category: 'Capacitors' });
+
+    const req = makeRequest('http://localhost/api/parts', {
+      method: 'POST',
+      body: JSON.stringify({ name: 'C1', category: 'Capacitors' }),
+    });
+
+    await POST(req);
+
+    expect(mockCategoryUpsert).toHaveBeenCalledWith(expect.objectContaining({
+      where: { name: 'Capacitors' },
+    }));
+    const createArgs = mockCreate.mock.calls[0][0].data;
+    expect(createArgs.categoryId).toBe('cat002');
+    expect(createArgs.category).toBe('Capacitors');
+  });
+
+  it('sets category/categoryId to null when neither is provided', async () => {
+    mockCreate.mockResolvedValue({ ...basePart, id: 'clnew004', categoryId: null, category: null });
+
+    const req = makeRequest('http://localhost/api/parts', {
+      method: 'POST',
+      body: JSON.stringify({ name: 'Bare Part 2' }),
+    });
+
+    await POST(req);
+
+    const createArgs = mockCreate.mock.calls[0][0].data;
+    expect(createArgs.categoryId).toBeNull();
+    expect(createArgs.category).toBeNull();
+    expect(mockCategoryUpsert).not.toHaveBeenCalled();
+    expect(mockCategoryFindUnique).not.toHaveBeenCalled();
+  });
 });
 
+<<<<<<< HEAD
+=======
+// ─── GET /api/parts — categoryRecord field ────────────────────────────────────
+
+describe('GET /api/parts (categoryRecord)', () => {
+  it('includes categoryRecord: null when part has no category', async () => {
+    mockFindMany.mockResolvedValue([{ ...basePart, categoryRecord: null }]);
+    mockCount.mockResolvedValue(1);
+
+    const res = await GET(makeRequest('http://localhost/api/parts'));
+    const json = await res.json();
+
+    expect(json.data[0].categoryRecord).toBeNull();
+  });
+
+  it('includes categoryRecord with parsed parameterSchema when linked', async () => {
+    const partWithCategory = {
+      ...basePart,
+      categoryId: 'cat001',
+      categoryRecord: {
+        id: 'cat001',
+        name: 'Resistors',
+        parameterSchema: '{"resistance":{"type":"string"}}',
+      },
+    };
+    mockFindMany.mockResolvedValue([partWithCategory]);
+    mockCount.mockResolvedValue(1);
+
+    const res = await GET(makeRequest('http://localhost/api/parts'));
+    const json = await res.json();
+
+    expect(json.data[0].categoryRecord).toEqual({
+      id: 'cat001',
+      name: 'Resistors',
+      parameterSchema: { resistance: { type: 'string' } },
+    });
+  });
+
+  it('gracefully handles malformed categoryRecord.parameterSchema (returns {})', async () => {
+    const partWithBadSchema = {
+      ...basePart,
+      categoryId: 'cat001',
+      categoryRecord: { id: 'cat001', name: 'Resistors', parameterSchema: '{bad-json}' },
+    };
+    mockFindMany.mockResolvedValue([partWithBadSchema]);
+    mockCount.mockResolvedValue(1);
+
+    const res = await GET(makeRequest('http://localhost/api/parts'));
+    const json = await res.json();
+
+    expect(json.data[0].categoryRecord.parameterSchema).toEqual({});
+  });
+});
+
+>>>>>>> 0313f5536172027576396e889fbee9f9295007f4
 // ─── GET /api/parts — tags filter ─────────────────────────────────────────────
 
 describe('GET /api/parts — tags filter', () => {

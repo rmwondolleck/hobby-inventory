@@ -19,6 +19,7 @@ model Part {
   id           String   @id @default(cuid())
   name         String
   category     String?
+  categoryId   String?
   manufacturer String?
   mpn          String?  // Manufacturer part number
   tags         String   @default("[]") // JSON array stored as string
@@ -28,10 +29,12 @@ model Part {
   updatedAt    DateTime @updatedAt
   archivedAt   DateTime?
 
-  lots         Lot[]
+  lots            Lot[]
+  categoryRecord  Category? @relation(fields: [categoryId], references: [id])
 
   @@index([category])
   @@index([mpn])
+  @@index([categoryId])
 }
 
 model Location {
@@ -134,5 +137,7 @@ model Category {
   parameterSchema  String   @default("{}") // JSON schema for category parameters
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
+
+  parts            Part[]
 }
 

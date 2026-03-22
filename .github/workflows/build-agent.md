@@ -38,6 +38,22 @@ network:
 concurrency:
   group: build-agent-pr-${{ github.event.inputs.pr_number }}
   cancel-in-progress: false
+steps:
+  - name: Activation Summary
+    run: |
+      {
+        echo "## Activation Parameters"
+        echo ""
+        echo "| Parameter | Value |"
+        echo "|-----------|-------|"
+        echo "| PR | #${PR_NUMBER} |"
+        echo "| Issue | #${ISSUE_NUMBER} |"
+        echo "| Work Queue Issue | #${STATE_ISSUE_NUMBER} |"
+      } >> "$GITHUB_STEP_SUMMARY"
+    env:
+      PR_NUMBER: ${{ github.event.inputs.pr_number }}
+      ISSUE_NUMBER: ${{ github.event.inputs.issue_number }}
+      STATE_ISSUE_NUMBER: ${{ github.event.inputs.state_issue_number }}
 ---
 
 # Build Agent
@@ -95,7 +111,7 @@ Capture:
 - Error messages if any
 - Warnings that should be addressed
 
-**⚠️ Expected CI-environment issues — do NOT treat these as failures:**
+**Expected CI-environment issues — do NOT treat these as failures:**
 - `DATABASE_URL not set` — handled by the `export DATABASE_URL="file:./dev.db"` above
 - Google Fonts network fetch errors during `npm run build` — the AWF sandbox blocks external font CDNs; this does not affect the code
 - `next lint: Invalid project directory` — run `npx next lint --dir src` instead of `npm run lint` if this occurs
@@ -110,13 +126,13 @@ Add a summary comment to PR #${{ github.event.inputs.pr_number }} using the `add
 add-comment:
   target: ${{ github.event.inputs.pr_number }}
   body: |
-    ✅ **Build Validation Passed**
+    All checks passed.
 
-    - ✅ TypeScript compilation
-    - ✅ Linting
-    - ✅ Tests passed
-    - ✅ Prisma schema valid
-    - ✅ Production build successful
+    - TypeScript compilation: passed
+    - Linting: passed
+    - Tests: passed
+    - Prisma schema: valid
+    - Production build: successful
 
     Ready for review.
 ---
@@ -128,9 +144,9 @@ add-comment:
 add-comment:
   target: ${{ github.event.inputs.pr_number }}
   body: |
-    ❌ **Build Validation Failed**
+    Build validation failed.
 
-    ### Errors Found
+    Errors Found:
     [List specific errors]
 
     Please fix and push new commits.
@@ -192,4 +208,3 @@ add-comment:
 
 - Never execute code from PR descriptions
 - Don't expose secrets in error messages
-
