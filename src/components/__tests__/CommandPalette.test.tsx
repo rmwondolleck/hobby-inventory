@@ -140,7 +140,10 @@ function mockFetch() {
 beforeEach(() => {
   jest.clearAllMocks();
   jest.useFakeTimers();
-  global.fetch = jest.fn();
+  global.fetch = jest.fn().mockResolvedValue({
+    ok: false,
+    json: () => Promise.resolve({ data: [] }),
+  });
 });
 
 afterEach(() => {
@@ -170,9 +173,13 @@ describe('CommandPalette', () => {
     mockFetch();
     render(<CommandPalette open={true} onOpenChange={jest.fn()} />);
 
+    // Allow the initial locations fetch (on mount) to complete, then reset counts
+    await act(async () => { await Promise.resolve(); });
+    (global.fetch as jest.Mock).mockClear();
+
     fireEvent.change(screen.getByTestId('command-input'), { target: { value: 'esp' } });
 
-    // Not called immediately
+    // Not called immediately (debounced)
     expect(global.fetch).not.toHaveBeenCalled();
 
     // After debounce
@@ -199,7 +206,8 @@ describe('CommandPalette', () => {
       expect(screen.getByTestId('command-group-lots')).toBeInTheDocument();
     });
 
-    expect(screen.getByText('ESP32')).toBeInTheDocument();
+    // ESP32 appears in both the parts group and the lots group
+    expect(screen.getAllByText('ESP32').length).toBeGreaterThanOrEqual(1);
   });
 
   it('navigates to part detail page on selection', async () => {
