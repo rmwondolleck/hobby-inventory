@@ -32,6 +32,10 @@ describe('isValidStockTransition', () => {
     expect(isValidStockTransition('in_stock', 'scrapped')).toBe(true);
   });
 
+  it('allows in_stock → out', () => {
+    expect(isValidStockTransition('in_stock', 'out')).toBe(true);
+  });
+
   it('allows no-op transition (same state)', () => {
     expect(isValidStockTransition('in_stock', 'in_stock')).toBe(true);
     expect(isValidStockTransition('scrapped', 'scrapped')).toBe(true);
@@ -62,6 +66,7 @@ describe('getValidStockTransitions', () => {
   it('returns correct transitions for in_stock', () => {
     const transitions = getValidStockTransitions('in_stock');
     expect(transitions).toContain('low');
+    expect(transitions).toContain('out');
     expect(transitions).toContain('reserved');
     expect(transitions).toContain('installed');
     expect(transitions).toContain('scrapped');
