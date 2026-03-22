@@ -23,7 +23,7 @@
 #
 # Implements features from GitHub issues, creates PRs, and reports completion to orchestrator
 #
-# gh-aw-metadata: {"schema_version":"v2","frontmatter_hash":"160ee8ffdf1a3fb6653ae8de4d776b4d61d724a8aff943317ca6060ed551c5ab","compiler_version":"v0.57.2","strict":true}
+# gh-aw-metadata: {"schema_version":"v2","frontmatter_hash":"2395e8f795676058ea8ce9c45ead70185c01477484389587b1c86b28d9d4512b","compiler_version":"v0.57.2","strict":true}
 
 name: "Coding Agent"
 "on":
@@ -311,6 +311,15 @@ jobs:
           ref: ${{ github.event.inputs.epic_branch }}
       - name: Create gh-aw temp directory
         run: bash /opt/gh-aw/actions/create_gh_aw_tmp_dir.sh
+      - env:
+          EPIC_BRANCH: ${{ github.event.inputs.epic_branch }}
+          ISSUE_NUMBER: ${{ github.event.inputs.issue_number }}
+          REMEDIATION_MODE: ${{ github.event.inputs.remediation_mode }}
+          REMEDIATION_PR: ${{ github.event.inputs.remediation_pr }}
+          STATE_ISSUE_NUMBER: ${{ github.event.inputs.state_issue_number }}
+        name: Activation Summary
+        run: "{\n  echo \"## Activation Parameters\"\n  echo \"\"\n  echo \"| Parameter | Value |\"\n  echo \"|-----------|-------|\"\n  echo \"| Issue | #${ISSUE_NUMBER} |\"\n  echo \"| Epic Branch | ${EPIC_BRANCH} |\"\n  echo \"| Remediation Mode | ${REMEDIATION_MODE} |\"\n  if [ -n \"${REMEDIATION_PR}\" ]; then\n    echo \"| Remediation PR | #${REMEDIATION_PR} |\"\n  fi\n  echo \"| Work Queue Issue | #${STATE_ISSUE_NUMBER} |\"\n} >> \"$GITHUB_STEP_SUMMARY\"\n"
+
       - name: Configure Git credentials
         env:
           REPO_NAME: ${{ github.repository }}

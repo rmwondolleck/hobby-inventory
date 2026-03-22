@@ -8,11 +8,26 @@
  */
 
 import { PrismaClient } from '@prisma/client';
+import { DEFAULT_CATEGORY_TEMPLATES } from '../src/lib/categories/defaults';
 
 const prisma = new PrismaClient();
 
 async function main() {
   console.log('🌱 Starting seed...');
+
+  // ============================================================================
+  // Default Category Templates (from DEFAULT_CATEGORY_TEMPLATES)
+  // ============================================================================
+  console.log('Seeding default category templates...');
+
+  for (const [name, schema] of Object.entries(DEFAULT_CATEGORY_TEMPLATES)) {
+    const parameterSchema = JSON.stringify(schema);
+    await prisma.category.upsert({
+      where: { name },
+      update: { parameterSchema },
+      create: { name, parameterSchema },
+    });
+  }
 
   // ============================================================================
   // Categories

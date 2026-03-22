@@ -1,9 +1,17 @@
 import type { StockStatus, QuantityMode, QualitativeLevel, AllocationStatus, ProjectStatus } from '@/lib/types';
 
+export interface CategoryRef {
+  id: string;
+  name: string;
+  parameterSchema: Record<string, unknown>;
+}
+
 export interface PartListItem {
   id: string;
   name: string;
   category?: string | null;
+  categoryId?: string | null;
+  categoryRecord?: CategoryRef | null;
   manufacturer?: string | null;
   mpn?: string | null;
   tags: string[];
@@ -63,6 +71,8 @@ export interface PartDetail {
   id: string;
   name: string;
   category?: string | null;
+  categoryId?: string | null;
+  categoryRecord?: CategoryRef | null;
   manufacturer?: string | null;
   mpn?: string | null;
   tags: string[];

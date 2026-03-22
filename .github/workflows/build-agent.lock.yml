@@ -23,7 +23,7 @@
 #
 # Validates builds, runs tests, and reports results to orchestrator
 #
-# gh-aw-metadata: {"schema_version":"v2","frontmatter_hash":"5c426456b511c7eee22fbe431b3b04bfddf449d3d330bf0bcc2b6b75b64c0ca0","compiler_version":"v0.57.2","strict":true}
+# gh-aw-metadata: {"schema_version":"v2","frontmatter_hash":"cf558e739cf4b3cfc1f7d94ffc400815251811d7be1dd07f936087a246af78b1","compiler_version":"v0.57.2","strict":true}
 
 name: "Build Agent"
 "on":
@@ -286,6 +286,13 @@ jobs:
           persist-credentials: false
       - name: Create gh-aw temp directory
         run: bash /opt/gh-aw/actions/create_gh_aw_tmp_dir.sh
+      - env:
+          ISSUE_NUMBER: ${{ github.event.inputs.issue_number }}
+          PR_NUMBER: ${{ github.event.inputs.pr_number }}
+          STATE_ISSUE_NUMBER: ${{ github.event.inputs.state_issue_number }}
+        name: Activation Summary
+        run: "{\n  echo \"## Activation Parameters\"\n  echo \"\"\n  echo \"| Parameter | Value |\"\n  echo \"|-----------|-------|\"\n  echo \"| PR | #${PR_NUMBER} |\"\n  echo \"| Issue | #${ISSUE_NUMBER} |\"\n  echo \"| Work Queue Issue | #${STATE_ISSUE_NUMBER} |\"\n} >> \"$GITHUB_STEP_SUMMARY\"\n"
+
       - name: Configure Git credentials
         env:
           REPO_NAME: ${{ github.repository }}

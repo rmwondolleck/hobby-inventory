@@ -102,6 +102,9 @@ export async function GET(request: Request) {
           },
         },
       },
+      categoryRecord: {
+        select: { id: true, name: true, parameterSchema: true },
+      },
     };
 
     // When parameter or tag filters are present, fetch all matching (without pagination)
@@ -121,12 +124,15 @@ export async function GET(request: Request) {
       const page = filtered.slice(offset, offset + limit);
 
       return NextResponse.json({
-        data: page.map((p: { tags: string; parameters: string; lots: LotForStock[] }) => {
-          const { lots, ...rest } = p;
+        data: page.map((p: { tags: string; parameters: string; lots: LotForStock[]; categoryRecord: { id: string; name: string; parameterSchema: string } | null }) => {
+          const { lots, categoryRecord, ...rest } = p;
           return {
             ...rest,
             tags: safeParseJson<string[]>(p.tags, []),
             parameters: safeParseJson<Record<string, unknown>>(p.parameters, {}),
+            categoryRecord: categoryRecord
+              ? { ...categoryRecord, parameterSchema: safeParseJson<Record<string, unknown>>(categoryRecord.parameterSchema, {}) }
+              : null,
             ...computeStockFields(lots),
           };
         }),
@@ -142,12 +148,15 @@ export async function GET(request: Request) {
     ]);
 
     return NextResponse.json({
-      data: parts.map((p: { tags: string; parameters: string; lots: LotForStock[] }) => {
-        const { lots, ...rest } = p;
+      data: parts.map((p: { tags: string; parameters: string; lots: LotForStock[]; categoryRecord: { id: string; name: string; parameterSchema: string } | null }) => {
+        const { lots, categoryRecord, ...rest } = p;
         return {
           ...rest,
           tags: safeParseJson<string[]>(p.tags, []),
           parameters: safeParseJson<Record<string, unknown>>(p.parameters, {}),
+          categoryRecord: categoryRecord
+            ? { ...categoryRecord, parameterSchema: safeParseJson<Record<string, unknown>>(categoryRecord.parameterSchema, {}) }
+            : null,
           ...computeStockFields(lots),
         };
       }),
@@ -162,6 +171,43 @@ export async function GET(request: Request) {
       { status: 500 }
     );
   }
+}
+
+/**
+ * Resolves `category` string and `categoryId` into a consistent pair.
+ * - If `categoryId` is provided, fetches the Category name to populate `category`.
+ * - If only `category` string is provided, upserts the Category and returns the id.
+ * - If neither is provided, returns nulls.
+ */
+async function resolveCategorySync(input: {
+  category: unknown;
+  categoryId: unknown;
+}): Promise<{ categoryName: string | null; resolvedCategoryId: string | null }> {
+  const categoryIdStr = typeof input.categoryId === 'string' && input.categoryId.trim()
+    ? input.categoryId.trim()
+    : null;
+  const categoryStr = typeof input.category === 'string' && input.category.trim()
+    ? input.category.trim()
+    : null;
+
+  if (categoryIdStr) {
+    const record = await prisma.category.findUnique({ where: { id: categoryIdStr } });
+    return {
+      categoryName: record ? record.name : categoryStr,
+      resolvedCategoryId: categoryIdStr,
+    };
+  }
+
+  if (categoryStr) {
+    const record = await prisma.category.upsert({
+      where: { name: categoryStr },
+      update: {},
+      create: { name: categoryStr, parameterSchema: '{}' },
+    });
+    return { categoryName: record.name, resolvedCategoryId: record.id };
+  }
+
+  return { categoryName: null, resolvedCategoryId: null };
 }
 
 export async function POST(request: Request) {
@@ -185,6 +231,7 @@ export async function POST(request: Request) {
   const {
     name,
     category,
+    categoryId,
     manufacturer,
     mpn,
     tags,
@@ -214,10 +261,13 @@ export async function POST(request: Request) {
   }
 
   try {
+    const resolvedCategory = await resolveCategorySync({ category, categoryId });
+
     const part = await prisma.part.create({
       data: {
         name: (name as string).trim(),
-        category: typeof category === 'string' ? category.trim() || null : null,
+        category: resolvedCategory.categoryName,
+        categoryId: resolvedCategory.resolvedCategoryId,
         manufacturer: typeof manufacturer === 'string' ? manufacturer.trim() || null : null,
         mpn: typeof mpn === 'string' ? mpn.trim() || null : null,
         notes: typeof notes === 'string' ? notes.trim() || null : null,
