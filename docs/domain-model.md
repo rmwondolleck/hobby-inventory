@@ -111,7 +111,7 @@ This document defines the core domain model for the Hobby Inventory system. All 
 - `partId` (string): Foreign key to Part
 - `quantity` (number): Current available quantity
 - `quantityMode` (enum: "exact" | "qualitative"): Precision level
-- `status` (string): Current state (e.g., "available", "allocated", "depleted")
+- `status` (string): Current state (e.g., "in_stock", "low", "out", "reserved", "installed", "lost", "scrapped")
 - `createdAt` (datetime): Creation timestamp
 - `updatedAt` (datetime): Last modification timestamp
 
@@ -143,7 +143,7 @@ This document defines the core domain model for the Hobby Inventory system. All 
   "quantity": 8,
   "quantityMode": "exact",
   "unit": "pcs",
-  "status": "available",
+  "status": "in_stock",
   "locationId": "loc_shelf_a_bin_3",
   "source": {
     "type": "purchase",
@@ -260,7 +260,7 @@ This document defines the core domain model for the Hobby Inventory system. All 
 - `lotId` (string): Foreign key to Lot
 - `projectId` (string): Foreign key to Project
 - `quantity` (number): Amount allocated
-- `status` (string): State (e.g., "reserved", "installed", "returned")
+- `status` (string): State (e.g., "reserved", "in_use", "deployed", "recovered")
 - `createdAt` (datetime): Creation timestamp
 - `updatedAt` (datetime): Last modification timestamp
 
@@ -278,7 +278,7 @@ This document defines the core domain model for the Hobby Inventory system. All 
   "lotId": "lot_x7y3q2k9",
   "projectId": "prj_smart_door_lock",
   "quantity": 2,
-  "status": "installed",
+  "status": "deployed",
   "notes": "Used for main controller and backup unit",
   "createdAt": "2026-02-05T11:00:00Z",
   "updatedAt": "2026-02-20T16:00:00Z"
@@ -379,9 +379,9 @@ This document defines the core domain model for the Hobby Inventory system. All 
 
 ### Enums
 - `quantityMode`: "exact", "qualitative"
-- `status` (Lot): "available", "allocated", "depleted"
+- `status` (Lot): "in_stock", "low", "out", "reserved", "installed", "lost", "scrapped"
 - `status` (Project): "planning", "active", "completed", "archived"
-- `status` (Allocation): "reserved", "installed", "returned"
+- `status` (Allocation): "reserved", "in_use", "deployed", "recovered"
 - `type` (Event): "purchase", "move", "allocate", "consume", "return"
 - `type` (Source): "purchase", "donation", "salvage"
 
@@ -488,7 +488,7 @@ This domain model will be implemented as:
 A: No. `mpn` (manufacturer part number) serves this purpose. User can add custom SKU in `parameters` if needed.
 
 **Q: How to handle consumed/installed parts?**  
-A: Allocation status tracks this. "installed" = consumed and in use. Event type "consume" also records it.
+A: Allocation status tracks this. `deployed` = permanently installed in a completed project. Event type "consume" also records it.
 
 **Q: Can a Lot belong to multiple Locations?**  
 A: No. A lot is atomic - stored in one place. To split across locations, create separate lots.
