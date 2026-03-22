@@ -183,7 +183,8 @@ If not found, create it with the template above.
 - **If triggered by `issue_comment`:**
   - The comment is on issue `#${{ github.event.issue.number }}`
   - Find the Work Queue issue (Task 1). If the comment is NOT on the Work Queue issue, use `noop` and **stop immediately**. The comment is irrelevant.
-  - Only continue if it IS on the Work Queue issue.
+  - If the triggering comment was posted by `github-actions[bot]` (i.e., it is an orchestrator run summary or another workflow's automated output), use `noop` and **stop immediately**. Only human comments and named agent AGENT_REPORTs require action.
+  - Only continue if it IS on the Work Queue issue AND posted by a non-bot user or a named agent workflow.
 
 - **If triggered by `pull_request_review`:**
   - A review was submitted on PR `#${{ github.event.pull_request.number }}`
@@ -191,9 +192,27 @@ If not found, create it with the template above.
   - If the PR IS in the Active Work table, skip directly to **Task 5a** to process the review. Do not parse AGENT_REPORTs in this task.
 
 If triggered by `issue_comment`:
-- Check if comment is on the Work Queue issue
+- Check if comment is on the Work Queue issue (and not from `github-actions[bot]` — see above)
 - Parse completion reports from agents (format: `AGENT_REPORT: {...}`)
 - Update the work queue accordingly
+
+**Scanning for AGENT_REPORTs (checkpoint-bounded — critical for performance):**
+
+The Work Queue issue body contains an HTML comment:
+```
+<!-- orchestrator-checkpoint: {"last_comment_id": 12345678, "last_run_at": "2026-03-21T22:54Z"} -->
+```
+
+When scanning for unprocessed AGENT_REPORTs:
+1. **Read the checkpoint** from the issue body. Extract `last_comment_id`.
+2. **Fetch comments in descending order** (newest first). Read only comments with ID **greater than** `last_comment_id`.
+3. **Stop fetching pages** as soon as you encounter a comment whose ID ≤ `last_comment_id` — everything older has already been processed.
+4. **Parse any `AGENT_REPORT:` blocks** found in the new comments and process them.
+5. At the end of the run (Step A), **update the checkpoint** to the ID of the most recent comment you read, and update `last_run_at` to the current timestamp.
+
+If `last_comment_id` is 0 (first run or reset), read only the most recent 50 comments — do not scan the full history.
+
+> **Why this matters:** Issue #123 already has 221+ comments. Without a checkpoint the orchestrator must paginate through all of them on every run, wasting context and risking missed AGENT_REPORTs when a page boundary falls between runs. The checkpoint ensures each run reads only the delta since the last run, regardless of how old the issue gets.
 
 **Agent Report Format** (in comments):
 ```json
@@ -564,6 +583,8 @@ Before dispatching a coding-agent for ANY issue:
 
 Call `update-issue` with a completely rebuilt body on **every single run** — even if nothing changed. Do not append or patch. Replace the entire body.
 
+**Always update the checkpoint line** at the bottom of the body: set `last_comment_id` to the highest comment ID you read during Task 2, and `last_run_at` to the current UTC timestamp. This is critical — without it the next run will re-scan already-processed comments.
+
 **Algorithm for building each section:**
 
 #### Section 1 — Active Work Table
@@ -629,6 +650,8 @@ List every issue in `blocked` stage with its blocker.
 
 ---
 *Last updated: [ISO timestamp] UTC by orchestrator run #${{ github.run_number }}*
+
+<!-- orchestrator-checkpoint: {"last_comment_id": 0, "last_run_at": "[ISO timestamp]"} -->
 ```
 
 ### Step B: Post Run-Summary Comment
