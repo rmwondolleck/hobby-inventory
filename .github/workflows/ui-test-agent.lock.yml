@@ -23,7 +23,7 @@
 #
 # Writes and runs Playwright E2E UI tests against the Next.js app, reports results
 #
-# gh-aw-metadata: {"schema_version":"v2","frontmatter_hash":"58989c14ebdaac4097769a92d40b50853b7c8a1c396191a80659daaefe557452","compiler_version":"v0.57.2","strict":true}
+# gh-aw-metadata: {"schema_version":"v2","frontmatter_hash":"ee4501a65908dad0c153a5a36bd41b6ba059c8937b86b6b53f4e8b269473d97a","compiler_version":"v0.57.2","strict":true}
 
 name: "UI Test Agent"
 "on":
@@ -50,8 +50,6 @@ permissions: {}
 concurrency:
   cancel-in-progress: false
   group: ui-test-agent-pr-${{ github.event.inputs.pr_number }}
-
-run-name: "UI Test Agent"
 
 jobs:
   activation:
@@ -302,6 +300,21 @@ jobs:
           package-manager-cache: false
       - name: Create gh-aw temp directory
         run: bash /opt/gh-aw/actions/create_gh_aw_tmp_dir.sh
+      - name: Activation Summary
+        run: |
+          {
+            echo "## Activation Parameters"
+            echo ""
+            echo "| Parameter | Value |"
+            echo "|-----------|-------|"
+            echo "| PR | #${PR_NUMBER} |"
+            echo "| Scope | ${SCOPE} |"
+            echo "| Work Queue Issue | #${STATE_ISSUE_NUMBER} |"
+          } >> "$GITHUB_STEP_SUMMARY"
+        env:
+          PR_NUMBER: ${{ github.event.inputs.pr_number }}
+          SCOPE: ${{ github.event.inputs.scope }}
+          STATE_ISSUE_NUMBER: ${{ github.event.inputs.state_issue_number }}
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium
 
@@ -1368,4 +1381,3 @@ jobs:
           name: safe-output-items
           path: /tmp/safe-output-items.jsonl
           if-no-files-found: warn
-

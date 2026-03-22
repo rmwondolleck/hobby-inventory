@@ -50,6 +50,21 @@ concurrency:
   group: ui-test-agent-pr-${{ github.event.inputs.pr_number }}
   cancel-in-progress: false
 steps:
+  - name: Activation Summary
+    run: |
+      {
+        echo "## Activation Parameters"
+        echo ""
+        echo "| Parameter | Value |"
+        echo "|-----------|-------|"
+        echo "| PR | #${PR_NUMBER} |"
+        echo "| Scope | ${SCOPE} |"
+        echo "| Work Queue Issue | #${STATE_ISSUE_NUMBER} |"
+      } >> "$GITHUB_STEP_SUMMARY"
+    env:
+      PR_NUMBER: ${{ github.event.inputs.pr_number }}
+      SCOPE: ${{ github.event.inputs.scope }}
+      STATE_ISSUE_NUMBER: ${{ github.event.inputs.state_issue_number }}
   - name: Install Playwright browsers
     run: npx playwright install --with-deps chromium
 ---
@@ -289,7 +304,7 @@ create-issue:
     ${{ github.event.inputs.scope }}
 
     ## Sub-Issues
-    [List sub-issues here once created — e.g. "- #N Page heading missing on /parts"]
+    [List sub-issues here once created]
 
     ## Acceptance Criteria
     - [ ] All sub-issues below are resolved and closed
@@ -309,74 +324,11 @@ Note the issue number returned — call it `EPIC_ISSUE`.
 
 #### 6c: Create Individual Bug Fix Sub-Issues
 
-For each bug found, create a separate issue using `create-issue`. Each issue must follow the format the coding-agent expects:
-
-```yaml
----
-create-issue:
-  title: "[UI Fix] <short description of the bug>"
-  body: |
-    ## Summary
-
-    [One sentence: what is broken and where]
-
-    ## Steps to Reproduce
-    1. Navigate to [page]
-    2. [Action]
-    3. Observe: [what's wrong]
-
-    ## Expected Behavior
-    [What should happen]
-
-    ## Technical Specification
-
-    [Precise description of what the coding-agent must fix — be specific about
-    component names, file paths, API endpoints, CSS classes, or prop names involved.
-    Example: "The `AppShell` sidebar in `src/components/AppShell.tsx` renders the
-    `/import` link as `/imports` — the href must be corrected to `/import`."]
-
-    ## Acceptance Criteria
-    - [ ] [Specific testable condition 1]
-    - [ ] [Specific testable condition 2]
-    - [ ] Playwright test for this page passes after fix
-
-    ## Context
-    - **Affected page/component**: [e.g. `/parts`, `PartsListClient`, `LotCard`]
-    - **Severity**: blocking / high / medium / low
-    - **Epic**: #EPIC_ISSUE (UI Bug Fixes from Playwright Testing)
-
-    ---
-    _Discovered during UI test generation (scope: ${{ github.event.inputs.scope }})_
-  labels:
-    - "bug"
-    - "ui"
-    - "test-findings"
-    - "ready"
----
-```
-
-The `ready` label is critical — it signals to the orchestrator that this issue has no dependencies and can be dispatched to the coding-agent immediately.
+For each bug found, create a separate issue using `create-issue`.
 
 #### 6d: Report to the Work Queue
 
-Post an `AGENT_REPORT` comment on the Work Queue issue to notify the orchestrator that new work is available:
-
-```yaml
----
-add-comment:
-  target: <WORK_QUEUE_ISSUE_NUMBER>
-  body: |
-    AGENT_REPORT: {
-      "agent": "ui-test-agent",
-      "status": "completed",
-      "scope": "${{ github.event.inputs.scope }}",
-      "epic_issue": <EPIC_ISSUE_NUMBER>,
-      "new_issues": [<comma-separated list of created issue numbers>],
-      "bugs_found": <total count>,
-      "message": "Discovered <N> UI bugs during Playwright testing. Created epic #<EPIC_ISSUE> and <N> sub-issues labeled `ready` for coding-agent dispatch."
-    }
----
-```
+Post an `AGENT_REPORT` comment on the Work Queue issue to notify the orchestrator that new work is available.
 
 ### Step 7: Report Test Results
 
@@ -387,59 +339,25 @@ add-comment:
 add-comment:
   target: ${{ github.event.inputs.pr_number }}
   body: |
-    ## 🎭 Playwright UI Test Results
+    ## Playwright UI Test Results
 
     **Scope**: ${{ github.event.inputs.scope }}
-    **Status**: ✅ All passed / ❌ X failures
+    **Status**: All passed / X failures
 
     | Suite | Tests | Passed | Failed |
     |-------|-------|--------|--------|
     | navigation | N | N | 0 |
     | parts | N | N | 0 |
-    | ... | ... | ... | ... |
 
-    ### 🐛 Issues Created
-    [If bugs were found: list each issue number and title with link, e.g. "#42 [UI Fix] Parts list does not render"]
-    [If none: "No UI bugs found — all tests passed."]
-
-    <details><summary><b>Test Output</b></summary>
-
-    ```
-    [paste test output here]
-    ```
-
-    </details>
+    Issues Created:
+    [If bugs were found: list each issue number and title]
+    [If none: No UI bugs found — all tests passed.]
 ---
 ```
 
-**If no PR number** (running against main), create a PR with the new test files:
+**If no PR number** (running against main), create a PR with the new test files.
 
-```yaml
----
-create-pull-request:
-  title: "Add Playwright UI tests (${{ github.event.inputs.scope }} scope)"
-  body: |
-    ## Playwright E2E UI Tests
-
-    Adds automated UI tests covering: ${{ github.event.inputs.scope }}
-
-    ### Test Results
-    [summary of pass/fail counts per suite]
-
-    ### Issues Created for Remediation
-    [If bugs were found: list issue numbers and titles. If none: "All tests passed — no issues created."]
-  base: main
----
-```
-
-**If all tests pass and test files already exist with no changes**, use `noop`:
-
-```yaml
----
-noop:
-  message: "All Playwright UI tests pass for scope '${{ github.event.inputs.scope }}'. No changes or issues needed."
----
-```
+**If all tests pass and test files already exist with no changes**, use `noop`.
 
 ## Guidelines
 
@@ -449,10 +367,5 @@ noop:
 - **Keep tests fast** — avoid unnecessary `waitForTimeout()` sleeps; wait for specific conditions instead
 - **SQLite concurrency** — set `fullyParallel: false` since SQLite doesn't support concurrent writes
 - **Test against seed data** — read `prisma/seed.ts` to know what data to assert against
-- **Use filesystem-safe timestamps** in any output filenames: `YYYY-MM-DD-HH-MM-SS` (no colons)
-- **Batch issue creation** — collect all bugs during testing, then create issues in Step 6, not mid-run
 - **Always include `ready` label** on sub-issues — this is what the orchestrator uses to identify work to dispatch
-- **Always include `Technical Specification`** section in sub-issues — the coding-agent reads this to understand exactly what to fix
 - **Always report to the Work Queue** after creating issues — the orchestrator needs the AGENT_REPORT comment to discover new work on its next cycle
-
-
