@@ -57,8 +57,6 @@ concurrency:
   cancel-in-progress: false
   group: coding-agent-issue-${{ github.event.inputs.issue_number }}
 
-run-name: "Coding Agent — Issue #${{ github.event.inputs.issue_number }} (${{ github.event.inputs.epic_branch }})"
-
 jobs:
   activation:
     runs-on: ubuntu-slim
@@ -311,6 +309,27 @@ jobs:
           ref: ${{ github.event.inputs.epic_branch }}
       - name: Create gh-aw temp directory
         run: bash /opt/gh-aw/actions/create_gh_aw_tmp_dir.sh
+      - name: Activation Summary
+        run: |
+          {
+            echo "## Activation Parameters"
+            echo ""
+            echo "| Parameter | Value |"
+            echo "|-----------|-------|"
+            echo "| Issue | #${ISSUE_NUMBER} |"
+            echo "| Epic Branch | ${EPIC_BRANCH} |"
+            echo "| Remediation Mode | ${REMEDIATION_MODE} |"
+            if [ -n "${REMEDIATION_PR}" ]; then
+              echo "| Remediation PR | #${REMEDIATION_PR} |"
+            fi
+            echo "| Work Queue Issue | #${STATE_ISSUE_NUMBER} |"
+          } >> "$GITHUB_STEP_SUMMARY"
+        env:
+          ISSUE_NUMBER: ${{ github.event.inputs.issue_number }}
+          EPIC_BRANCH: ${{ github.event.inputs.epic_branch }}
+          REMEDIATION_MODE: ${{ github.event.inputs.remediation_mode }}
+          REMEDIATION_PR: ${{ github.event.inputs.remediation_pr }}
+          STATE_ISSUE_NUMBER: ${{ github.event.inputs.state_issue_number }}
       - name: Configure Git credentials
         env:
           REPO_NAME: ${{ github.repository }}
@@ -1340,4 +1359,3 @@ jobs:
           name: safe-output-items
           path: /tmp/safe-output-items.jsonl
           if-no-files-found: warn
-
