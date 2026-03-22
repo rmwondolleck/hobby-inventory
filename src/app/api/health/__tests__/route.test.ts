@@ -98,4 +98,48 @@ describe('GET /api/health', () => {
 
     expect(res.status).toBe(200);
   });
+
+  it('treats ?detailed=false as basic response (no DB calls)', async () => {
+    const req = makeRequest('http://localhost/api/health?detailed=false');
+    const res = await GET(req);
+
+    expect(res.status).toBe(200);
+    const json = await res.json();
+    expect(json.database).toBeUndefined();
+    expect(mockQueryRaw).not.toHaveBeenCalled();
+  });
+
+  it('treats an unrecognised detailed value as basic response', async () => {
+    const req = makeRequest('http://localhost/api/health?detailed=yes');
+    const res = await GET(req);
+
+    expect(res.status).toBe(200);
+    const json = await res.json();
+    expect(json.database).toBeUndefined();
+    expect(mockQueryRaw).not.toHaveBeenCalled();
+  });
+
+  it('timestamp is a valid ISO 8601 string', async () => {
+    const before = Date.now();
+    const req = makeRequest('http://localhost/api/health');
+    const res = await GET(req);
+    const after = Date.now();
+
+    const json = await res.json();
+    const ts = Date.parse(json.timestamp);
+    expect(ts).toBeGreaterThanOrEqual(before);
+    expect(ts).toBeLessThanOrEqual(after);
+  });
+
+  it('falls back to 0.1.0 when npm_package_version is unset', async () => {
+    const original = process.env.npm_package_version;
+    delete process.env.npm_package_version;
+
+    const req = makeRequest('http://localhost/api/health');
+    const res = await GET(req);
+    const json = await res.json();
+
+    expect(json.version).toBe('0.1.0');
+    process.env.npm_package_version = original;
+  });
 });
