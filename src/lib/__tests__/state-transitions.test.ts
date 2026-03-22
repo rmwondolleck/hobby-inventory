@@ -20,12 +20,20 @@ describe('isValidStockTransition', () => {
     expect(isValidStockTransition('in_stock', 'low')).toBe(true);
   });
 
+  it('allows in_stock → out', () => {
+    expect(isValidStockTransition('in_stock', 'out')).toBe(true);
+  });
+
   it('allows in_stock → reserved', () => {
     expect(isValidStockTransition('in_stock', 'reserved')).toBe(true);
   });
 
   it('allows in_stock → installed', () => {
     expect(isValidStockTransition('in_stock', 'installed')).toBe(true);
+  });
+
+  it('allows in_stock → lost', () => {
+    expect(isValidStockTransition('in_stock', 'lost')).toBe(true);
   });
 
   it('allows in_stock → scrapped', () => {
@@ -62,6 +70,7 @@ describe('getValidStockTransitions', () => {
   it('returns correct transitions for in_stock', () => {
     const transitions = getValidStockTransitions('in_stock');
     expect(transitions).toContain('low');
+    expect(transitions).toContain('out');
     expect(transitions).toContain('reserved');
     expect(transitions).toContain('installed');
     expect(transitions).toContain('scrapped');
