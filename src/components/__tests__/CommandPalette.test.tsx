@@ -133,15 +133,16 @@ function mockFetch() {
     if (url.includes('/api/locations')) {
       return Promise.resolve({ ok: true, json: () => Promise.resolve(LOCATIONS_RESPONSE) });
     }
-    return Promise.resolve({ ok: false, json: () => Promise.resolve({ data: [] }) });
+    return Promise.resolve({ ok: true, json: () => Promise.resolve({ data: [] }) });
   });
 }
 
 beforeEach(() => {
   jest.clearAllMocks();
   jest.useFakeTimers();
+  // Default: return empty data so location fetch on mount doesn't throw
   global.fetch = jest.fn().mockResolvedValue({
-    ok: false,
+    ok: true,
     json: () => Promise.resolve({ data: [] }),
   });
 });
@@ -275,7 +276,3 @@ describe('CommandPalette', () => {
     });
   });
 });
-
-
-
-
