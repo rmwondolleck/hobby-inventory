@@ -23,7 +23,7 @@
 #
 # Validates builds, runs tests, and reports results to orchestrator
 #
-# gh-aw-metadata: {"schema_version":"v2","frontmatter_hash":"a2068894d7e70e795c95ad96daff7b291685d76965be42363b3e5f51349e0a31","compiler_version":"v0.57.2","strict":true}
+# gh-aw-metadata: {"schema_version":"v2","frontmatter_hash":"cf558e739cf4b3cfc1f7d94ffc400815251811d7be1dd07f936087a246af78b1","compiler_version":"v0.57.2","strict":true}
 
 name: "Build Agent"
 "on":
@@ -47,6 +47,8 @@ permissions: {}
 concurrency:
   cancel-in-progress: false
   group: build-agent-pr-${{ github.event.inputs.pr_number }}
+
+run-name: "Build Agent"
 
 jobs:
   activation:
@@ -284,21 +286,13 @@ jobs:
           persist-credentials: false
       - name: Create gh-aw temp directory
         run: bash /opt/gh-aw/actions/create_gh_aw_tmp_dir.sh
-      - name: Activation Summary
-        run: |
-          {
-            echo "## Activation Parameters"
-            echo ""
-            echo "| Parameter | Value |"
-            echo "|-----------|-------|"
-            echo "| PR | #${PR_NUMBER} |"
-            echo "| Issue | #${ISSUE_NUMBER} |"
-            echo "| Work Queue Issue | #${STATE_ISSUE_NUMBER} |"
-          } >> "$GITHUB_STEP_SUMMARY"
-        env:
-          PR_NUMBER: ${{ github.event.inputs.pr_number }}
+      - env:
           ISSUE_NUMBER: ${{ github.event.inputs.issue_number }}
+          PR_NUMBER: ${{ github.event.inputs.pr_number }}
           STATE_ISSUE_NUMBER: ${{ github.event.inputs.state_issue_number }}
+        name: Activation Summary
+        run: "{\n  echo \"## Activation Parameters\"\n  echo \"\"\n  echo \"| Parameter | Value |\"\n  echo \"|-----------|-------|\"\n  echo \"| PR | #${PR_NUMBER} |\"\n  echo \"| Issue | #${ISSUE_NUMBER} |\"\n  echo \"| Work Queue Issue | #${STATE_ISSUE_NUMBER} |\"\n} >> \"$GITHUB_STEP_SUMMARY\"\n"
+
       - name: Configure Git credentials
         env:
           REPO_NAME: ${{ github.repository }}
@@ -1135,3 +1129,4 @@ jobs:
           name: safe-output-items
           path: /tmp/safe-output-items.jsonl
           if-no-files-found: warn
+
