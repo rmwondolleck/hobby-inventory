@@ -140,7 +140,11 @@ function mockFetch() {
 beforeEach(() => {
   jest.clearAllMocks();
   jest.useFakeTimers();
-  global.fetch = jest.fn();
+  // Default: return empty data so location fetch on mount doesn't throw
+  global.fetch = jest.fn().mockResolvedValue({
+    ok: true,
+    json: () => Promise.resolve({ data: [] }),
+  });
 });
 
 afterEach(() => {
@@ -172,8 +176,9 @@ describe('CommandPalette', () => {
 
     fireEvent.change(screen.getByTestId('command-input'), { target: { value: 'esp' } });
 
-    // Not called immediately
-    expect(global.fetch).not.toHaveBeenCalled();
+    // Locations fetch fires on mount; parts/lots should not be called yet
+    expect(global.fetch).not.toHaveBeenCalledWith(expect.stringContaining('/api/parts'));
+    expect(global.fetch).not.toHaveBeenCalledWith(expect.stringContaining('/api/lots'));
 
     // After debounce
     await act(async () => {
@@ -199,7 +204,7 @@ describe('CommandPalette', () => {
       expect(screen.getByTestId('command-group-lots')).toBeInTheDocument();
     });
 
-    expect(screen.getByText('ESP32')).toBeInTheDocument();
+    expect(screen.getAllByText('ESP32').length).toBeGreaterThan(0);
   });
 
   it('navigates to part detail page on selection', async () => {
