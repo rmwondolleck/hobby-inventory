@@ -36,7 +36,7 @@ test.describe('Sidebar navigation', () => {
     test(`clicking sidebar link "${route.name}" navigates to ${route.href}`, async ({ page }) => {
       const link = page.getByRole('link', { name: route.name });
       await link.click();
-      await expect(page).toHaveURL(new RegExp(`^${route.href === '/' ? '/$' : route.href}`));
+      await page.waitForURL(url => new URL(url).pathname === route.href);
     });
   }
 });
