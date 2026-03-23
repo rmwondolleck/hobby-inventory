@@ -140,6 +140,10 @@ describe('GET /api/health', () => {
     const json = await res.json();
 
     expect(json.version).toBe('0.1.0');
-    process.env.npm_package_version = original;
+    if (original === undefined) {
+      delete process.env.npm_package_version;
+    } else {
+      process.env.npm_package_version = original;
+    }
   });
 });
