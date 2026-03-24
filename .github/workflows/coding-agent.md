@@ -43,12 +43,19 @@ safe-outputs:
     expires: 14d
     protected-files: fallback-to-issue
     allowed-files:
-      - "*"
-      - "**/*"
+      - "src/**"
+      - "docs/**"
+      - "e2e/**"
       - "package.json"
       - "package-lock.json"
       - "prisma/schema.prisma"
       - "prisma/migrations/**"
+      - "jest.config.ts"
+      - "tsconfig.json"
+      - "next.config.js"
+      - "tailwind.config.ts"
+      - "postcss.config.js"
+      - "playwright.config.ts"
   add-comment:
     target: "*"
     max: 3
@@ -57,12 +64,19 @@ safe-outputs:
     commit-title-suffix: "[fix]"
     protected-files: fallback-to-issue
     allowed-files:
-      - "*"
-      - "**/*"
+      - "src/**"
+      - "docs/**"
+      - "e2e/**"
       - "package.json"
       - "package-lock.json"
       - "prisma/schema.prisma"
       - "prisma/migrations/**"
+      - "jest.config.ts"
+      - "tsconfig.json"
+      - "next.config.js"
+      - "tailwind.config.ts"
+      - "postcss.config.js"
+      - "playwright.config.ts"
 checkout:
   ref: ${{ github.event.inputs.epic_branch }}
 network:
@@ -220,6 +234,8 @@ create-pull-request:
 ### Step 4: Report to Orchestrator (CRITICAL)
 
 After outputting the PR creation request above, add a comment to the **Work Queue issue** (#${{ github.event.inputs.state_issue_number }}) using the `add-comment` safe output.
+
+> ⚠️ **Note on `pr_number`**: The PR is created by `safe-outputs` **after** this AGENT_REPORT comment is written, so `pr_number` is intentionally absent from the success template. The orchestrator **always uses PR discovery** (searching by issue number and epic branch) rather than relying on a `pr_number` field in the report.
 
 **Output the AGENT_REPORT in this format:**
 

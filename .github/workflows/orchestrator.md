@@ -267,6 +267,7 @@ When an agent reports completion, automatically dispatch the next agent:
 |---------------|-------------------|-----------|-------------|
 | `coding` | `completed` + PR created | `testing` | Dispatch test-agent |
 | `testing` | `completed` + tests added | `building` | Dispatch build-agent |
+| `testing` | `failed` | `needs-work` | Dispatch coding-agent to fix (include test failure context) |
 | `building` | `completed` + build passed | `review` | Assign Copilot reviewer |
 | `building` | `failed` | `needs-work` | Dispatch coding-agent to fix |
 | `review` | Copilot approved | `ready-to-merge` | **STOP** - Do NOT merge, wait for epic |
@@ -324,6 +325,20 @@ The coding-agent's AGENT_REPORT may NOT contain `pr_number` because the PR is cr
    ```
 
 **Building → Needs-Work**: When build-agent reports `result: "failed"`:
+```json
+{
+  "workflow_name": "coding-agent",
+  "inputs": {
+    "issue_number": "<issue-number>",
+    "epic_branch": "<epic-branch>",
+    "state_issue_number": "<work-queue-issue>",
+    "remediation_pr": "<pr-number>",
+    "remediation_mode": true
+  }
+}
+```
+
+**Testing → Needs-Work**: When test-agent reports `status: "failed"`:
 ```json
 {
   "workflow_name": "coding-agent",
