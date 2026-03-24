@@ -7,9 +7,10 @@ import { AppShell } from '../AppShell';
 
 // Mock next/navigation
 const mockPathname = jest.fn(() => '/');
+const mockPush = jest.fn();
 jest.mock('next/navigation', () => ({
   usePathname: () => mockPathname(),
-  useRouter: () => ({ push: jest.fn() }),
+  useRouter: () => ({ push: mockPush }),
 }));
 
 // Mock next/link
