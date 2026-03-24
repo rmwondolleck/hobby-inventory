@@ -568,6 +568,7 @@ describe('POST /api/parts', () => {
     const json = await res.json();
     expect(json.error).toBe('internal_error');
   });
+
   it('accepts categoryId and syncs category string from the fetched record', async () => {
     mockCategoryFindUnique.mockResolvedValue({ id: 'cat001', name: 'Resistors', parameterSchema: '{}' });
     mockCreate.mockResolvedValue({ ...basePart, id: 'clnew002', categoryId: 'cat001', category: 'Resistors' });
