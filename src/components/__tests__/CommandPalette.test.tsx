@@ -174,14 +174,11 @@ describe('CommandPalette', () => {
     mockFetch();
     render(<CommandPalette open={true} onOpenChange={jest.fn()} />);
 
-    // Allow the initial locations fetch (on mount) to complete, then reset counts
-    await act(async () => { await Promise.resolve(); });
-    (global.fetch as jest.Mock).mockClear();
-
     fireEvent.change(screen.getByTestId('command-input'), { target: { value: 'esp' } });
 
-    // Not called immediately (debounced)
-    expect(global.fetch).not.toHaveBeenCalled();
+    // Locations fetch fires on mount; parts/lots should not be called yet
+    expect(global.fetch).not.toHaveBeenCalledWith(expect.stringContaining('/api/parts'));
+    expect(global.fetch).not.toHaveBeenCalledWith(expect.stringContaining('/api/lots'));
 
     // After debounce
     await act(async () => {
@@ -207,8 +204,7 @@ describe('CommandPalette', () => {
       expect(screen.getByTestId('command-group-lots')).toBeInTheDocument();
     });
 
-    // ESP32 appears in both the parts group and the lots group
-    expect(screen.getAllByText('ESP32').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText('ESP32').length).toBeGreaterThan(0);
   });
 
   it('navigates to part detail page on selection', async () => {
