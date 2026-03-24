@@ -16,7 +16,7 @@ import type {
 // ============================================================================
 
 const STOCK_TRANSITIONS: Record<StockStatus, StockStatus[]> = {
-  in_stock: ['low', 'reserved', 'installed', 'lost', 'scrapped'],
+  in_stock: ['low', 'out', 'reserved', 'installed', 'lost', 'scrapped'],
   low: ['in_stock', 'out', 'reserved', 'installed', 'lost', 'scrapped'],
   out: ['in_stock', 'low', 'scrapped'],
   reserved: ['in_stock', 'installed', 'lost', 'scrapped'],
