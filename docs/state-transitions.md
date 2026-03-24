@@ -30,7 +30,7 @@ Stock status applies to **Lots** and tracks the physical state and availability 
 
 | From State | Valid Transitions | Notes |
 |------------|-------------------|-------|
-| `in_stock` | `low`, `out`, `reserved`, `installed`, `lost`, `scrapped` | Normal operations; auto-transitions to `out` when quantity reaches 0 |
+| `in_stock` | `low`, `reserved`, `installed`, `lost`, `scrapped` | Normal operations |
 | `low` | `in_stock`, `out`, `reserved`, `installed`, `lost`, `scrapped` | Can be restocked or consumed |
 | `out` | `in_stock`, `low`, `scrapped` | Typically from restocking |
 | `reserved` | `in_stock`, `installed`, `lost`, `scrapped` | Cancel reservation or deploy |
