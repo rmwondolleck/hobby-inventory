@@ -133,7 +133,7 @@ function mockFetch() {
     if (url.includes('/api/locations')) {
       return Promise.resolve({ ok: true, json: () => Promise.resolve(LOCATIONS_RESPONSE) });
     }
-    return Promise.resolve({ ok: false, json: () => Promise.resolve({ data: [] }) });
+    return Promise.resolve({ ok: true, json: () => Promise.resolve({ data: [] }) });
   });
 }
 
@@ -272,7 +272,3 @@ describe('CommandPalette', () => {
     });
   });
 });
-
-
-
-

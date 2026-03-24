@@ -674,6 +674,9 @@ describe('GET /api/parts (categoryRecord)', () => {
   });
 });
 
+
+// ─── GET /api/parts — tags filter ─────────────────────────────────────────────
+
 describe('GET /api/parts — tags filter', () => {
   const wifiPart = {
     ...basePart,

@@ -338,6 +338,20 @@ The coding-agent's AGENT_REPORT may NOT contain `pr_number` because the PR is cr
 }
 ```
 
+**Testing → Needs-Work**: When test-agent reports `status: "failed"`:
+```json
+{
+  "workflow_name": "coding-agent",
+  "inputs": {
+    "issue_number": "<issue-number>",
+    "epic_branch": "<epic-branch>",
+    "state_issue_number": "<work-queue-issue>",
+    "remediation_pr": "<pr-number>",
+    "remediation_mode": true
+  }
+}
+```
+
 **Review → Needs-Work** (Copilot has comments):
 Same as Building → Needs-Work above.
 
