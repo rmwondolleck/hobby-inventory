@@ -176,6 +176,11 @@ Create the `e2e/` directory if it doesn't exist.
 
 Based on the **scope** input, write tests for the requested areas. If scope is `all`, write tests for every area below. Each test file goes in the `e2e/` directory.
 
+> ⚠️ **Unrecognized scope fallback**: If the `scope` value is not one of the recognized values (`all`, `navigation`, `parts`, `lots`, `projects`, `locations`, `intake`, `import`), treat it as `all` and include the following in your AGENT_REPORT:
+> ```json
+> "scope_warning": "unrecognized scope '<scope_value>', defaulting to all"
+> ```
+
 Follow these guidelines:
 
 #### General Testing Patterns

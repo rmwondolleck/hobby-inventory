@@ -267,7 +267,7 @@ When an agent reports completion, automatically dispatch the next agent:
 |---------------|-------------------|-----------|-------------|
 | `coding` | `completed` + PR created | `testing` | Dispatch test-agent |
 | `testing` | `completed` + tests added | `building` | Dispatch build-agent |
-| `testing` | `failed` | `needs-work` | Dispatch coding-agent to fix |
+| `testing` | `failed` | `needs-work` | Dispatch coding-agent to fix (include test failure context) |
 | `building` | `completed` + build passed | `review` | Assign Copilot reviewer |
 | `building` | `failed` | `needs-work` | Dispatch coding-agent to fix |
 | `review` | Copilot approved | `ready-to-merge` | **STOP** - Do NOT merge, wait for epic |
