@@ -133,13 +133,14 @@ function mockFetch() {
     if (url.includes('/api/locations')) {
       return Promise.resolve({ ok: true, json: () => Promise.resolve(LOCATIONS_RESPONSE) });
     }
-    return Promise.resolve({ ok: false, json: () => Promise.resolve({ data: [] }) });
+    return Promise.resolve({ ok: true, json: () => Promise.resolve({ data: [] }) });
   });
 }
 
 beforeEach(() => {
   jest.clearAllMocks();
   jest.useFakeTimers();
+  // Default: return empty data so location fetch on mount doesn't throw
   global.fetch = jest.fn().mockResolvedValue({
     ok: true,
     json: () => Promise.resolve({ data: [] }),
@@ -175,7 +176,7 @@ describe('CommandPalette', () => {
 
     fireEvent.change(screen.getByTestId('command-input'), { target: { value: 'esp' } });
 
-    // Search endpoints not called immediately (debounced)
+    // Locations fetch fires on mount; parts/lots should not be called yet
     expect(global.fetch).not.toHaveBeenCalledWith(expect.stringContaining('/api/parts'));
     expect(global.fetch).not.toHaveBeenCalledWith(expect.stringContaining('/api/lots'));
 
@@ -271,7 +272,3 @@ describe('CommandPalette', () => {
     });
   });
 });
-
-
-
-
