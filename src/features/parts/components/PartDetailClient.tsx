@@ -22,8 +22,10 @@ import { PageHeader } from '@/components/PageHeader';
 import { EditPartDialog } from './EditPartDialog';
 import { DuplicatePartDialog } from './DuplicatePartDialog';
 import { AllocateModal } from '@/features/lots/components/AllocateModal';
+import { EventTimeline } from '@/components/EventTimeline';
 import type { AllocationStatus } from '@/lib/types';
 import type { PartDetail, LotWithDetails } from '../types';
+import type { TimelineEvent } from '@/components/EventTimeline';
 
 const ACTIVE_ALLOCATION_STATUSES: AllocationStatus[] = ['reserved', 'in_use', 'deployed'];
 
@@ -226,6 +228,8 @@ export function PartDetailClient() {
   // PR #178 — Allocate lot from part detail
   const [refreshKey, setRefreshKey] = useState(0);
   const [allocatingLot, setAllocatingLot] = useState<LotWithDetails | null>(null);
+  // Event history
+  const [events, setEvents] = useState<TimelineEvent[]>([]);
 
   const loadPart = useCallback(() => {
     if (!id) return;
@@ -241,9 +245,29 @@ export function PartDetailClient() {
       .finally(() => setLoading(false));
   }, [id]);
 
+  const loadEvents = useCallback(() => {
+    if (!id) return;
+    fetch(`/api/parts/${id}/events`)
+      .then((res) => {
+        if (!res.ok) return;
+        return res.json() as Promise<{ data: TimelineEvent[] }>;
+      })
+      .then((json) => {
+        if (json && Array.isArray(json.data)) setEvents(json.data);
+      })
+      .catch((err: unknown) => {
+        // non-fatal: event history is best-effort
+        console.warn('[PartDetailClient] Failed to load events:', err);
+      });
+  }, [id]);
+
   useEffect(() => {
     loadPart();
   }, [loadPart, refreshKey]);
+
+  useEffect(() => {
+    loadEvents();
+  }, [loadEvents, refreshKey]);
 
   if (loading) {
     return (
@@ -465,6 +489,14 @@ export function PartDetailClient() {
       <div className="border-t pt-4 text-xs text-muted-foreground">
         Created {formatDate(part.createdAt)} · Updated {formatDate(part.updatedAt)}
       </div>
+
+      {/* Event History */}
+      <section>
+        <h2 className="mb-3 text-lg font-semibold text-foreground">Event History</h2>
+        <div className="rounded-lg border bg-card p-4">
+          <EventTimeline events={events} />
+        </div>
+      </section>
 
       <Link href="/parts" className="inline-block text-sm text-blue-600 hover:text-blue-800 hover:underline">
         ← Back to Parts
