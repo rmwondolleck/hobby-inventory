@@ -11,10 +11,13 @@ jest.mock('@/lib/utils', () => ({
     classes.filter(Boolean).join(' '),
 }));
 
+const mockPush = jest.fn();
+let mockSearchParamsValue = new URLSearchParams();
+
 jest.mock('next/navigation', () => ({
-  useRouter: () => ({ push: jest.fn() }),
+  useRouter: () => ({ push: mockPush }),
   usePathname: () => '/parts',
-  useSearchParams: () => new URLSearchParams(),
+  useSearchParams: () => mockSearchParamsValue,
 }));
 
 jest.mock('next/link', () => {
@@ -180,6 +183,100 @@ describe('PartsListClient', () => {
 
     await waitFor(() => {
       expect(screen.getByText(/Failed to fetch parts/)).toBeInTheDocument();
+    });
+  });
+});
+
+describe('PartsListClient — sort controls', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockSearchParamsValue = new URLSearchParams();
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ data: [], total: 0 }),
+    });
+  });
+
+  it('renders Sort By select with allowed options', async () => {
+    await act(async () => {
+      render(<PartsListClient />);
+    });
+
+    const sortBySelect = screen.getByRole('combobox', { name: /sort by/i });
+    expect(sortBySelect).toBeInTheDocument();
+
+    const options = Array.from(sortBySelect.querySelectorAll('option')).map(
+      (o) => (o as HTMLOptionElement).value
+    );
+    expect(options).toContain('updatedAt');
+    expect(options).toContain('createdAt');
+    expect(options).toContain('name');
+    expect(options).toContain('category');
+  });
+
+  it('renders Sort Direction select', async () => {
+    await act(async () => {
+      render(<PartsListClient />);
+    });
+
+    const sortDirSelect = document.getElementById('parts-sort-dir') as HTMLSelectElement;
+    expect(sortDirSelect).toBeInTheDocument();
+
+    const options = Array.from(sortDirSelect.querySelectorAll('option')).map(
+      (o) => (o as HTMLOptionElement).value
+    );
+    expect(options).toContain('asc');
+    expect(options).toContain('desc');
+  });
+
+  it('changing Sort By calls router.push with sortBy param', async () => {
+    await act(async () => {
+      render(<PartsListClient />);
+    });
+
+    await act(async () => {
+      fireEvent.change(screen.getByRole('combobox', { name: /sort by/i }), {
+        target: { value: 'name' },
+      });
+    });
+
+    expect(mockPush).toHaveBeenCalledWith(
+      expect.stringContaining('sortBy=name')
+    );
+  });
+
+  it('changing Sort Direction calls router.push with sortDir param', async () => {
+    mockSearchParamsValue = new URLSearchParams('sortBy=name&sortDir=desc');
+
+    await act(async () => {
+      render(<PartsListClient />);
+    });
+
+    const sortDirSelect = document.getElementById('parts-sort-dir') as HTMLSelectElement;
+
+    await act(async () => {
+      fireEvent.change(sortDirSelect, {
+        target: { value: 'asc' },
+      });
+    });
+
+    expect(mockPush).toHaveBeenCalledWith(
+      expect.stringContaining('sortDir=asc')
+    );
+  });
+
+  it('reads sortBy and sortDir from URL search params on initial render', async () => {
+    mockSearchParamsValue = new URLSearchParams('sortBy=category&sortDir=asc');
+
+    await act(async () => {
+      render(<PartsListClient />);
+    });
+
+    await waitFor(() => {
+      const calls = (global.fetch as jest.Mock).mock.calls as [string][];
+      const initialCall = calls[0]?.[0] as string;
+      expect(initialCall).toContain('sortBy=category');
+      expect(initialCall).toContain('sortDir=asc');
     });
   });
 });
