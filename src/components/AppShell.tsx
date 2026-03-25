@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useEffect, type ReactNode } from 'react';
+import { useState, useEffect, useRef, type ReactNode } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import {
   Zap,
   Package,
@@ -18,6 +18,7 @@ import {
 import { useTheme } from 'next-themes';
 import { cn } from '@/components/ui/utils';
 import { CommandPalette } from '@/components/CommandPalette';
+import { KeyboardShortcutsModal } from '@/components/KeyboardShortcutsModal';
 
 const navigation = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard },
@@ -29,25 +30,93 @@ const navigation = [
   { name: 'Import', href: '/import', icon: Upload },
 ];
 
+// Routes for vim-style g+(key) navigation
+const gNavRoutes: Record<string, string> = {
+  i: '/intake',
+  p: '/parts',
+  l: '/lots',
+  j: '/projects',
+  m: '/locations',
+};
+
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
+  const router = useRouter();
   const { resolvedTheme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
+  const [shortcutsModalOpen, setShortcutsModalOpen] = useState(false);
+  const gChordTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const awaitingGRef = useRef(false);
 
   useEffect(() => setMounted(true), []);
 
-  // Global cmd+K / ctrl+K keyboard shortcut
+  // Global keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      // cmd+K / ctrl+K — open command palette
       if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
         e.preventDefault();
         setCommandPaletteOpen(v => !v);
+        return;
+      }
+
+      // Suppress single-key shortcuts when focus is inside an editable element
+      const active = document.activeElement;
+      const tag = active?.tagName.toLowerCase();
+      const isEditable =
+        tag === 'input' ||
+        tag === 'textarea' ||
+        (active as HTMLElement | null)?.isContentEditable;
+      if (isEditable) return;
+
+      // ? — toggle keyboard shortcuts modal
+      if (e.key === '?') {
+        e.preventDefault();
+        setShortcutsModalOpen(v => !v);
+        return;
+      }
+
+      // Escape — close shortcuts modal (Dialog handles this natively, but guard here too)
+      if (e.key === 'Escape') {
+        setShortcutsModalOpen(false);
+        return;
+      }
+
+      // vim-style g+(key) navigation
+      if (awaitingGRef.current) {
+        // We're in the second key of a g-chord
+        awaitingGRef.current = false;
+        if (gChordTimeoutRef.current !== null) {
+          clearTimeout(gChordTimeoutRef.current);
+          gChordTimeoutRef.current = null;
+        }
+        const route = gNavRoutes[e.key];
+        if (route) {
+          e.preventDefault();
+          router.push(route);
+        }
+        return;
+      }
+
+      if (e.key === 'g') {
+        e.preventDefault();
+        awaitingGRef.current = true;
+        gChordTimeoutRef.current = setTimeout(() => {
+          awaitingGRef.current = false;
+          gChordTimeoutRef.current = null;
+        }, 300);
       }
     };
+
     document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
-  }, []);
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+      if (gChordTimeoutRef.current !== null) {
+        clearTimeout(gChordTimeoutRef.current);
+      }
+    };
+  }, [router]);
 
   return (
     <div className="flex h-screen bg-background">
@@ -121,6 +190,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       </main>
 
       <CommandPalette open={commandPaletteOpen} onOpenChange={setCommandPaletteOpen} />
+      <KeyboardShortcutsModal open={shortcutsModalOpen} onOpenChange={setShortcutsModalOpen} />
     </div>
   );
 }
