@@ -123,7 +123,8 @@ function AllocationRow({
 
   return (
     <tr className="border-t border-border hover:bg-muted">
-      <td className="py-2 pr-4 text-sm">
+      {/* pl-4 added — was flush against the card border */}
+      <td className="py-2 pl-4 pr-4 text-sm">
         <Link
           href={`/parts/${lot.part.id}`}
           className="font-medium text-blue-600 hover:underline"
@@ -150,7 +151,7 @@ function AllocationRow({
       </td>
       <td className="py-2 pr-4 text-sm text-foreground">{qtyDisplay}</td>
       <td className="py-2 pr-4 text-sm text-muted-foreground">{allocation.notes ?? '—'}</td>
-      <td className="py-2 pl-2 text-right whitespace-nowrap">
+      <td className="py-2 pl-2 pr-4 text-right whitespace-nowrap">
         {transition && (
           <button
             type="button"
@@ -231,11 +232,12 @@ function AllocationGroup({
         <table className="w-full">
           <thead>
             <tr className="border-b border-border bg-muted">
-              <th className="py-2 pr-4 text-left text-xs font-medium text-muted-foreground">Part</th>
+              {/* pl-4 added to match row cells */}
+              <th className="py-2 pl-4 pr-4 text-left text-xs font-medium text-muted-foreground">Part</th>
               <th className="py-2 pr-4 text-left text-xs font-medium text-muted-foreground">Location</th>
               <th className="py-2 pr-4 text-left text-xs font-medium text-muted-foreground">Quantity</th>
               <th className="py-2 pr-4 text-left text-xs font-medium text-muted-foreground">Notes</th>
-              <th className="py-2 pl-2 text-right text-xs font-medium text-muted-foreground"></th>
+              <th className="py-2 pl-2 pr-4 text-right text-xs font-medium text-muted-foreground"></th>
             </tr>
           </thead>
           <tbody>
@@ -261,7 +263,8 @@ function AllocationGroup({
 function EventRow({ event }: { event: ProjectEvent }) {
   return (
     <tr className="border-t border-border hover:bg-muted">
-      <td className="py-2 pr-4 text-xs text-muted-foreground whitespace-nowrap">
+      {/* pl-4 added — was flush against the card border */}
+      <td className="py-2 pl-4 pr-4 text-xs text-muted-foreground whitespace-nowrap">
         {formatDateTime(event.createdAt)}
       </td>
       <td className="py-2 pr-4 text-sm">
@@ -276,7 +279,7 @@ function EventRow({ event }: { event: ProjectEvent }) {
       <td className="py-2 pr-4 text-sm text-muted-foreground">
         {event.delta != null ? (event.delta > 0 ? `+${event.delta}` : event.delta) : '—'}
       </td>
-      <td className="py-2 text-sm text-muted-foreground">{event.notes ?? '—'}</td>
+      <td className="py-2 pr-4 text-sm text-muted-foreground">{event.notes ?? '—'}</td>
     </tr>
   );
 }
@@ -660,7 +663,8 @@ export function ProjectDetailClient({ id }: ProjectDetailClientProps) {
             Allocations
             {hasAllocations && (
               <span className="ml-2 text-sm font-normal text-muted-foreground">
-                ({project.allocationCount} total)
+                {/* Use allocations.length — allocationCount from API is unreliable */}
+                ({project.allocations.length} total)
               </span>
             )}
           </h2>
@@ -681,8 +685,8 @@ export function ProjectDetailClient({ id }: ProjectDetailClientProps) {
                 prev
                   ? {
                       ...prev,
+                      // Append to the array; length is recomputed automatically
                       allocations: [...prev.allocations, allocation],
-                      allocationCount: prev.allocationCount + 1,
                     }
                   : prev
               )
@@ -730,11 +734,12 @@ export function ProjectDetailClient({ id }: ProjectDetailClientProps) {
             <table className="w-full">
               <thead>
                 <tr className="border-b border-border bg-muted">
-                  <th className="py-2 pr-4 text-left text-xs font-medium text-muted-foreground">Date</th>
+                  {/* pl-4 added to match row cells */}
+                  <th className="py-2 pl-4 pr-4 text-left text-xs font-medium text-muted-foreground">Date</th>
                   <th className="py-2 pr-4 text-left text-xs font-medium text-muted-foreground">Part</th>
                   <th className="py-2 pr-4 text-left text-xs font-medium text-muted-foreground">Type</th>
                   <th className="py-2 pr-4 text-left text-xs font-medium text-muted-foreground">Delta</th>
-                  <th className="py-2 text-left text-xs font-medium text-muted-foreground">Notes</th>
+                  <th className="py-2 pr-4 text-left text-xs font-medium text-muted-foreground">Notes</th>
                 </tr>
               </thead>
               <tbody>
