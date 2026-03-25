@@ -120,10 +120,27 @@ export function PartsListClient() {
       />
 
       <div className="min-w-0 flex-1">
-        <SearchInput
-          value={filters.search}
-          onChange={(search) => setFilters((f: PartFilters) => ({ ...f, search }))}
-        />
+        <div className="flex items-center gap-3">
+          <div className="flex-1">
+            <SearchInput
+              value={filters.search}
+              onChange={(search) => setFilters((f: PartFilters) => ({ ...f, search }))}
+            />
+          </div>
+          <a
+            href={(() => {
+              const p = new URLSearchParams();
+              if (filters.category) p.set('category', filters.category);
+              if (filters.includeArchived) p.set('archived', 'true');
+              const qs = p.toString();
+              return `/api/parts/export${qs ? `?${qs}` : ''}`;
+            })()}
+            download
+            className="shrink-0 rounded-lg border border-border bg-card px-3 py-2 text-sm font-medium shadow-sm hover:bg-muted"
+          >
+            Export CSV
+          </a>
+        </div>
 
         <div className="mt-4">
           {loading ? (

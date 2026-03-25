@@ -1,4 +1,4 @@
-import { parseCSV, csvRowsToRecords, buildCSVTemplate } from '../index';
+import { parseCSV, csvRowsToRecords, buildCSVTemplate, recordsToCSV } from '../index';
 
 describe('parseCSV', () => {
   it('parses a simple header + data row', () => {
@@ -79,6 +79,62 @@ describe('buildCSVTemplate', () => {
   it('produces a header-only CSV string', () => {
     const cols = ['name', 'category', 'mpn'];
     expect(buildCSVTemplate(cols)).toBe('name,category,mpn\n');
+  });
+});
+
+describe('recordsToCSV', () => {
+  it('serializes records with a header row', () => {
+    const headers = ['name', 'category'];
+    const records = [{ name: 'ESP32', category: 'Microcontrollers' }];
+    const csv = recordsToCSV(headers, records);
+    expect(csv).toBe('name,category\nESP32,Microcontrollers\n');
+  });
+
+  it('wraps fields containing commas in double-quotes', () => {
+    const headers = ['name', 'notes'];
+    const records = [{ name: 'Part, A', notes: 'ok' }];
+    const csv = recordsToCSV(headers, records);
+    expect(csv).toBe('name,notes\n"Part, A",ok\n');
+  });
+
+  it('escapes embedded double-quotes by doubling them', () => {
+    const headers = ['notes'];
+    const records = [{ notes: 'Say "hello"' }];
+    const csv = recordsToCSV(headers, records);
+    expect(csv).toBe('notes\n"Say ""hello"""\n');
+  });
+
+  it('wraps fields containing newlines in double-quotes', () => {
+    const headers = ['notes'];
+    const records = [{ notes: 'line1\nline2' }];
+    const csv = recordsToCSV(headers, records);
+    expect(csv).toBe('notes\n"line1\nline2"\n');
+  });
+
+  it('fills missing fields with empty string', () => {
+    const headers = ['a', 'b', 'c'];
+    const records = [{ a: 'x' }] as Record<string, string>[];
+    const csv = recordsToCSV(headers, records);
+    expect(csv).toBe('a,b,c\nx,,\n');
+  });
+
+  it('returns only a header row for empty records array', () => {
+    const headers = ['name', 'mpn'];
+    const csv = recordsToCSV(headers, []);
+    expect(csv).toBe('name,mpn\n');
+  });
+
+  it('produces round-trip compatible output (parseCSV can re-read it)', () => {
+    const headers = ['name', 'tags', 'notes'];
+    const records = [
+      { name: 'R1', tags: 'smd;0402', notes: 'Has "special" chars, and comma' },
+    ];
+    const csv = recordsToCSV(headers, records);
+    const rows = parseCSV(csv);
+    expect(rows[0]).toEqual(headers);
+    expect(rows[1][0]).toBe('R1');
+    expect(rows[1][1]).toBe('smd;0402');
+    expect(rows[1][2]).toBe('Has "special" chars, and comma');
   });
 });
 

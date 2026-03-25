@@ -86,3 +86,27 @@ export function buildCSVTemplate(columns: string[]): string {
   return columns.join(',') + '\n';
 }
 
+/**
+ * Escape a single CSV field value per RFC-4180:
+ * wrap in double-quotes if the value contains a comma, double-quote, or newline,
+ * and double any embedded double-quotes.
+ */
+function escapeField(value: string): string {
+  if (value.includes('"') || value.includes(',') || value.includes('\n') || value.includes('\r')) {
+    return '"' + value.replace(/"/g, '""') + '"';
+  }
+  return value;
+}
+
+/**
+ * Serialize an array of record objects to a RFC-4180 CSV string.
+ * `headers` defines the column order; missing fields default to an empty string.
+ */
+export function recordsToCSV(headers: string[], records: Record<string, string>[]): string {
+  const rows = [
+    headers.join(','),
+    ...records.map((record) => headers.map((h) => escapeField(record[h] ?? '')).join(',')),
+  ];
+  return rows.join('\n') + '\n';
+}
+
