@@ -5,9 +5,21 @@ import Link from 'next/link';
 import { PageHeader } from '@/components/PageHeader';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { ProjectCard } from '@/features/projects/components/ProjectCard';
+import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/components/ui/collapsible';
 import { safeParseJson } from '@/lib/utils';
 import type { ProjectListItem } from '@/features/projects/types';
 import type { LotListItem } from '@/features/lots/types';
+
+// --- Inventory value widget ---
+const INVENTORY_VALUE_COLLAPSED_KEY = 'inventory-value-collapsed';
+
+interface InventoryStats {
+  totalValue: number;
+  currency: string;
+  valueByCategoryTop5: { category: string; value: number }[];
+  lotsWithCostData: number;
+  lotsWithoutCostData: number;
+}
 
 // --- Pinned projects ---
 const PINNED_KEY = 'pinned-projects';
@@ -52,9 +64,21 @@ export default function Home() {
   const [thresholds, setThresholds] = useState<Record<string, number>>({});
   const [thresholdInputs, setThresholdInputs] = useState<Record<string, string>>({});
 
+  // Inventory value state
+  const [inventoryStats, setInventoryStats] = useState<InventoryStats | null>(null);
+  const [valueWidgetOpen, setValueWidgetOpen] = useState(true);
+
   useEffect(() => {
     setPinnedIds(loadPinnedIds());
     setThresholds(loadThresholds());
+
+    // Restore collapsed state from localStorage
+    try {
+      const stored = localStorage.getItem(INVENTORY_VALUE_COLLAPSED_KEY);
+      if (stored !== null) setValueWidgetOpen(stored !== 'true');
+    } catch {
+      // storage disabled — keep default open state
+    }
 
     const controller = new AbortController();
     (async () => {
@@ -111,6 +135,17 @@ export default function Home() {
 
     fetchLowStock();
 
+    (async () => {
+      try {
+        const res = await fetch('/api/parts/stats', { signal: controller.signal });
+        if (!res.ok) return;
+        const data: InventoryStats = await res.json();
+        setInventoryStats(data);
+      } catch (err) {
+        if (err instanceof Error && err.name === 'AbortError') return;
+      }
+    })();
+
     return () => controller.abort();
   }, []);
 
@@ -124,6 +159,19 @@ export default function Home() {
       }
       return next;
     });
+  }
+
+  function handleValueWidgetOpenChange(open: boolean) {
+    setValueWidgetOpen(open);
+    try {
+      localStorage.setItem(INVENTORY_VALUE_COLLAPSED_KEY, String(!open));
+    } catch {
+      // storage disabled — state updated in memory only
+    }
+  }
+
+  function formatCurrency(value: number): string {
+    return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(value);
   }
 
   function handleThresholdBlur(partId: string) {
@@ -161,6 +209,70 @@ export default function Home() {
           title="Welcome to Hobby Inventory"
           description="Track parts, lots, and locations for all your hobby projects."
         />
+
+        {inventoryStats !== null && (
+          <section className="mt-8">
+            <Collapsible open={valueWidgetOpen} onOpenChange={handleValueWidgetOpenChange}>
+              <div className="rounded-xl border border-border bg-card shadow-sm">
+                <CollapsibleTrigger className="flex w-full items-center justify-between px-5 py-4 text-left">
+                  <h2 className="flex items-center gap-2 text-lg font-semibold text-gray-800">
+                    💰 Inventory Value
+                    {!valueWidgetOpen && inventoryStats.lotsWithCostData > 0 && (
+                      <span className="ml-2 text-base font-normal text-gray-500">
+                        {formatCurrency(inventoryStats.totalValue)}
+                      </span>
+                    )}
+                  </h2>
+                  <span className="text-gray-400 text-sm select-none">
+                    {valueWidgetOpen ? '▲' : '▼'}
+                  </span>
+                </CollapsibleTrigger>
+                <CollapsibleContent>
+                  <div className="border-t border-border px-5 py-4">
+                    {inventoryStats.lotsWithCostData === 0 ? (
+                      <p className="text-sm text-gray-500">
+                        Add purchase prices to lots to see inventory value.
+                      </p>
+                    ) : (
+                      <>
+                        <p className="text-2xl font-bold text-gray-900">
+                          {formatCurrency(inventoryStats.totalValue)}
+                        </p>
+                        {inventoryStats.lotsWithoutCostData > 0 && (
+                          <p className="mt-1 text-xs text-gray-400">
+                            {inventoryStats.lotsWithoutCostData} lot
+                            {inventoryStats.lotsWithoutCostData === 1 ? '' : 's'} without cost
+                            data excluded
+                          </p>
+                        )}
+                        {inventoryStats.valueByCategoryTop5.length > 0 && (
+                          <div className="mt-4">
+                            <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-500">
+                              Top Categories
+                            </h3>
+                            <ul className="space-y-1">
+                              {inventoryStats.valueByCategoryTop5.map((item) => (
+                                <li
+                                  key={item.category}
+                                  className="flex items-center justify-between text-sm"
+                                >
+                                  <span className="text-gray-700">{item.category}</span>
+                                  <span className="font-medium text-gray-900">
+                                    {formatCurrency(item.value)}
+                                  </span>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+                      </>
+                    )}
+                  </div>
+                </CollapsibleContent>
+              </div>
+            </Collapsible>
+          </section>
+        )}
 
         {lowStockParts.length > 0 && (
           <section className="mt-8">
