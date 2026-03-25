@@ -11,6 +11,12 @@ jest.mock('@/lib/utils', () => ({
     classes.filter(Boolean).join(' '),
 }));
 
+jest.mock('next/navigation', () => ({
+  useRouter: () => ({ push: jest.fn() }),
+  usePathname: () => '/parts',
+  useSearchParams: () => new URLSearchParams(),
+}));
+
 jest.mock('next/link', () => {
   const MockLink = ({
     href,
