@@ -8,6 +8,9 @@ const VALID_STATUSES = ['in_stock', 'low', 'out', 'reserved', 'installed', 'lost
 const VALID_QUANTITY_MODES = ['exact', 'qualitative'];
 const VALID_QUALITATIVE_STATUSES = ['plenty', 'low', 'out'];
 
+const LOTS_SORT_ALLOWLIST = ['updatedAt', 'createdAt', 'quantity', 'status'] as const;
+type LotsSortField = (typeof LOTS_SORT_ALLOWLIST)[number];
+
 function parseSource(source: unknown): Record<string, unknown> {
   if (typeof source === 'string') {
     try {
@@ -33,6 +36,14 @@ export async function GET(request: Request) {
   const sourceSeller = searchParams.get('source.seller') ?? undefined;
   const limit = Math.min(parseInt(searchParams.get('limit') ?? String(DEFAULT_LIMIT), 10) || DEFAULT_LIMIT, MAX_LIMIT);
   const offset = Math.max(parseInt(searchParams.get('offset') ?? '0', 10) || 0, 0);
+
+  const sortByParam = searchParams.get('sortBy');
+  const sortDirParam = searchParams.get('sortDir') ?? 'desc';
+  const sortBy: LotsSortField =
+    sortByParam && (LOTS_SORT_ALLOWLIST as readonly string[]).includes(sortByParam)
+      ? (sortByParam as LotsSortField)
+      : 'updatedAt';
+  const sortDir: 'asc' | 'desc' = sortDirParam === 'asc' ? 'asc' : 'desc';
 
   // Resolve locationId filter - include children via path prefix match
   let locationIds: string[] | undefined;
@@ -89,7 +100,7 @@ export async function GET(request: Request) {
       where,
       skip: offset,
       take: limit,
-      orderBy: { updatedAt: 'desc' },
+      orderBy: { [sortBy]: sortDir },
       include: {
         part: { select: { id: true, name: true, category: true, mpn: true } },
         location: { select: { id: true, name: true, path: true } },
