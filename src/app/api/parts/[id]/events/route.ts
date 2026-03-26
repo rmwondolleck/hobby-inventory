@@ -30,5 +30,51 @@ export async function GET(
     orderBy: { createdAt: 'desc' },
   });
 
-  return NextResponse.json({ data: events, total: events.length });
+  // Enrich events with location data for moved events
+  const locationIds = [
+    ...new Set(
+      events.flatMap((e: { fromLocationId: string | null; toLocationId: string | null }) =>
+        [e.fromLocationId, e.toLocationId].filter(Boolean) as string[]
+      )
+    ),
+  ];
+
+  const locationMap = new Map<string, { name: string; path: string }>();
+  if (locationIds.length > 0) {
+    const locations = await prisma.location.findMany({
+      where: { id: { in: locationIds } },
+      select: { id: true, name: true, path: true },
+    });
+    for (const loc of locations) {
+      locationMap.set(loc.id, { name: loc.name, path: loc.path });
+    }
+  }
+
+  type PrismaEvent = {
+    id: string;
+    lotId: string;
+    type: string;
+    delta: number | null;
+    fromLocationId: string | null;
+    toLocationId: string | null;
+    projectId: string | null;
+    notes: string | null;
+    createdAt: Date;
+  };
+
+  const enrichedEvents = events.map((e: PrismaEvent) => ({
+    id: e.id,
+    lotId: e.lotId,
+    type: e.type,
+    delta: e.delta,
+    fromLocationId: e.fromLocationId,
+    toLocationId: e.toLocationId,
+    projectId: e.projectId,
+    notes: e.notes,
+    createdAt: e.createdAt,
+    fromLocation: e.fromLocationId ? (locationMap.get(e.fromLocationId) ?? null) : null,
+    toLocation: e.toLocationId ? (locationMap.get(e.toLocationId) ?? null) : null,
+  }));
+
+  return NextResponse.json({ data: enrichedEvents, total: enrichedEvents.length });
 }

@@ -13,6 +13,12 @@ jest.mock('next/navigation', () => ({
   useRouter: () => ({ push: mockPush, replace: jest.fn(), prefetch: jest.fn() }),
 }));
 
+// Mock KeyboardShortcutsModal
+jest.mock('../KeyboardShortcutsModal', () => ({
+  KeyboardShortcutsModal: ({ open }: { open: boolean; onOpenChange: (o: boolean) => void }) =>
+    open ? <div data-testid="shortcuts-modal" /> : null,
+}));
+
 // Mock next/link
 jest.mock('next/link', () => {
   const MockLink = ({ children, href, className }: { children: React.ReactNode; href: string; className?: string }) => (
@@ -171,6 +177,128 @@ describe('AppShell', () => {
         const link = screen.getByText(name).closest('a');
         expect(link).toHaveAttribute('href', href);
       });
+    });
+  });
+
+  describe('keyboard shortcuts', () => {
+    beforeEach(() => {
+      jest.useFakeTimers();
+      mockPush.mockClear();
+    });
+
+    afterEach(() => {
+      jest.useRealTimers();
+    });
+
+    it('navigates to /intake when g then i is pressed', () => {
+      render(<AppShell><div /></AppShell>);
+      fireEvent.keyDown(document, { key: 'g' });
+      fireEvent.keyDown(document, { key: 'i' });
+      expect(mockPush).toHaveBeenCalledWith('/intake');
+    });
+
+    it('navigates to /parts when g then p is pressed', () => {
+      render(<AppShell><div /></AppShell>);
+      fireEvent.keyDown(document, { key: 'g' });
+      fireEvent.keyDown(document, { key: 'p' });
+      expect(mockPush).toHaveBeenCalledWith('/parts');
+    });
+
+    it('navigates to /lots when g then l is pressed', () => {
+      render(<AppShell><div /></AppShell>);
+      fireEvent.keyDown(document, { key: 'g' });
+      fireEvent.keyDown(document, { key: 'l' });
+      expect(mockPush).toHaveBeenCalledWith('/lots');
+    });
+
+    it('navigates to /projects when g then j is pressed', () => {
+      render(<AppShell><div /></AppShell>);
+      fireEvent.keyDown(document, { key: 'g' });
+      fireEvent.keyDown(document, { key: 'j' });
+      expect(mockPush).toHaveBeenCalledWith('/projects');
+    });
+
+    it('navigates to /locations when g then m is pressed', () => {
+      render(<AppShell><div /></AppShell>);
+      fireEvent.keyDown(document, { key: 'g' });
+      fireEvent.keyDown(document, { key: 'm' });
+      expect(mockPush).toHaveBeenCalledWith('/locations');
+    });
+
+    it('does not navigate if g chord times out (>300ms)', () => {
+      render(<AppShell><div /></AppShell>);
+      fireEvent.keyDown(document, { key: 'g' });
+      act(() => { jest.advanceTimersByTime(301); });
+      fireEvent.keyDown(document, { key: 'i' });
+      // After timeout, 'i' alone is not a navigation key — still starts a new g-pending check
+      // but no route should have been pushed
+      expect(mockPush).not.toHaveBeenCalled();
+    });
+
+    it('does not navigate when g then unknown key is pressed', () => {
+      render(<AppShell><div /></AppShell>);
+      fireEvent.keyDown(document, { key: 'g' });
+      fireEvent.keyDown(document, { key: 'z' });
+      expect(mockPush).not.toHaveBeenCalled();
+    });
+
+    it('suppresses g-shortcuts when input has focus', () => {
+      render(
+        <AppShell>
+          <input data-testid="text-input" />
+        </AppShell>
+      );
+      const input = screen.getByTestId('text-input');
+      input.focus();
+      fireEvent.keyDown(document, { key: 'g' });
+      fireEvent.keyDown(document, { key: 'i' });
+      expect(mockPush).not.toHaveBeenCalled();
+    });
+
+    it('suppresses g-shortcuts when textarea has focus', () => {
+      render(
+        <AppShell>
+          <textarea data-testid="text-area" />
+        </AppShell>
+      );
+      const textarea = screen.getByTestId('text-area');
+      textarea.focus();
+      fireEvent.keyDown(document, { key: 'g' });
+      fireEvent.keyDown(document, { key: 'p' });
+      expect(mockPush).not.toHaveBeenCalled();
+    });
+
+    it('opens shortcuts modal when ? is pressed', () => {
+      render(<AppShell><div /></AppShell>);
+      expect(screen.queryByTestId('shortcuts-modal')).not.toBeInTheDocument();
+      fireEvent.keyDown(document, { key: '?' });
+      expect(screen.getByTestId('shortcuts-modal')).toBeInTheDocument();
+    });
+
+    it('closes shortcuts modal when ? is pressed again', () => {
+      render(<AppShell><div /></AppShell>);
+      fireEvent.keyDown(document, { key: '?' });
+      fireEvent.keyDown(document, { key: '?' });
+      expect(screen.queryByTestId('shortcuts-modal')).not.toBeInTheDocument();
+    });
+
+    it('closes shortcuts modal when Escape is pressed', () => {
+      render(<AppShell><div /></AppShell>);
+      fireEvent.keyDown(document, { key: '?' });
+      expect(screen.getByTestId('shortcuts-modal')).toBeInTheDocument();
+      fireEvent.keyDown(document, { key: 'Escape' });
+      expect(screen.queryByTestId('shortcuts-modal')).not.toBeInTheDocument();
+    });
+
+    it('suppresses ? shortcut when input has focus', () => {
+      render(
+        <AppShell>
+          <input data-testid="text-input" />
+        </AppShell>
+      );
+      screen.getByTestId('text-input').focus();
+      fireEvent.keyDown(document, { key: '?' });
+      expect(screen.queryByTestId('shortcuts-modal')).not.toBeInTheDocument();
     });
   });
 

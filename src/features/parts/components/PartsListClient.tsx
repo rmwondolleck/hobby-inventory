@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import type { PartListItem, PartFilters } from '../types';
 import { PartCard } from './PartCard';
 import { FilterSidebar } from './FilterSidebar';
@@ -48,7 +49,18 @@ function SearchInput({
   );
 }
 
+const PARTS_SORT_OPTIONS = [
+  { value: 'createdAt', label: 'Date Created' },
+  { value: 'updatedAt', label: 'Last Updated' },
+  { value: 'name', label: 'Name' },
+  { value: 'category', label: 'Category' },
+] as const;
+
 export function PartsListClient() {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
   const [parts, setParts] = useState<PartListItem[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -62,10 +74,23 @@ export function PartsListClient() {
     includeArchived: false,
   });
 
+  const sortBy = searchParams.get('sortBy') ?? 'createdAt';
+  const sortDir = (searchParams.get('sortDir') ?? 'desc') as 'asc' | 'desc';
+
+  const updateSort = useCallback(
+    (newSortBy: string, newSortDir: 'asc' | 'desc') => {
+      const params = new URLSearchParams(searchParams.toString());
+      params.set('sortBy', newSortBy);
+      params.set('sortDir', newSortDir);
+      router.push(`${pathname}?${params.toString()}`);
+    },
+    [router, pathname, searchParams]
+  );
+
   // Track whether sidebar data has been initialized
   const sidebarInitialized = useRef(false);
 
-  const fetchParts = useCallback(async (currentFilters: PartFilters) => {
+  const fetchParts = useCallback(async (currentFilters: PartFilters, currentSortBy: string, currentSortDir: 'asc' | 'desc') => {
     setLoading(true);
     setError(null);
     try {
@@ -76,6 +101,8 @@ export function PartsListClient() {
         params.set('tags', currentFilters.tags.join(','));
       if (currentFilters.includeArchived) params.set('includeArchived', 'true');
       params.set('limit', '200');
+      params.set('sortBy', currentSortBy);
+      params.set('sortDir', currentSortDir);
 
       const res = await fetch(`/api/parts?${params.toString()}`);
       if (!res.ok) throw new Error('Failed to fetch parts');
@@ -107,8 +134,8 @@ export function PartsListClient() {
   }, []);
 
   useEffect(() => {
-    fetchParts(filters);
-  }, [fetchParts, filters]);
+    fetchParts(filters, sortBy, sortDir);
+  }, [fetchParts, filters, sortBy, sortDir]);
 
   return (
     <div className="flex gap-6">
@@ -120,26 +147,37 @@ export function PartsListClient() {
       />
 
       <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 mb-4">
           <div className="flex-1">
             <SearchInput
               value={filters.search}
               onChange={(search) => setFilters((f: PartFilters) => ({ ...f, search }))}
             />
           </div>
-          <a
-            href={(() => {
-              const p = new URLSearchParams();
-              if (filters.category) p.set('category', filters.category);
-              if (filters.includeArchived) p.set('archived', 'true');
-              const qs = p.toString();
-              return `/api/parts/export${qs ? `?${qs}` : ''}`;
-            })()}
-            download
-            className="shrink-0 rounded-lg border border-border bg-card px-3 py-2 text-sm font-medium shadow-sm hover:bg-muted"
-          >
-            Export CSV
-          </a>
+          <div className="flex items-center gap-2 shrink-0">
+            <label htmlFor="parts-sort-by" className="text-sm text-muted-foreground whitespace-nowrap">
+              Sort by
+            </label>
+            <select
+              id="parts-sort-by"
+              value={sortBy}
+              onChange={e => updateSort(e.target.value, sortDir)}
+              className="rounded-md border border-border bg-card px-2 py-1.5 text-sm"
+            >
+              {PARTS_SORT_OPTIONS.map(opt => (
+                <option key={opt.value} value={opt.value}>{opt.label}</option>
+              ))}
+            </select>
+            <select
+              id="parts-sort-dir"
+              value={sortDir}
+              onChange={e => updateSort(sortBy, e.target.value as 'asc' | 'desc')}
+              className="rounded-md border border-border bg-card px-2 py-1.5 text-sm"
+            >
+              <option value="desc">Descending</option>
+              <option value="asc">Ascending</option>
+            </select>
+          </div>
         </div>
 
         <div className="mt-4">

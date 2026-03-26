@@ -6,6 +6,9 @@ import { computeStockFields, type LotForStock } from './_stock';
 const DEFAULT_LIMIT = 50;
 const MAX_LIMIT = 500;
 
+const PARTS_SORT_ALLOWLIST = ['updatedAt', 'createdAt', 'name', 'category'] as const;
+type PartsSortField = (typeof PARTS_SORT_ALLOWLIST)[number];
+
 /**
  * Parse `parameters.*` query params from the URL.
  * e.g. ?parameters.ble=true&parameters.voltage=3.3V => { ble: 'true', voltage: '3.3V' }
@@ -69,6 +72,14 @@ export async function GET(request: Request) {
     .filter(Boolean);
   const hasTagFilters = tagFilters.length > 0;
 
+  const sortByParam = searchParams.get('sortBy');
+  const sortDirParam = searchParams.get('sortDir') ?? 'desc';
+  const sortBy: PartsSortField =
+    sortByParam && (PARTS_SORT_ALLOWLIST as readonly string[]).includes(sortByParam)
+      ? (sortByParam as PartsSortField)
+      : 'createdAt';
+  const sortDir: 'asc' | 'desc' = sortDirParam === 'asc' ? 'asc' : 'desc';
+
   try {
     const where = {
       ...(category ? { category } : {}),
@@ -110,7 +121,7 @@ export async function GET(request: Request) {
     // When parameter or tag filters are present, fetch all matching (without pagination)
     // and apply in-memory filtering, then paginate manually.
     if (hasParamFilters || hasTagFilters) {
-      const all = await prisma.part.findMany({ where, orderBy: { createdAt: 'desc' }, include: lotInclude });
+      const all = await prisma.part.findMany({ where, orderBy: { [sortBy]: sortDir }, include: lotInclude });
 
       const filtered = all.filter((part: { parameters: string; tags: string }) => {
         const params = safeParseJson<Record<string, unknown>>(part.parameters, {});
@@ -143,7 +154,7 @@ export async function GET(request: Request) {
     }
 
     const [parts, total] = await prisma.$transaction([
-      prisma.part.findMany({ where, take: limit, skip: offset, orderBy: { createdAt: 'desc' }, include: lotInclude }),
+      prisma.part.findMany({ where, take: limit, skip: offset, orderBy: { [sortBy]: sortDir }, include: lotInclude }),
       prisma.part.count({ where }),
     ]);
 

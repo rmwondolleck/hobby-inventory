@@ -12,13 +12,24 @@ interface PageProps {
     status?: string;
     seller?: string;
     offset?: string;
+    sortBy?: string;
+    sortDir?: string;
   }>;
 }
 
 const PAGE_SIZE = 50;
 
+const LOTS_SORT_ALLOWLIST = ['updatedAt', 'createdAt', 'quantity', 'status'] as const;
+type LotsSortField = (typeof LOTS_SORT_ALLOWLIST)[number];
+
 async function getLotsData(params: Awaited<PageProps['searchParams']>) {
   const offset = Math.max(0, Number(params.offset) || 0);
+
+  const sortBy: LotsSortField =
+    params.sortBy && (LOTS_SORT_ALLOWLIST as readonly string[]).includes(params.sortBy)
+      ? (params.sortBy as LotsSortField)
+      : 'updatedAt';
+  const sortDir: 'asc' | 'desc' = params.sortDir === 'asc' ? 'asc' : 'desc';
 
   const where: { partId?: string; locationId?: string; status?: string } = {};
   if (params.partId) where.partId = params.partId;
@@ -37,7 +48,7 @@ async function getLotsData(params: Awaited<PageProps['searchParams']>) {
           part: { select: { id: true, name: true, category: true } },
           location: { select: { id: true, name: true, path: true } },
         },
-        orderBy: { createdAt: 'desc' },
+        orderBy: { [sortBy]: sortDir },
       }),
       prisma.part.findMany({ select: { id: true, name: true }, orderBy: { name: 'asc' } }),
       prisma.location.findMany({ select: { id: true, name: true, path: true }, orderBy: { path: 'asc' } }),
@@ -62,7 +73,7 @@ async function getLotsData(params: Awaited<PageProps['searchParams']>) {
         part: { select: { id: true, name: true, category: true } },
         location: { select: { id: true, name: true, path: true } },
       },
-      orderBy: { createdAt: 'desc' },
+      orderBy: { [sortBy]: sortDir },
       skip: offset,
       take: PAGE_SIZE,
     }),
@@ -107,6 +118,8 @@ export default async function LotsPage({ searchParams }: PageProps) {
     if (params.locationId) p.set('locationId', params.locationId);
     if (params.status) p.set('status', params.status);
     if (params.seller) p.set('seller', params.seller);
+    if (params.sortBy) p.set('sortBy', params.sortBy);
+    if (params.sortDir) p.set('sortDir', params.sortDir);
     p.set('offset', String(newOffset));
     return `/lots?${p.toString()}`;
   };

@@ -291,6 +291,46 @@ describe('GET /api/parts', () => {
     expect(json.data[0].qualitativeStatuses).toEqual(['low']);
     expect(json.data[0].lotCount).toBe(3);
   });
+
+  it('applies sortBy=name&sortDir=asc to orderBy', async () => {
+    mockFindMany.mockResolvedValue([]);
+    mockCount.mockResolvedValue(0);
+
+    await GET(makeRequest('http://localhost/api/parts?sortBy=name&sortDir=asc'));
+
+    const callArgs = mockFindMany.mock.calls[0][0];
+    expect(callArgs.orderBy).toEqual({ name: 'asc' });
+  });
+
+  it('applies sortBy=category&sortDir=desc to orderBy', async () => {
+    mockFindMany.mockResolvedValue([]);
+    mockCount.mockResolvedValue(0);
+
+    await GET(makeRequest('http://localhost/api/parts?sortBy=category&sortDir=desc'));
+
+    const callArgs = mockFindMany.mock.calls[0][0];
+    expect(callArgs.orderBy).toEqual({ category: 'desc' });
+  });
+
+  it('falls back to createdAt desc for unrecognised sortBy', async () => {
+    mockFindMany.mockResolvedValue([]);
+    mockCount.mockResolvedValue(0);
+
+    await GET(makeRequest('http://localhost/api/parts?sortBy=unknownField'));
+
+    const callArgs = mockFindMany.mock.calls[0][0];
+    expect(callArgs.orderBy).toEqual({ createdAt: 'desc' });
+  });
+
+  it('defaults to createdAt desc when no sort params provided', async () => {
+    mockFindMany.mockResolvedValue([]);
+    mockCount.mockResolvedValue(0);
+
+    await GET(makeRequest('http://localhost/api/parts'));
+
+    const callArgs = mockFindMany.mock.calls[0][0];
+    expect(callArgs.orderBy).toEqual({ createdAt: 'desc' });
+  });
 });
 
 // ─── GET /api/parts with parameter filters ───────────────────────────────────
