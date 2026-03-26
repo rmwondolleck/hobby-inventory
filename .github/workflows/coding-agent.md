@@ -78,6 +78,8 @@ safe-outputs:
       - "postcss.config.js"
       - "playwright.config.ts"
 checkout:
+  # The epic branch is automatically created from main if it does not exist.
+  # See the "Create epic branch if not exists" step in coding-agent.lock.yml.
   ref: ${{ github.event.inputs.epic_branch }}
 network:
   allowed:

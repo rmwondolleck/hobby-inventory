@@ -259,6 +259,8 @@ For each `ready` issue not in `Active Work`:
    }
    ```
 
+> **Note**: The coding agent automatically creates the epic branch from `main` if it does not already exist, so you do not need to pre-create it before dispatching.
+
 ### Task 5: Handle Stage Transitions (Per-Issue Pipeline)
 
 When an agent reports completion, automatically dispatch the next agent:
