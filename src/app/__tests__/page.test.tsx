@@ -33,6 +33,22 @@ type LotStub = {
   part: { id: string; name: string };
 };
 
+interface InventoryStatsStub {
+  totalValue: number;
+  currency: string;
+  valueByCategoryTop5: { category: string; value: number }[];
+  lotsWithCostData: number;
+  lotsWithoutCostData: number;
+}
+
+const DEFAULT_STATS: InventoryStatsStub = {
+  totalValue: 0,
+  currency: 'USD',
+  valueByCategoryTop5: [],
+  lotsWithCostData: 0,
+  lotsWithoutCostData: 0,
+};
+
 function makeLot(partId: string, partName: string, quantity: number | null = 3): LotStub {
   return {
     partId,
@@ -41,13 +57,26 @@ function makeLot(partId: string, partName: string, quantity: number | null = 3):
   };
 }
 
-function mockFetch(lowLots: LotStub[] = [], outLots: LotStub[] = []) {
+function mockFetch(
+  lowLots: LotStub[] = [],
+  outLots: LotStub[] = [],
+  stats: InventoryStatsStub | null = DEFAULT_STATS,
+) {
   global.fetch = jest.fn().mockImplementation((url: string) => {
     // The unified Home component also fetches active projects — return empty array for that endpoint
     if ((url as string).includes('/api/projects')) {
       return Promise.resolve({
         ok: true,
         json: () => Promise.resolve({ data: [] }),
+      } as Response);
+    }
+    if ((url as string).includes('/api/parts/stats')) {
+      if (stats === null) {
+        return Promise.resolve({ ok: false, json: () => Promise.resolve({}) } as unknown as Response);
+      }
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve(stats),
       } as Response);
     }
     const lots = url.includes('status=low') ? lowLots : outLots;
@@ -88,7 +117,7 @@ describe('Home page — low stock warnings', () => {
     render(<Home />);
 
     await waitFor(() => {
-      expect(global.fetch).toHaveBeenCalledTimes(3);
+      expect(global.fetch).toHaveBeenCalledTimes(4);
     });
 
     expect(screen.queryByText(/low stock warnings/i)).not.toBeInTheDocument();
@@ -178,7 +207,7 @@ describe('Home page — low stock warnings', () => {
     mockFetchError();
     render(<Home />);
 
-    await waitFor(() => expect(global.fetch).toHaveBeenCalledTimes(3));
+    await waitFor(() => expect(global.fetch).toHaveBeenCalledTimes(4));
 
     expect(screen.queryByText(/low stock warnings/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/error/i)).not.toBeInTheDocument();
@@ -188,17 +217,17 @@ describe('Home page — low stock warnings', () => {
     mockFetchNotOk();
     render(<Home />);
 
-    await waitFor(() => expect(global.fetch).toHaveBeenCalledTimes(3));
+    await waitFor(() => expect(global.fetch).toHaveBeenCalledTimes(4));
 
     expect(screen.queryByText(/low stock warnings/i)).not.toBeInTheDocument();
   });
 
-  it('fetches both low and out status endpoints', async () => {
+  it('fetches both low and out status endpoints and the stats endpoint', async () => {
     mockFetch([], []);
     render(<Home />);
 
     await waitFor(() => {
-      expect(global.fetch).toHaveBeenCalledTimes(3);
+      expect(global.fetch).toHaveBeenCalledTimes(4);
     });
 
     const calls = (global.fetch as jest.Mock).mock.calls.map(([url]: [string]) => url);
@@ -206,6 +235,7 @@ describe('Home page — low stock warnings', () => {
       expect.arrayContaining([
         expect.stringContaining('status=low'),
         expect.stringContaining('status=out'),
+        expect.stringContaining('/api/parts/stats'),
       ]),
     );
   });
@@ -333,5 +363,141 @@ describe('Home page — static content', () => {
     expect(document.querySelector('a[href="/lots"]')).toBeInTheDocument();
     expect(document.querySelector('a[href="/locations"]')).toBeInTheDocument();
     expect(document.querySelector('a[href="/projects"]')).toBeInTheDocument();
+  });
+});
+
+describe('Home page — Inventory Value widget', () => {
+  it('does not render the widget when stats fetch fails', async () => {
+    mockFetch([], [], null);
+    render(<Home />);
+
+    await waitFor(() => expect(global.fetch).toHaveBeenCalledTimes(4));
+
+    expect(screen.queryByText(/inventory value/i)).not.toBeInTheDocument();
+  });
+
+  it('renders the Inventory Value widget heading after successful stats fetch', async () => {
+    mockFetch([], [], DEFAULT_STATS);
+    render(<Home />);
+
+    await waitFor(() => {
+      expect(screen.getByText(/💰 Inventory Value/)).toBeInTheDocument();
+    });
+  });
+
+  it('shows empty-state message when no lots have cost data', async () => {
+    mockFetch([], [], { ...DEFAULT_STATS, lotsWithCostData: 0, lotsWithoutCostData: 2 });
+    render(<Home />);
+
+    await waitFor(() => {
+      expect(screen.getByText(/add purchase prices to lots/i)).toBeInTheDocument();
+    });
+  });
+
+  it('displays formatted total value when lots have cost data', async () => {
+    mockFetch([], [], {
+      totalValue: 42.5,
+      currency: 'USD',
+      valueByCategoryTop5: [],
+      lotsWithCostData: 3,
+      lotsWithoutCostData: 0,
+    });
+    render(<Home />);
+
+    await waitFor(() => {
+      expect(screen.getByText('$42.50')).toBeInTheDocument();
+    });
+  });
+
+  it('shows category breakdown when valueByCategoryTop5 is populated', async () => {
+    mockFetch([], [], {
+      totalValue: 60,
+      currency: 'USD',
+      valueByCategoryTop5: [
+        { category: 'Resistors', value: 40 },
+        { category: 'Capacitors', value: 20 },
+      ],
+      lotsWithCostData: 5,
+      lotsWithoutCostData: 0,
+    });
+    render(<Home />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Resistors')).toBeInTheDocument();
+      expect(screen.getByText('Capacitors')).toBeInTheDocument();
+      expect(screen.getByText('Top Categories')).toBeInTheDocument();
+    });
+  });
+
+  it('shows count of lots without cost data when some are excluded', async () => {
+    mockFetch([], [], {
+      totalValue: 10,
+      currency: 'USD',
+      valueByCategoryTop5: [],
+      lotsWithCostData: 2,
+      lotsWithoutCostData: 5,
+    });
+    render(<Home />);
+
+    await waitFor(() => {
+      expect(screen.getByText(/5 lots without cost data excluded/i)).toBeInTheDocument();
+    });
+  });
+
+  it('uses singular "lot" when lotsWithoutCostData is 1', async () => {
+    mockFetch([], [], {
+      totalValue: 10,
+      currency: 'USD',
+      valueByCategoryTop5: [],
+      lotsWithCostData: 2,
+      lotsWithoutCostData: 1,
+    });
+    render(<Home />);
+
+    await waitFor(() => {
+      expect(screen.getByText(/1 lot without cost data excluded/i)).toBeInTheDocument();
+    });
+  });
+
+  it('persists collapsed state to localStorage when widget is toggled', async () => {
+    mockFetch([], [], { ...DEFAULT_STATS, lotsWithCostData: 0 });
+    render(<Home />);
+
+    await waitFor(() => {
+      expect(screen.getByText(/💰 Inventory Value/)).toBeInTheDocument();
+    });
+
+    // Click to collapse
+    const trigger = screen.getByText(/💰 Inventory Value/).closest('button') as HTMLElement;
+    fireEvent.click(trigger);
+
+    expect(localStorage.getItem('inventory-value-collapsed')).toBe('true');
+  });
+
+  it('restores collapsed=false (open) state from localStorage', async () => {
+    localStorage.setItem('inventory-value-collapsed', 'false');
+    mockFetch([], [], { ...DEFAULT_STATS, lotsWithCostData: 1, totalValue: 25 });
+    render(<Home />);
+
+    await waitFor(() => {
+      expect(screen.getByText('$25.00')).toBeInTheDocument();
+    });
+  });
+
+  it('shows summary value in header when widget is collapsed', async () => {
+    // Pre-set collapsed state so widget starts closed
+    localStorage.setItem('inventory-value-collapsed', 'true');
+    mockFetch([], [], {
+      totalValue: 99.99,
+      currency: 'USD',
+      valueByCategoryTop5: [],
+      lotsWithCostData: 3,
+      lotsWithoutCostData: 0,
+    });
+    render(<Home />);
+
+    await waitFor(() => {
+      expect(screen.getByText('$99.99')).toBeInTheDocument();
+    });
   });
 });

@@ -12,13 +12,24 @@ interface PageProps {
     status?: string;
     seller?: string;
     offset?: string;
+    sortBy?: string;
+    sortDir?: string;
   }>;
 }
 
 const PAGE_SIZE = 50;
 
+const LOTS_SORT_ALLOWLIST = ['updatedAt', 'createdAt', 'quantity', 'status'] as const;
+type LotsSortField = (typeof LOTS_SORT_ALLOWLIST)[number];
+
 async function getLotsData(params: Awaited<PageProps['searchParams']>) {
   const offset = Math.max(0, Number(params.offset) || 0);
+
+  const sortBy: LotsSortField =
+    params.sortBy && (LOTS_SORT_ALLOWLIST as readonly string[]).includes(params.sortBy)
+      ? (params.sortBy as LotsSortField)
+      : 'updatedAt';
+  const sortDir: 'asc' | 'desc' = params.sortDir === 'asc' ? 'asc' : 'desc';
 
   const where: { partId?: string; locationId?: string; status?: string } = {};
   if (params.partId) where.partId = params.partId;
@@ -37,7 +48,7 @@ async function getLotsData(params: Awaited<PageProps['searchParams']>) {
           part: { select: { id: true, name: true, category: true } },
           location: { select: { id: true, name: true, path: true } },
         },
-        orderBy: { createdAt: 'desc' },
+        orderBy: { [sortBy]: sortDir },
       }),
       prisma.part.findMany({ select: { id: true, name: true }, orderBy: { name: 'asc' } }),
       prisma.location.findMany({ select: { id: true, name: true, path: true }, orderBy: { path: 'asc' } }),
@@ -62,7 +73,7 @@ async function getLotsData(params: Awaited<PageProps['searchParams']>) {
         part: { select: { id: true, name: true, category: true } },
         location: { select: { id: true, name: true, path: true } },
       },
-      orderBy: { createdAt: 'desc' },
+      orderBy: { [sortBy]: sortDir },
       skip: offset,
       take: PAGE_SIZE,
     }),
@@ -107,8 +118,18 @@ export default async function LotsPage({ searchParams }: PageProps) {
     if (params.locationId) p.set('locationId', params.locationId);
     if (params.status) p.set('status', params.status);
     if (params.seller) p.set('seller', params.seller);
+    if (params.sortBy) p.set('sortBy', params.sortBy);
+    if (params.sortDir) p.set('sortDir', params.sortDir);
     p.set('offset', String(newOffset));
     return `/lots?${p.toString()}`;
+  };
+
+  const buildExportUrl = () => {
+    const p = new URLSearchParams();
+    if (params.status) p.set('status', params.status);
+    if (params.locationId) p.set('locationId', params.locationId);
+    const qs = p.toString();
+    return `/api/lots/export${qs ? `?${qs}` : ''}`;
   };
 
   return (
@@ -117,6 +138,15 @@ export default async function LotsPage({ searchParams }: PageProps) {
         <PageHeader
           title="Lots"
           description={`${total} lot${total !== 1 ? 's' : ''} found`}
+          actions={
+            <a
+              href={buildExportUrl()}
+              download
+              className="rounded-lg border border-border bg-card px-3 py-2 text-sm font-medium shadow-sm hover:bg-muted"
+            >
+              Export CSV
+            </a>
+          }
         />
 
         <div className="flex gap-8">

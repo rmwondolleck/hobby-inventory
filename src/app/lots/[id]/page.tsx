@@ -1,11 +1,13 @@
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import prisma from '@/lib/db';
-import { safeParseJson, formatDate, formatDateTime, cn } from '@/lib/utils';
+import { safeParseJson, formatDate, cn } from '@/lib/utils';
 import { LotStatusBadge } from '@/features/lots/components/LotStatusBadge';
 import { LotActionsPanel } from '@/features/lots/components/LotActionsPanel';
 import { AllocationActions } from '@/features/lots/components/AllocationActions';
+import { EventTimeline } from '@/components/EventTimeline';
 import type { StockStatus, QuantityMode, QualitativeLevel, AllocationStatus } from '@/lib/types';
+import type { TimelineEvent } from '@/components/EventTimeline';
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -104,6 +106,34 @@ export default async function LotDetailPage({ params }: PageProps) {
 
   const source = safeParseJson<SourceData>(lot.source, {});
   const hasSource = Object.keys(source).length > 0;
+
+  // Enrich events with location names for moved events
+  const locationIds = [
+    ...new Set(
+      lot.events.flatMap(e => [e.fromLocationId, e.toLocationId].filter(Boolean) as string[])
+    ),
+  ];
+  const locationMap = new Map<string, { name: string; path: string }>();
+  if (locationIds.length > 0) {
+    const locations = await prisma.location.findMany({
+      where: { id: { in: locationIds } },
+      select: { id: true, name: true, path: true },
+    });
+    for (const loc of locations) {
+      locationMap.set(loc.id, { name: loc.name, path: loc.path });
+    }
+  }
+
+  const timelineEvents: TimelineEvent[] = lot.events.map(e => ({
+    id: e.id,
+    type: e.type,
+    delta: e.delta ?? null,
+    notes: e.notes ?? null,
+    createdAt: e.createdAt.toISOString(),
+    fromLocation: e.fromLocationId ? (locationMap.get(e.fromLocationId) ?? null) : null,
+    toLocation: e.toLocationId ? (locationMap.get(e.toLocationId) ?? null) : null,
+    projectId: e.projectId ?? null,
+  }));
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -290,44 +320,16 @@ export default async function LotDetailPage({ params }: PageProps) {
           )}
 
           {/* Event History */}
-          {lot.events.length > 0 && (
-            <section className="rounded-lg bg-white p-6 shadow-sm">
-              <h2 className="mb-4 text-base font-semibold text-gray-900">
-                History ({lot.events.length === EVENTS_LIMIT ? `most recent ${EVENTS_LIMIT}` : lot.events.length})
-              </h2>
-              <div className="space-y-3">
-                {lot.events.map(event => (
-                  <div key={event.id} className="flex items-start gap-3">
-                    <div className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-gray-300" />
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm font-medium capitalize text-gray-900">
-                          {event.type.replace(/_/g, ' ')}
-                        </span>
-                        {event.delta !== null && (
-                          <span
-                            className={cn(
-                              'text-xs font-medium',
-                              event.delta > 0 ? 'text-green-600' : 'text-red-600'
-                            )}
-                          >
-                            {event.delta > 0 ? '+' : ''}
-                            {event.delta}
-                          </span>
-                        )}
-                        <span className="ml-auto text-xs text-gray-400">
-                          {formatDateTime(event.createdAt)}
-                        </span>
-                      </div>
-                      {event.notes && (
-                        <p className="text-xs text-gray-500">{event.notes}</p>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </section>
-          )}
+          <section className="rounded-lg bg-white p-6 shadow-sm">
+            <h2 className="mb-4 text-base font-semibold text-gray-900">
+              {lot.events.length === EVENTS_LIMIT
+                ? `History (most recent ${EVENTS_LIMIT})`
+                : lot.events.length > 0
+                ? `History (${lot.events.length})`
+                : 'History'}
+            </h2>
+            <EventTimeline events={timelineEvents} />
+          </section>
         </div>
       </div>
     </div>

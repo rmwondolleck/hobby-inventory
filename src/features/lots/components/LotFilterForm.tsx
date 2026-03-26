@@ -50,6 +50,8 @@ export function LotFilterForm({ partOptions, locationOptions }: LotFilterFormPro
   const currentPartId = searchParams.get('partId') ?? '';
   const currentLocationId = searchParams.get('locationId') ?? '';
   const currentSeller = searchParams.get('seller') ?? '';
+  const currentSortBy = searchParams.get('sortBy') ?? '';
+  const currentSortDir = searchParams.get('sortDir') ?? 'desc';
 
   // Local state for seller input to avoid pushing on every keystroke
   const [sellerInput, setSellerInput] = useState(currentSeller);
@@ -153,7 +155,42 @@ export function LotFilterForm({ partOptions, locationOptions }: LotFilterFormPro
         />
       </div>
 
-      {(currentStatus || currentPartId || currentLocationId || currentSeller) && (
+      <div className="space-y-1.5">
+        <label htmlFor="filter-sort-by" className="block text-xs font-medium text-gray-600 uppercase tracking-wide">
+          Sort By
+        </label>
+        <select
+          id="filter-sort-by"
+          value={currentSortBy}
+          onChange={e => updateFilter('sortBy', e.target.value)}
+          className={SELECT_CLASS}
+        >
+          <option value="">Default (Updated)</option>
+          <option value="updatedAt">Last Updated</option>
+          <option value="createdAt">Date Created</option>
+          <option value="quantity">Quantity</option>
+          <option value="status">Status</option>
+        </select>
+      </div>
+
+      {currentSortBy && (
+        <div className="space-y-1.5">
+          <label htmlFor="filter-sort-dir" className="block text-xs font-medium text-gray-600 uppercase tracking-wide">
+            Sort Direction
+          </label>
+          <select
+            id="filter-sort-dir"
+            value={currentSortDir}
+            onChange={e => updateFilter('sortDir', e.target.value)}
+            className={SELECT_CLASS}
+          >
+            <option value="desc">Descending</option>
+            <option value="asc">Ascending</option>
+          </select>
+        </div>
+      )}
+
+      {(currentStatus || currentPartId || currentLocationId || currentSeller || currentSortBy) && (
         <button
           onClick={() => router.push(pathname)}
           className="text-xs text-blue-600 hover:underline"

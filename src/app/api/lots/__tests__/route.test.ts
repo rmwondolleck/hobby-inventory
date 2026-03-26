@@ -180,6 +180,50 @@ describe('GET /api/lots', () => {
       })
     );
   });
+
+  it('applies sortBy=quantity&sortDir=asc to orderBy', async () => {
+    mockLotCount.mockResolvedValue(1);
+    mockLotFindMany.mockResolvedValue([baseLot]);
+
+    await GET(makeRequest('http://localhost/api/lots?sortBy=quantity&sortDir=asc'));
+
+    expect(mockLotFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({ orderBy: { quantity: 'asc' } })
+    );
+  });
+
+  it('applies sortBy=status&sortDir=desc to orderBy', async () => {
+    mockLotCount.mockResolvedValue(0);
+    mockLotFindMany.mockResolvedValue([]);
+
+    await GET(makeRequest('http://localhost/api/lots?sortBy=status&sortDir=desc'));
+
+    expect(mockLotFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({ orderBy: { status: 'desc' } })
+    );
+  });
+
+  it('falls back to updatedAt desc for unrecognised sortBy', async () => {
+    mockLotCount.mockResolvedValue(0);
+    mockLotFindMany.mockResolvedValue([]);
+
+    await GET(makeRequest('http://localhost/api/lots?sortBy=unknownField'));
+
+    expect(mockLotFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({ orderBy: { updatedAt: 'desc' } })
+    );
+  });
+
+  it('defaults to updatedAt desc when no sort params provided', async () => {
+    mockLotCount.mockResolvedValue(0);
+    mockLotFindMany.mockResolvedValue([]);
+
+    await GET(makeRequest('http://localhost/api/lots'));
+
+    expect(mockLotFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({ orderBy: { updatedAt: 'desc' } })
+    );
+  });
 });
 
 // ─── POST /api/lots ───────────────────────────────────────────────────────────

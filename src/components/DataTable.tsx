@@ -10,6 +10,13 @@ interface Column<T> {
   label: string;
   render?: (item: T) => ReactNode;
   className?: string;
+  sortable?: boolean;
+}
+
+interface SortState {
+  sortBy: string | null;
+  sortDir: 'asc' | 'desc' | null;
+  onSort: (key: string | null, dir: 'asc' | 'desc' | null) => void;
 }
 
 interface DataTableProps<T> {
@@ -24,6 +31,16 @@ interface DataTableProps<T> {
     offset: number;
     onPageChange: (offset: number) => void;
   };
+  sort?: SortState;
+}
+
+function nextSort(
+  sort: SortState | undefined,
+  key: string,
+): { sortBy: string | null; sortDir: 'asc' | 'desc' | null } {
+  if (!sort || sort.sortBy !== key) return { sortBy: key, sortDir: 'asc' };
+  if (sort.sortDir === 'asc') return { sortBy: key, sortDir: 'desc' };
+  return { sortBy: null, sortDir: null };
 }
 
 export function DataTable<T>({
@@ -33,6 +50,7 @@ export function DataTable<T>({
   onRowClick,
   loading = false,
   pagination,
+  sort,
 }: DataTableProps<T>) {
   const currentPage = pagination ? Math.floor(pagination.offset / pagination.limit) + 1 : 1;
   const totalPages = pagination ? Math.ceil(pagination.total / pagination.limit) : 1;
@@ -43,9 +61,31 @@ export function DataTable<T>({
         <Table>
           <TableHeader>
             <TableRow>
-              {columns.map((col) => (
-                <TableHead key={col.key} className={col.className}>{col.label}</TableHead>
-              ))}
+              {columns.map((col) => {
+                const isActive = sort?.sortBy === col.key;
+                const indicator = isActive
+                  ? sort?.sortDir === 'asc'
+                    ? ' ▲'
+                    : ' ▼'
+                  : col.sortable
+                    ? ' ⇅'
+                    : '';
+                return col.sortable && sort ? (
+                  <TableHead
+                    key={col.key}
+                    className={`cursor-pointer select-none${col.className ? ` ${col.className}` : ''}`}
+                    onClick={() => {
+                      const { sortBy: newKey, sortDir: newDir } = nextSort(sort, col.key);
+                      sort.onSort(newKey, newDir);
+                    }}
+                  >
+                    {col.label}
+                    <span aria-hidden="true" className="text-muted-foreground text-xs">{indicator}</span>
+                  </TableHead>
+                ) : (
+                  <TableHead key={col.key} className={col.className}>{col.label}</TableHead>
+                );
+              })}
             </TableRow>
           </TableHeader>
           <TableBody>
