@@ -124,12 +124,29 @@ export default async function LotsPage({ searchParams }: PageProps) {
     return `/lots?${p.toString()}`;
   };
 
+  const buildExportUrl = () => {
+    const p = new URLSearchParams();
+    if (params.status) p.set('status', params.status);
+    if (params.locationId) p.set('locationId', params.locationId);
+    const qs = p.toString();
+    return `/api/lots/export${qs ? `?${qs}` : ''}`;
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
         <PageHeader
           title="Lots"
           description={`${total} lot${total !== 1 ? 's' : ''} found`}
+          actions={
+            <a
+              href={buildExportUrl()}
+              download
+              className="rounded-lg border border-border bg-card px-3 py-2 text-sm font-medium shadow-sm hover:bg-muted"
+            >
+              Export CSV
+            </a>
+          }
         />
 
         <div className="flex gap-8">
