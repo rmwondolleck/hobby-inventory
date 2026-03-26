@@ -78,6 +78,14 @@ jest.mock('@/components/PageHeader', () => ({
   ),
 }));
 
+jest.mock('@/components/EventTimeline', () => ({
+  EventTimeline: ({ events }: { events: unknown[] }) => (
+    <div data-testid="event-timeline">
+      {events.length === 0 ? 'No history yet.' : `${events.length} events`}
+    </div>
+  ),
+}));
+
 // ── Fixtures ──────────────────────────────────────────────────────────────────
 
 const baseLot: LotWithDetails = {
@@ -124,10 +132,18 @@ function makePart(lots: LotWithDetails[] = [], overrides: Partial<PartDetail> = 
 }
 
 function setupFetch(part: PartDetail) {
-  global.fetch = jest.fn().mockResolvedValue({
-    ok: true,
-    json: async () => ({ data: part }),
-  } as Response);
+  global.fetch = jest.fn().mockImplementation((url: string) => {
+    if (typeof url === 'string' && url.endsWith('/events')) {
+      return Promise.resolve({
+        ok: true,
+        json: async () => ({ data: [], total: 0 }),
+      } as Response);
+    }
+    return Promise.resolve({
+      ok: true,
+      json: async () => ({ data: part }),
+    } as Response);
+  });
 }
 
 afterEach(() => {
