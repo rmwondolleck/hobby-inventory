@@ -29,6 +29,7 @@ export interface LotListItem {
     name: string;
     category?: string | null;
     mpn?: string | null;
+    reorderPoint?: number | null;
   };
   location?: {
     id: string;

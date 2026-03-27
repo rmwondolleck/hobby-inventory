@@ -102,7 +102,7 @@ export async function GET(request: Request) {
       take: limit,
       orderBy: { [sortBy]: sortDir },
       include: {
-        part: { select: { id: true, name: true, category: true, mpn: true } },
+        part: { select: { id: true, name: true, category: true, mpn: true, reorderPoint: true } },
         location: { select: { id: true, name: true, path: true } },
       },
     }),
