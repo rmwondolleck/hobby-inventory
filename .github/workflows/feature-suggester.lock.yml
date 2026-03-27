@@ -21,9 +21,9 @@
 #
 # For more information: https://github.github.com/gh-aw/introduction/overview/
 #
-# Weekly feature discovery agent — analyzes the codebase, domain model, and backlog to suggest grounded, implementable feature ideas and surface existing regressions or polish gaps
+# Weekly feature discovery agent — analyzes the codebase, domain model, and backlog to suggest features, improvements, bug fixes, and one experimental wildcard idea
 #
-# gh-aw-metadata: {"schema_version":"v2","frontmatter_hash":"578047f1d4b53ab270f98046a5c69e5e69ac004040f9aa74d138725589d13a01","compiler_version":"v0.57.2","strict":true}
+# gh-aw-metadata: {"schema_version":"v2","frontmatter_hash":"16a796958ec54a55c18767c52765e912f7842ecede5645b4ac8bcccad0f22db8","compiler_version":"v0.57.2","strict":true}
 
 name: "Feature Suggester — Weekly Discovery Agent"
 "on":
@@ -128,7 +128,7 @@ jobs:
           cat "/opt/gh-aw/prompts/safe_outputs_prompt.md"
           cat << 'GH_AW_PROMPT_EOF'
           <safe-output-tools>
-          Tools: create_issue, missing_tool, missing_data, noop
+          Tools: add_comment, create_issue, missing_tool, missing_data, noop
           </safe-output-tools>
           <github-context>
           The following GitHub context information is available for this workflow:
@@ -331,7 +331,7 @@ jobs:
           mkdir -p /tmp/gh-aw/safeoutputs
           mkdir -p /tmp/gh-aw/mcp-logs/safeoutputs
           cat > /opt/gh-aw/safeoutputs/config.json << 'GH_AW_SAFE_OUTPUTS_CONFIG_EOF'
-          {"create_issue":{"max":1},"missing_data":{},"missing_tool":{},"noop":{"max":1}}
+          {"add_comment":{"max":2,"target":"*"},"create_issue":{"max":1},"missing_data":{},"missing_tool":{},"noop":{"max":1}}
           GH_AW_SAFE_OUTPUTS_CONFIG_EOF
           cat > /opt/gh-aw/safeoutputs/tools.json << 'GH_AW_SAFE_OUTPUTS_TOOLS_EOF'
           [
@@ -383,6 +383,43 @@ jobs:
                 "type": "object"
               },
               "name": "create_issue"
+            },
+            {
+              "description": "Add a comment to an existing GitHub issue, pull request, or discussion. Use this to provide feedback, answer questions, or add information to an existing conversation. For creating new items, use create_issue, create_discussion, or create_pull_request instead. IMPORTANT: Comments are subject to validation constraints enforced by the MCP server - maximum 65536 characters for the complete comment (including footer which is added automatically), 10 mentions (@username), and 50 links. Exceeding these limits will result in an immediate error with specific guidance. NOTE: By default, this tool requires discussions:write permission. If your GitHub App lacks Discussions permission, set 'discussions: false' in the workflow's safe-outputs.add-comment configuration to exclude this permission. CONSTRAINTS: Maximum 2 comment(s) can be added. Target: *.",
+              "inputSchema": {
+                "additionalProperties": false,
+                "properties": {
+                  "body": {
+                    "description": "The comment text in Markdown format. This is the 'body' field - do not use 'comment_body' or other variations. Provide helpful, relevant information that adds value to the conversation. CONSTRAINTS: The complete comment (your body text + automatically added footer) must not exceed 65536 characters total. Maximum 10 mentions (@username), maximum 50 links (http/https URLs). A footer (~200-500 characters) is automatically appended with workflow attribution, so leave adequate space. If these limits are exceeded, the tool call will fail with a detailed error message indicating which constraint was violated.",
+                    "type": "string"
+                  },
+                  "integrity": {
+                    "description": "Trustworthiness level of the message source (e.g., \"low\", \"medium\", \"high\").",
+                    "type": "string"
+                  },
+                  "item_number": {
+                    "description": "The issue, pull request, or discussion number to comment on. This is the numeric ID from the GitHub URL (e.g., 123 in github.com/owner/repo/issues/123). Can also be a temporary_id (e.g., 'aw_abc123') from a previously created issue in the same workflow run. If omitted, the tool auto-targets the issue, PR, or discussion that triggered this workflow. Auto-targeting only works for issue, pull_request, discussion, and comment event triggers — it does NOT work for schedule, workflow_dispatch, push, or workflow_run triggers. For those trigger types, always provide item_number explicitly, or the tool call will fail with an error.",
+                    "type": [
+                      "number",
+                      "string"
+                    ]
+                  },
+                  "secrecy": {
+                    "description": "Confidentiality level of the message content (e.g., \"public\", \"internal\", \"private\").",
+                    "type": "string"
+                  },
+                  "temporary_id": {
+                    "description": "Unique temporary identifier for this comment. Format: 'aw_' followed by 3 to 12 alphanumeric characters (e.g., 'aw_abc1', 'aw_Test123'). Auto-generated if not provided. The temporary ID is returned in the tool response so you can reference this comment later.",
+                    "pattern": "^aw_[A-Za-z0-9]{3,12}$",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "body"
+                ],
+                "type": "object"
+              },
+              "name": "add_comment"
             },
             {
               "description": "Report that a tool or capability needed to complete the task is not available, or share any information you deem important about missing functionality or limitations. Use this when you cannot accomplish what was requested because the required functionality is missing or access is restricted.",
@@ -481,6 +518,24 @@ jobs:
           GH_AW_SAFE_OUTPUTS_TOOLS_EOF
           cat > /opt/gh-aw/safeoutputs/validation.json << 'GH_AW_SAFE_OUTPUTS_VALIDATION_EOF'
           {
+            "add_comment": {
+              "defaultMax": 1,
+              "fields": {
+                "body": {
+                  "required": true,
+                  "type": "string",
+                  "sanitize": true,
+                  "maxLength": 65000
+                },
+                "item_number": {
+                  "issueOrPRNumber": true
+                },
+                "repo": {
+                  "type": "string",
+                  "maxLength": 256
+                }
+              }
+            },
             "create_issue": {
               "defaultMax": 1,
               "fields": {
@@ -895,7 +950,7 @@ jobs:
         uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
         env:
           WORKFLOW_NAME: "Feature Suggester — Weekly Discovery Agent"
-          WORKFLOW_DESCRIPTION: "Weekly feature discovery agent — analyzes the codebase, domain model, and backlog to suggest grounded, implementable feature ideas and surface existing regressions or polish gaps"
+          WORKFLOW_DESCRIPTION: "Weekly feature discovery agent — analyzes the codebase, domain model, and backlog to suggest features, improvements, bug fixes, and one experimental wildcard idea"
           HAS_PATCH: ${{ steps.collect_output.outputs.has_patch }}
         with:
           script: |
@@ -993,7 +1048,9 @@ jobs:
     runs-on: ubuntu-slim
     permissions:
       contents: read
+      discussions: write
       issues: write
+      pull-requests: write
     concurrency:
       group: "gh-aw-conclusion-feature-suggester"
       cancel-in-progress: false
@@ -1092,7 +1149,9 @@ jobs:
     runs-on: ubuntu-slim
     permissions:
       contents: read
+      discussions: write
       issues: write
+      pull-requests: write
     timeout-minutes: 15
     env:
       GH_AW_CALLER_WORKFLOW_ID: "${{ github.repository }}/feature-suggester"
@@ -1102,6 +1161,8 @@ jobs:
     outputs:
       code_push_failure_count: ${{ steps.process_safe_outputs.outputs.code_push_failure_count }}
       code_push_failure_errors: ${{ steps.process_safe_outputs.outputs.code_push_failure_errors }}
+      comment_id: ${{ steps.process_safe_outputs.outputs.comment_id }}
+      comment_url: ${{ steps.process_safe_outputs.outputs.comment_url }}
       create_discussion_error_count: ${{ steps.process_safe_outputs.outputs.create_discussion_error_count }}
       create_discussion_errors: ${{ steps.process_safe_outputs.outputs.create_discussion_errors }}
       created_issue_number: ${{ steps.process_safe_outputs.outputs.created_issue_number }}
@@ -1134,7 +1195,7 @@ jobs:
           GH_AW_ALLOWED_DOMAINS: "*.jsr.io,api.business.githubcopilot.com,api.enterprise.githubcopilot.com,api.github.com,api.githubcopilot.com,api.individual.githubcopilot.com,api.npms.io,api.snapcraft.io,archive.ubuntu.com,azure.archive.ubuntu.com,bun.sh,cdn.jsdelivr.net,crl.geotrust.com,crl.globalsign.com,crl.identrust.com,crl.sectigo.com,crl.thawte.com,crl.usertrust.com,crl.verisign.com,crl3.digicert.com,crl4.digicert.com,crls.ssl.com,deb.nodesource.com,deno.land,esm.sh,get.pnpm.io,github.com,googleapis.deno.dev,googlechromelabs.github.io,host.docker.internal,json-schema.org,json.schemastore.org,jsr.io,keyserver.ubuntu.com,nodejs.org,npm.pkg.github.com,npmjs.com,npmjs.org,ocsp.digicert.com,ocsp.geotrust.com,ocsp.globalsign.com,ocsp.identrust.com,ocsp.sectigo.com,ocsp.ssl.com,ocsp.thawte.com,ocsp.usertrust.com,ocsp.verisign.com,packagecloud.io,packages.cloud.google.com,packages.microsoft.com,ppa.launchpad.net,raw.githubusercontent.com,registry.bower.io,registry.npmjs.com,registry.npmjs.org,registry.yarnpkg.com,repo.yarnpkg.com,s.symcb.com,s.symcd.com,security.ubuntu.com,skimdb.npmjs.com,storage.googleapis.com,telemetry.enterprise.githubcopilot.com,telemetry.vercel.com,ts-crl.ws.symantec.com,ts-ocsp.ws.symantec.com,www.npmjs.com,www.npmjs.org,yarnpkg.com"
           GITHUB_SERVER_URL: ${{ github.server_url }}
           GITHUB_API_URL: ${{ github.api_url }}
-          GH_AW_SAFE_OUTPUTS_HANDLER_CONFIG: "{\"create_issue\":{\"close_older_issues\":true,\"labels\":[\"feature-suggestions\",\"weekly-report\"],\"max\":1,\"title_prefix\":\"[Feature Suggestions] \"},\"missing_data\":{},\"missing_tool\":{}}"
+          GH_AW_SAFE_OUTPUTS_HANDLER_CONFIG: "{\"add_comment\":{\"max\":2,\"target\":\"*\"},\"create_issue\":{\"close_older_issues\":true,\"labels\":[\"feature-suggestions\",\"weekly-report\"],\"max\":1,\"title_prefix\":\"[Feature Suggestions] \"},\"missing_data\":{},\"missing_tool\":{}}"
         with:
           github-token: ${{ secrets.GH_AW_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
           script: |
