@@ -127,6 +127,18 @@ export async function PATCH(request: Request, { params }: RouteParams) {
         : {};
     updateData.parameters = JSON.stringify(parameters);
   }
+  if ('reorderPoint' in body) {
+    if (body.reorderPoint === null) {
+      updateData.reorderPoint = null;
+    } else if (typeof body.reorderPoint === 'number' && Number.isInteger(body.reorderPoint)) {
+      updateData.reorderPoint = body.reorderPoint;
+    } else {
+      return NextResponse.json(
+        { error: 'validation_error', message: 'reorderPoint must be an integer or null' },
+        { status: 400 }
+      );
+    }
+  }
 
   const updated = await prisma.part.update({ where: { id }, data: updateData });
 
