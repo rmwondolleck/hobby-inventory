@@ -20,6 +20,9 @@ safe-outputs:
     max: 1
     close-older-issues: true
   noop:
+  add-comment:
+    target: "*"
+    max: 2
 network:
   allowed:
     - defaults
@@ -53,6 +56,77 @@ The following are **permanently out of scope** and must **never** appear in any 
 - **Mobile app or PWA packaging** — desktop-first is intentional; responsive CSS improvements are fine, but app packaging is not
 
 These items must not appear even as a "deferred" mention or adoption-tracker entry.
+
+## Step 0: Process Approvals from Previous Issue
+
+**Run this BEFORE generating new suggestions.** This is how the human's decisions feed back into the system.
+
+### How Approvals Work
+
+The human reviews the weekly suggestions issue and comments with an `/approve` command to signal which suggestions to promote:
+
+```
+/approve 1, 3, 6
+```
+
+This means: "I want suggestions 1, 3, and 6 turned into real work."
+
+### Processing Steps
+
+1. **Find the previous weekly issue:**
+   ```bash
+   gh issue list --label "feature-suggestions" --state closed --limit 1 --json number,title,body,comments
+   ```
+   Also check for open issues (in case the previous one hasn't been closed yet by `close-older-issues`):
+   ```bash
+   gh issue list --label "feature-suggestions" --state open --limit 2 --json number,title,body,comments
+   ```
+
+2. **Read comments** on that issue. Look for comments from **non-bot users** that contain `/approve` followed by a comma-separated list of suggestion numbers (1–6).
+
+3. **For each approved suggestion number**, look up the suggestion details from `cache-memory` under `feature-suggester/history → suggestions` (the previous run's suggestions array, indexed by position).
+
+4. **Update cache-memory**: Move approved suggestions from `suggestions` to `approved_queue`:
+   ```json
+   {
+     "approved_queue": [
+       {
+         "title": "Inline Editing for Part Names",
+         "category": "Gap-fill",
+         "complexity": "M",
+         "entities": ["Part"],
+         "approved_from_issue": 286,
+         "approved_on": "2026-03-26",
+         "acceptance_criteria": ["criterion 1", "criterion 2"],
+         "files_touched": ["src/components/DataTable.tsx", "..."],
+         "user_story": "As a maker..."
+       }
+     ]
+   }
+   ```
+   Preserve the FULL suggestion detail — title, category, complexity, entities, files, user story, acceptance criteria, and proposed change. This is essential for downstream planning.
+
+5. **If any suggestions were approved**, add a confirmation comment on the previous issue:
+   ```markdown
+   ✅ **Approved suggestions recorded:**
+   - #1: Inline Editing for Part Names
+   - #3: Shopping List Generator
+   - #6: 🧪 Storage Heatmap
+
+   These will appear in the next weekly report under **📋 Approved — Ready for Planning** and are ready for epic creation via `plan-to-issues`.
+   ```
+
+6. **If no `/approve` comments found**, skip silently and continue to Step 1.
+
+### What Happens to Approved Suggestions
+
+Approved suggestions flow into the system in two ways:
+
+**Immediate visibility:** They appear in the next weekly issue under a prominent **📋 Approved — Ready for Planning** section with their full details. This serves as a persistent backlog of ideas the human has greenlit.
+
+**Epic creation:** When the human is ready to build them, they use the existing `plan-to-issues` prompt (`.github/prompts/plan-to-issues.prompt.md`) to group approved suggestions into an epic. The suggestion format is deliberately designed so its acceptance criteria and proposed changes can be copy-pasted directly into feature issues.
+
+**Dequeue:** Once an approved suggestion has been turned into a real GitHub issue (detected by title matching in Step 2), it moves from `approved_queue` to `adopted_as_issues` in cache-memory and no longer appears in the "Ready for Planning" section.
 
 ## Project Contract
 
@@ -91,10 +165,13 @@ You MUST read these documents at the start of every run. They are your source of
 Read from `cache-memory` under the key `feature-suggester/history` to retrieve:
 - Previously suggested features (avoid repeating them)
 - Features that were accepted and turned into issues (track adoption rate)
+- Approved suggestions awaiting planning (the `approved_queue`)
 - Previously suggested Experimental ideas (never repeat an Experimental — always come up with a fresh one)
 - Any feedback from prior reports
 
 If this is the first run, the cache will be empty — proceed fresh.
+
+**Check for dequeuing:** For each item in `approved_queue`, search the open issues (from Step 2) by title. If a matching issue exists, move it from `approved_queue` to `adopted_as_issues`.
 
 ## Step 2: Understand Current Backlog
 
@@ -110,7 +187,7 @@ Build a mental model of:
 - What bug fixes are pending
 - What the most recent closed issues were about (to understand momentum)
 
-**DO NOT suggest features that overlap with existing open issues.**
+**DO NOT suggest features that overlap with existing open issues OR items already in the `approved_queue`.**
 
 ## Step 3: Analyze Implementation Gaps
 
@@ -329,9 +406,10 @@ Before publishing, self-review each suggestion:
 2. **Is it technically feasible?** Does the current schema/API support it, or would it need migrations?
 3. **Was it suggested before?** Check cache-memory. For Experimental ideas, this is especially important — **never repeat one**.
 4. **Is it in the Hard Constraints list?** If yes, drop it immediately and replace it.
-5. **Is the complexity estimate realistic?** Consider the existing patterns — a new API endpoint following existing patterns is S; a new entity requiring schema changes is M-L.
-6. **Does it align with the target user?** Re-read the persona: solo maker, power user, values speed, comfortable with technical UI.
-7. **For the Experimental idea**: Does it pass the *"that's clever"* test? Would the maker's eyes light up, or would they shrug? If the latter, dig deeper in Step 3f and pick a better one.
+5. **Is it already in `approved_queue`?** If yes, don't re-suggest — it's already greenlit and waiting for planning.
+6. **Is the complexity estimate realistic?** Consider the existing patterns — a new API endpoint following existing patterns is S; a new entity requiring schema changes is M-L.
+7. **Does it align with the target user?** Re-read the persona: solo maker, power user, values speed, comfortable with technical UI.
+8. **For the Experimental idea**: Does it pass the *"that's clever"* test? Would the maker's eyes light up, or would they shrug? If the latter, dig deeper in Step 3f and pick a better one.
 
 Drop and replace any suggestion that fails these checks.
 
@@ -344,18 +422,26 @@ Save to `cache-memory` under key `feature-suggester/history`:
   "last_run": "2026-03-26",
   "suggestions": [
     {
+      "number": 1,
       "title": "<suggestion title>",
       "category": "<category>",
       "complexity": "<S/M/L>",
-      "entities": ["Part", "Lot"]
+      "entities": ["Part", "Lot"],
+      "files_touched": ["src/..."],
+      "user_story": "As a maker...",
+      "acceptance_criteria": ["criterion 1", "criterion 2"],
+      "proposed_change": "Build X that does Y..."
     }
   ],
   "all_past_suggestions": ["<title 1>", "<title 2>", "..."],
   "past_experimental_ideas": ["<experimental title 1>", "<experimental title 2>"],
+  "approved_queue": [],
   "adopted_as_issues": ["<title that became a real issue>"],
   "never_suggest": ["Print labels", "Multi-currency conversion", "External integrations requiring secrets", "Mobile app / PWA"]
 }
 ```
+
+**Important:** The `suggestions` array must contain the FULL detail for each suggestion (not just the title). This is what Step 0 reads when processing `/approve` commands — if the detail is missing, the approval can't be recorded properly.
 
 Keep at most 24 weeks of suggestion history (trim oldest if exceeded). **Never trim Experimental ideas from `past_experimental_ideas`** — they must remain for the full 24 weeks to prevent repeats.
 
@@ -375,6 +461,36 @@ Create a single issue with all 6 suggestions:
 **Backlog**: <number of open issues> open issues across <number of epics> epics
 
 ---
+
+### 🎯 How to Act on These
+
+**To approve suggestions for building**, comment on this issue:
+
+```
+/approve 1, 3, 6
+```
+
+The next weekly run will record your choices and surface them under **📋 Approved — Ready for Planning**. When you're ready to build, use the `plan-to-issues` prompt to group approved suggestions into an epic — or create issues manually using the acceptance criteria below.
+
+**To pass on all suggestions**, do nothing — the next run will generate a fresh batch.
+
+---
+
+<if approved_queue is not empty>
+### 📋 Approved — Ready for Planning
+
+These suggestions were approved from previous weeks and are waiting to be turned into issues/epics:
+
+| Title | Category | Complexity | Approved |
+|-------|----------|------------|----------|
+| <title> | <category> | <S/M/L> | <date> |
+
+<for each item in approved_queue, render the full suggestion detail — title, user story, proposed change, acceptance criteria, files touched>
+
+> **Next step:** Use `.github/prompts/plan-to-issues.prompt.md` to create an epic from these, or create individual issues manually.
+
+---
+</if>
 
 ### 📊 Suggestion Summary
 
@@ -409,7 +525,7 @@ Create a single issue with all 6 suggestions:
 
 | Past Suggestion | Status |
 |----------------|--------|
-| <suggestion from prior run> | ✅ Adopted as #<issue> / 🔄 Under consideration / ⏭️ Deferred |
+| <suggestion from prior run> | ✅ Adopted as #<issue> / ✅ Approved — awaiting planning / ⏭️ Passed |
 
 ---
 
@@ -421,7 +537,7 @@ Create a single issue with all 6 suggestions:
 
 | Week | Idea | Status |
 |------|------|--------|
-| <date> | <title> | ✅ Adopted / 💡 Sparked discussion / ⏭️ Passed / 🆕 This week |
+| <date> | <title> | ✅ Adopted / ✅ Approved / 💡 Sparked discussion / ⏭️ Passed / 🆕 This week |
 
 ---
 
@@ -432,7 +548,7 @@ Create a single issue with all 6 suggestions:
 
 - **Be grounded** — every suggestion must reference specific files, endpoints, or spec sections. No hand-waving.
 - **Be realistic** — complexity estimates should account for the existing patterns, not greenfield effort.
-- **Avoid duplication** — check open issues AND cache-memory before suggesting.
+- **Avoid duplication** — check open issues, cache-memory, AND `approved_queue` before suggesting.
 - **Prioritize gap-fills and Bug/Polish** — these are highest confidence suggestions.
 - **Think like the user** — a solo maker who values speed and data density. Don't suggest enterprise features.
 - **Be specific in acceptance criteria** — the coding-agent should be able to implement directly from your criteria.
