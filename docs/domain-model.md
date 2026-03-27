@@ -2,7 +2,7 @@
 
 **Version:** 1.0  
 **Status:** Locked for MVP  
-**Last Updated:** 2026-03-24
+**Last Updated:** 2026-03-26
 
 ## Overview
 
@@ -424,16 +424,18 @@ This document defines the core domain model for the Hobby Inventory system. All 
 
 ---
 
-## Out of Scope (MVP)
+## Out of Scope
 
-The following are **intentionally excluded** from the MVP:
+The following are **intentionally excluded** and must not be suggested, planned, or implemented:
+
 - User/tenant models (single-user system)
 - Supplier APIs or automated ordering
 - Distributor sync (Mouser, Digi-Key)
 - OCR for datasheet parsing
-- Multi-currency conversions (store as entered)
-- Inventory value calculations (future reporting feature)
-- Barcode/QR generation
+- Multi-currency conversions (store as entered; USD only)
+- Inventory value calculations (future reporting feature — post-MVP only)
+- Barcode/QR code generation
+- **Print label generation of any kind** — this is explicitly not a feature of this application
 - Image attachments
 
 ---
