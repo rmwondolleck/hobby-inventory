@@ -73,8 +73,8 @@ function DefinitionItem({
 }) {
   return (
     <div>
-      <dt className="text-xs font-medium uppercase tracking-wide text-gray-500">{label}</dt>
-      <dd className="mt-1 text-sm text-gray-900">{children}</dd>
+      <dt className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{label}</dt>
+      <dd className="mt-1 text-sm text-foreground">{children}</dd>
     </div>
   );
 }
@@ -136,23 +136,23 @@ export default async function LotDetailPage({ params }: PageProps) {
   }));
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-background">
       <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6 lg:px-8">
         {/* Breadcrumb */}
-        <nav className="mb-6 text-sm text-gray-500">
-          <Link href="/lots" className="hover:text-gray-700">
+        <nav className="mb-6 text-sm text-muted-foreground">
+          <Link href="/lots" className="hover:text-foreground">
             Lots
           </Link>
           <span className="mx-2">/</span>
-          <span className="text-gray-900">{lot.part.name}</span>
+          <span className="text-foreground">{lot.part.name}</span>
         </nav>
 
         {/* Header */}
         <div className="mb-6 flex items-start justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">{lot.part.name}</h1>
+            <h1 className="text-2xl font-bold text-foreground">{lot.part.name}</h1>
             {lot.part.category && (
-              <p className="mt-1 text-sm text-gray-500">{lot.part.category}</p>
+              <p className="mt-1 text-sm text-muted-foreground">{lot.part.category}</p>
             )}
           </div>
           <LotStatusBadge status={lot.status} className="shrink-0 px-3 py-1 text-sm" />
@@ -172,8 +172,8 @@ export default async function LotDetailPage({ params }: PageProps) {
           />
 
           {/* Core Details */}
-          <section className="rounded-lg bg-white p-6 shadow-sm">
-            <h2 className="mb-4 text-base font-semibold text-gray-900">Lot Details</h2>
+          <section className="rounded-lg bg-card p-6 shadow-sm">
+            <h2 className="mb-4 text-base font-semibold text-card-foreground">Lot Details</h2>
             <dl className="grid grid-cols-2 gap-4 sm:grid-cols-3">
               <DefinitionItem label="Quantity">
                 <span
@@ -217,16 +217,16 @@ export default async function LotDetailPage({ params }: PageProps) {
 
             {lot.notes && (
               <div className="mt-4 border-t pt-4">
-                <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Notes</p>
-                <p className="mt-1 text-sm text-gray-700">{lot.notes}</p>
+                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Notes</p>
+                <p className="mt-1 text-sm text-foreground">{lot.notes}</p>
               </div>
             )}
           </section>
 
           {/* Source / Purchase Info */}
           {hasSource && (
-            <section className="rounded-lg bg-white p-6 shadow-sm">
-              <h2 className="mb-4 text-base font-semibold text-gray-900">Source</h2>
+            <section className="rounded-lg bg-card p-6 shadow-sm">
+              <h2 className="mb-4 text-base font-semibold text-card-foreground">Source</h2>
               <dl className="grid grid-cols-2 gap-4 sm:grid-cols-3">
                 {source.type && (
                   <DefinitionItem label="Store">
@@ -269,8 +269,8 @@ export default async function LotDetailPage({ params }: PageProps) {
 
           {/* Allocations */}
           {lot.allocations.length > 0 && (
-            <section className="rounded-lg bg-white p-6 shadow-sm">
-              <h2 className="mb-4 text-base font-semibold text-gray-900">
+            <section className="rounded-lg bg-card p-6 shadow-sm">
+              <h2 className="mb-4 text-base font-semibold text-card-foreground">
                 Allocations ({lot.allocations.length})
               </h2>
               <div className="divide-y">
@@ -285,13 +285,13 @@ export default async function LotDetailPage({ params }: PageProps) {
                           {alloc.project.name}
                         </Link>
                         {alloc.notes && (
-                          <p className="text-xs text-gray-500">{alloc.notes}</p>
+                           <p className="text-xs text-muted-foreground">{alloc.notes}</p>
                         )}
                       </div>
                       <div className="flex items-center gap-2 text-right">
                         {alloc.quantity !== null && (
-                          <span className="text-sm font-medium text-gray-900">
-                            {alloc.quantity}
+                           <span className="text-sm font-medium text-foreground">
+                             {alloc.quantity}
                             {lot.unit ? ` ${lot.unit}` : ''}
                           </span>
                         )}
@@ -301,7 +301,7 @@ export default async function LotDetailPage({ params }: PageProps) {
                             alloc.status === 'reserved' && 'bg-blue-100 text-blue-800',
                             alloc.status === 'in_use' && 'bg-green-100 text-green-800',
                             alloc.status === 'deployed' && 'bg-purple-100 text-purple-800',
-                            alloc.status === 'recovered' && 'bg-gray-100 text-gray-800'
+                            alloc.status === 'recovered' && 'bg-muted text-muted-foreground'
                           )}
                         >
                           {alloc.status}
@@ -320,8 +320,8 @@ export default async function LotDetailPage({ params }: PageProps) {
           )}
 
           {/* Event History */}
-          <section className="rounded-lg bg-white p-6 shadow-sm">
-            <h2 className="mb-4 text-base font-semibold text-gray-900">
+          <section className="rounded-lg bg-card p-6 shadow-sm">
+            <h2 className="mb-4 text-base font-semibold text-card-foreground">
               {lot.events.length === EVENTS_LIMIT
                 ? `History (most recent ${EVENTS_LIMIT})`
                 : lot.events.length > 0
