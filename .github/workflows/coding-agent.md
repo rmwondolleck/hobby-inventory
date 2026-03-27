@@ -25,7 +25,7 @@ on:
         type: boolean
         default: false
 permissions:
-  contents: read
+  contents: write
   issues: read
   pull-requests: read
   actions: read
@@ -78,9 +78,9 @@ safe-outputs:
       - "postcss.config.js"
       - "playwright.config.ts"
 checkout:
-  # The epic branch is automatically created from main if it does not exist.
-  # See the "Create epic branch if not exists" step in coding-agent.lock.yml.
-  ref: ${{ github.event.inputs.epic_branch }}
+  # Checkout the default branch (main). The "Create epic branch if not exists"
+  # step below creates the epic branch from main when it does not yet exist,
+  # or fetches and switches to it when it already exists.
 network:
   allowed:
     - defaults
@@ -113,6 +113,29 @@ steps:
       REMEDIATION_MODE: ${{ github.event.inputs.remediation_mode }}
       REMEDIATION_PR: ${{ github.event.inputs.remediation_pr }}
       STATE_ISSUE_NUMBER: ${{ github.event.inputs.state_issue_number }}
+  - name: Create epic branch if not exists
+    env:
+      EPIC_BRANCH: ${{ github.event.inputs.epic_branch }}
+      REPO_NAME: ${{ github.repository }}
+      SERVER_URL: ${{ github.server_url }}
+      GH_TOKEN: ${{ github.token }}
+    run: |
+      # Set up git credentials so we can fetch/push
+      SERVER_URL_STRIPPED="${SERVER_URL#https://}"
+      git remote set-url origin "https://x-access-token:${GH_TOKEN}@${SERVER_URL_STRIPPED}/${REPO_NAME}.git"
+      git config --global user.email "github-actions[bot]@users.noreply.github.com"
+      git config --global user.name "github-actions[bot]"
+      # Check if the epic branch already exists on the remote
+      if git ls-remote --exit-code --heads origin "$EPIC_BRANCH" > /dev/null 2>&1; then
+        echo "Branch $EPIC_BRANCH already exists, fetching and switching to it"
+        git fetch origin "$EPIC_BRANCH"
+        git checkout -B "$EPIC_BRANCH" "origin/$EPIC_BRANCH"
+      else
+        echo "Branch $EPIC_BRANCH does not exist, creating from $(git rev-parse --abbrev-ref HEAD)"
+        git checkout -B "$EPIC_BRANCH"
+        git push origin "$EPIC_BRANCH"
+        echo "Created and pushed branch $EPIC_BRANCH"
+      fi
 ---
 
 # Coding Agent
