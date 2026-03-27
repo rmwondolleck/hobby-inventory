@@ -40,6 +40,21 @@ export async function GET(request: Request) {
       ];
     }
 
+    if (tagsParam) {
+      const filterTags = tagsParam
+        .split(',')
+        .map((t) => t.trim())
+        .filter(Boolean);
+      // Tags are stored as JSON arrays (e.g. '["iot","wifi"]'). Wrapping the tag
+      // in double-quotes ensures an exact element match ("iot") rather than a
+      // partial substring match. Prisma parameterises the value so there is no
+      // SQL injection risk.
+      const tagConditions = filterTags.map((tag) => ({
+        tags: { contains: `"${tag}"` },
+      }));
+      where.AND = [...(Array.isArray(where.AND) ? where.AND : []), ...tagConditions];
+    }
+
     const [total, projects] = await Promise.all([
       prisma.project.count({ where }),
       prisma.project.findMany({
@@ -57,7 +72,7 @@ export async function GET(request: Request) {
 
     type ProjectFromDB = (typeof projects)[number];
 
-    let data = projects.map((project: ProjectFromDB) => {
+    const data = projects.map((project: ProjectFromDB) => {
       const tags = safeParseJson<string[]>(project.tags, []);
       const allocationsByStatus = project.allocations.reduce<Record<string, number>>(
         (acc, alloc) => {
@@ -75,16 +90,7 @@ export async function GET(request: Request) {
       };
     });
 
-    // In-memory tag filter
-    if (tagsParam) {
-      const filterTags = tagsParam
-        .split(',')
-        .map((t) => t.trim())
-        .filter(Boolean);
-      data = data.filter((p) => filterTags.every((tag) => p.tags.includes(tag)));
-    }
-
-    return NextResponse.json({ data, total: tagsParam ? data.length : total, limit, offset });
+    return NextResponse.json({ data, total, limit, offset });
   } catch {
     return NextResponse.json(
       { error: 'internal_error', message: 'An unexpected error occurred' },

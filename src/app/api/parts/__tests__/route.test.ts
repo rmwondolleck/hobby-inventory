@@ -437,6 +437,63 @@ describe('GET /api/parts (parameter filters)', () => {
   });
 });
 
+// ─── GET /api/parts with tag filters ─────────────────────────────────────────
+
+describe('GET /api/parts (tag filters)', () => {
+  it('passes tag filter to Prisma where clause (AND conditions)', async () => {
+    mockFindMany.mockResolvedValue([basePart]);
+    mockCount.mockResolvedValue(1);
+
+    await GET(makeRequest('http://localhost/api/parts?tags=resistor'));
+
+    const callArgs = mockFindMany.mock.calls[0][0];
+    expect(callArgs.where.AND).toEqual(
+      expect.arrayContaining([{ tags: { contains: '"resistor"' } }])
+    );
+  });
+
+  it('passes multi-tag filter as multiple AND conditions', async () => {
+    mockFindMany.mockResolvedValue([]);
+    mockCount.mockResolvedValue(0);
+
+    await GET(makeRequest('http://localhost/api/parts?tags=resistor,0402'));
+
+    const callArgs = mockFindMany.mock.calls[0][0];
+    expect(callArgs.where.AND).toEqual(
+      expect.arrayContaining([
+        { tags: { contains: '"resistor"' } },
+        { tags: { contains: '"0402"' } },
+      ])
+    );
+  });
+
+  it('uses $transaction (DB path) for tag-only filter (no in-memory param filter)', async () => {
+    mockFindMany.mockResolvedValue([basePart]);
+    mockCount.mockResolvedValue(1);
+
+    await GET(makeRequest('http://localhost/api/parts?tags=resistor'));
+
+    expect(mockTransaction).toHaveBeenCalledTimes(1);
+    // findMany is called via $transaction — verify the tag condition is in where.AND
+    const callArgs = mockFindMany.mock.calls[0][0];
+    expect(callArgs.where.AND).toEqual(
+      expect.arrayContaining([{ tags: { contains: '"resistor"' } }])
+    );
+  });
+
+  it('filter by tag with more matching records than limit — total reflects DB count', async () => {
+    const page = Array.from({ length: 50 }, (_, i) => ({ ...basePart, id: `p${i}` }));
+    mockTransaction.mockResolvedValue([page, 120]);
+
+    const res = await GET(makeRequest('http://localhost/api/parts?tags=resistor'));
+    const json = await res.json();
+
+    expect(json.total).toBe(120);
+    expect(json.data).toHaveLength(50);
+    expect(json.total).toBeGreaterThan(json.limit);
+  });
+});
+
 // ─── POST /api/parts ──────────────────────────────────────────────────────────
 
 describe('POST /api/parts', () => {
@@ -742,7 +799,9 @@ describe('GET /api/parts — tags filter', () => {
   };
 
   it('returns only parts matching a single tag filter', async () => {
-    mockFindMany.mockResolvedValue([wifiPart, btOnlyPart, untaggedPart]);
+    // Simulate DB filtering: mockFindMany returns only the matching part
+    mockFindMany.mockResolvedValue([wifiPart]);
+    mockCount.mockResolvedValue(1);
 
     const res = await GET(makeRequest('http://localhost/api/parts?tags=wifi'));
     expect(res.status).toBe(200);
@@ -754,7 +813,9 @@ describe('GET /api/parts — tags filter', () => {
   });
 
   it('returns only parts matching ALL tags in a multi-tag AND filter', async () => {
-    mockFindMany.mockResolvedValue([wifiPart, btOnlyPart, untaggedPart]);
+    // Simulate DB filtering: only wifiPart has both wifi AND bluetooth
+    mockFindMany.mockResolvedValue([wifiPart]);
+    mockCount.mockResolvedValue(1);
 
     const res = await GET(makeRequest('http://localhost/api/parts?tags=wifi,bluetooth'));
     expect(res.status).toBe(200);
@@ -800,7 +861,9 @@ describe('GET /api/parts — tags filter', () => {
   });
 
   it('returns empty data when no parts match the tag filter', async () => {
-    mockFindMany.mockResolvedValue([untaggedPart]);
+    // Simulate DB filtering: no parts match the tag
+    mockFindMany.mockResolvedValue([]);
+    mockCount.mockResolvedValue(0);
 
     const res = await GET(makeRequest('http://localhost/api/parts?tags=nonexistent'));
     expect(res.status).toBe(200);

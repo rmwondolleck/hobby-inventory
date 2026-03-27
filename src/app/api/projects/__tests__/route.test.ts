@@ -145,18 +145,65 @@ describe('GET /api/projects', () => {
     );
   });
 
-  it('filters by tags in-memory after DB query', async () => {
-    const projectWithArduino = { ...baseProject, tags: '["arduino"]' };
-    const projectWithRobot = { ...baseProject, id: 'proj-2', tags: '["robot"]' };
-    mockCount.mockResolvedValue(2);
-    mockFindMany.mockResolvedValue([projectWithArduino, projectWithRobot]);
+  it('passes tag filter to Prisma where clause (AND conditions)', async () => {
+    mockCount.mockResolvedValue(1);
+    mockFindMany.mockResolvedValue([baseProject]);
 
     const res = await GET(makeRequest('http://localhost/api/projects?tags=arduino'));
     const json = await res.json();
 
+    expect(mockFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          AND: expect.arrayContaining([
+            { tags: { contains: '"arduino"' } },
+          ]),
+        }),
+      })
+    );
+    expect(mockCount).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          AND: expect.arrayContaining([
+            { tags: { contains: '"arduino"' } },
+          ]),
+        }),
+      })
+    );
     expect(json.data).toHaveLength(1);
-    expect(json.data[0].id).toBe('proj001');
     expect(json.total).toBe(1);
+  });
+
+  it('multi-tag filter passes multiple AND conditions to Prisma where clause', async () => {
+    mockCount.mockResolvedValue(1);
+    mockFindMany.mockResolvedValue([baseProject]);
+
+    await GET(makeRequest('http://localhost/api/projects?tags=iot,wifi'));
+
+    expect(mockFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          AND: expect.arrayContaining([
+            { tags: { contains: '"iot"' } },
+            { tags: { contains: '"wifi"' } },
+          ]),
+        }),
+      })
+    );
+  });
+
+  it('filter by tag with more matching records than limit — total reflects DB count', async () => {
+    // DB count reflects total matching records (75), even though only limit (50) are returned
+    const page = Array.from({ length: 50 }, (_, i) => ({ ...baseProject, id: `proj-${i}` }));
+    mockCount.mockResolvedValue(75);
+    mockFindMany.mockResolvedValue(page);
+
+    const res = await GET(makeRequest('http://localhost/api/projects?tags=iot'));
+    const json = await res.json();
+
+    expect(json.total).toBe(75);
+    expect(json.data).toHaveLength(50);
+    expect(json.total).toBeGreaterThan(json.limit);
   });
 
   it('returns empty data array when no projects match', async () => {

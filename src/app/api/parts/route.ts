@@ -48,14 +48,6 @@ function matchesParameterFilters(
   return true;
 }
 
-/**
- * Match a part's tags array against the filter list.
- * All requested tags must be present (AND logic).
- */
-function matchesTagFilters(tags: string[], filters: string[]): boolean {
-  return filters.every(f => tags.includes(f));
-}
-
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
 
@@ -70,7 +62,6 @@ export async function GET(request: Request) {
     .split(',')
     .map(t => t.trim())
     .filter(Boolean);
-  const hasTagFilters = tagFilters.length > 0;
 
   const sortByParam = searchParams.get('sortBy');
   const sortDirParam = searchParams.get('sortDir') ?? 'desc';
@@ -81,6 +72,14 @@ export async function GET(request: Request) {
   const sortDir: 'asc' | 'desc' = sortDirParam === 'asc' ? 'asc' : 'desc';
 
   try {
+    // Tags are stored as JSON arrays (e.g. '["iot","wifi"]'). Wrapping each tag
+    // in double-quotes ensures an exact element match ("iot") rather than a
+    // partial substring match. Prisma parameterises the value so there is no
+    // SQL injection risk.
+    const tagConditions = tagFilters.map((tag) => ({
+      tags: { contains: `"${tag}"` },
+    }));
+
     const where = {
       ...(category ? { category } : {}),
       ...(archived === 'true'
@@ -98,6 +97,7 @@ export async function GET(request: Request) {
             ],
           }
         : {}),
+      ...(tagConditions.length > 0 ? { AND: tagConditions } : {}),
     };
 
     const lotInclude = {
@@ -118,17 +118,14 @@ export async function GET(request: Request) {
       },
     };
 
-    // When parameter or tag filters are present, fetch all matching (without pagination)
+    // When parameter filters are present, fetch all matching (without pagination)
     // and apply in-memory filtering, then paginate manually.
-    if (hasParamFilters || hasTagFilters) {
+    if (hasParamFilters) {
       const all = await prisma.part.findMany({ where, orderBy: { [sortBy]: sortDir }, include: lotInclude });
 
-      const filtered = all.filter((part: { parameters: string; tags: string }) => {
+      const filtered = all.filter((part: { parameters: string }) => {
         const params = safeParseJson<Record<string, unknown>>(part.parameters, {});
-        const tags = safeParseJson<string[]>(part.tags, []);
-        const passesParams = !hasParamFilters || matchesParameterFilters(params, paramFilters);
-        const passesTags = !hasTagFilters || matchesTagFilters(tags, tagFilters);
-        return passesParams && passesTags;
+        return matchesParameterFilters(params, paramFilters);
       });
 
       const total = filtered.length;
