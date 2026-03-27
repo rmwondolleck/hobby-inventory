@@ -33,25 +33,12 @@ function loadPinnedIds(): string[] {
 
 // --- Low stock ---
 const DEFAULT_THRESHOLD = 5;
-const THRESHOLDS_KEY = 'stock-thresholds';
 
 interface PartStockSummary {
   partId: string;
   partName: string;
   totalQuantity: number;
-}
-
-function loadThresholds(): Record<string, number> {
-  try {
-    const raw = localStorage.getItem(THRESHOLDS_KEY);
-    return raw ? (JSON.parse(raw) as Record<string, number>) : {};
-  } catch {
-    return {};
-  }
-}
-
-function saveThresholds(thresholds: Record<string, number>): void {
-  localStorage.setItem(THRESHOLDS_KEY, JSON.stringify(thresholds));
+  reorderPoint: number | null;
 }
 
 export default function Home() {
@@ -61,7 +48,6 @@ export default function Home() {
 
   // Low stock state
   const [lowStockParts, setLowStockParts] = useState<PartStockSummary[]>([]);
-  const [thresholds, setThresholds] = useState<Record<string, number>>({});
   const [thresholdInputs, setThresholdInputs] = useState<Record<string, string>>({});
 
   // Inventory value state
@@ -70,7 +56,6 @@ export default function Home() {
 
   useEffect(() => {
     setPinnedIds(loadPinnedIds());
-    setThresholds(loadThresholds());
 
     // Restore collapsed state from localStorage
     try {
@@ -123,6 +108,7 @@ export default function Home() {
               partId: lot.partId,
               partName: lot.part.name,
               totalQuantity: qty,
+              reorderPoint: lot.part.reorderPoint ?? null,
             });
           }
         }
@@ -174,16 +160,28 @@ export default function Home() {
     return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(value);
   }
 
-  function handleThresholdBlur(partId: string) {
+  async function handleThresholdBlur(partId: string) {
     const raw = thresholdInputs[partId];
     if (raw === undefined) return;
     const parsed = parseInt(raw, 10);
     const value = Number.isFinite(parsed) && parsed >= 0 ? parsed : DEFAULT_THRESHOLD;
-    setThresholds((prev) => {
-      const updated = { ...prev, [partId]: value };
-      saveThresholds(updated);
-      return updated;
-    });
+
+    // NOTE: reorderPoint is now stored server-side and shared across all sessions/devices.
+    try {
+      const res = await fetch(`/api/parts/${partId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reorderPoint: value }),
+      });
+      if (!res.ok) throw new Error('Failed to update reorder point');
+
+      // Optimistically update local React state so the UI reflects the new threshold immediately.
+      setLowStockParts((prev) =>
+        prev.map((p) => (p.partId === partId ? { ...p, reorderPoint: value } : p))
+      );
+    } catch {
+      // Silently ignore errors — the input will revert to the previous value on next render.
+    }
     setThresholdInputs((prev) => {
       const next = { ...prev };
       delete next[partId];
@@ -191,12 +189,12 @@ export default function Home() {
     });
   }
 
-  function getThreshold(partId: string): number {
-    return thresholds[partId] ?? DEFAULT_THRESHOLD;
+  function getThreshold(part: PartStockSummary): number {
+    return part.reorderPoint ?? DEFAULT_THRESHOLD;
   }
 
-  function getThresholdDisplayValue(partId: string): string {
-    return thresholdInputs[partId] ?? String(getThreshold(partId));
+  function getThresholdDisplayValue(part: PartStockSummary): string {
+    return thresholdInputs[part.partId] ?? String(getThreshold(part));
   }
 
   const pinnedProjects = projects.filter((p) => pinnedIds.includes(p.id));
@@ -295,7 +293,7 @@ export default function Home() {
                         <input
                           type="number"
                           min={0}
-                          value={getThresholdDisplayValue(part.partId)}
+                          value={getThresholdDisplayValue(part)}
                           onChange={(e) =>
                             setThresholdInputs((prev) => ({ ...prev, [part.partId]: e.target.value }))
                           }
