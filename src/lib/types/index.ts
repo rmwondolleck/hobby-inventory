@@ -77,6 +77,7 @@ export interface Part {
   tags: string[];
   notes?: string;
   parameters: Record<string, unknown>; // Category-specific parameters
+  reorderPoint?: number | null; // Quantity below which a lot is considered "low"; null = use client default
   createdAt: Date;
   updatedAt: Date;
   archivedAt?: Date;

@@ -248,6 +248,7 @@ export async function POST(request: Request) {
     tags,
     notes,
     parameters,
+    reorderPoint,
   } = body as Record<string, unknown>;
 
   if (!name || typeof name !== 'string' || name.trim() === '') {
@@ -271,6 +272,13 @@ export async function POST(request: Request) {
     );
   }
 
+  if (reorderPoint !== undefined && reorderPoint !== null && (typeof reorderPoint !== 'number' || !Number.isInteger(reorderPoint))) {
+    return NextResponse.json(
+      { error: 'validation_error', message: 'reorderPoint must be an integer or null' },
+      { status: 400 }
+    );
+  }
+
   try {
     const resolvedCategory = await resolveCategorySync({ category, categoryId });
 
@@ -286,6 +294,7 @@ export async function POST(request: Request) {
         parameters: JSON.stringify(
           parameters && typeof parameters === 'object' ? parameters : {}
         ),
+        reorderPoint: typeof reorderPoint === 'number' ? reorderPoint : null,
       },
     });
 
