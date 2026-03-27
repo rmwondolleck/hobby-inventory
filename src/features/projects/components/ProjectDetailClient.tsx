@@ -566,7 +566,7 @@ export function ProjectDetailClient({ id }: ProjectDetailClientProps) {
 
   if (error || !project) {
     return (
-      <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+      <div className="rounded-lg border border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-950/40 p-4 text-sm text-red-700 dark:text-red-400">
         Error: {error ?? 'Could not load project'}
       </div>
     );
@@ -624,7 +624,7 @@ export function ProjectDetailClient({ id }: ProjectDetailClientProps) {
         }
       />
       {archiveError && (
-        <div className="mb-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+        <div className="mb-4 rounded-lg border border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-950/40 p-3 text-sm text-red-700 dark:text-red-400">
           {archiveError}
         </div>
       )}
@@ -648,8 +648,8 @@ export function ProjectDetailClient({ id }: ProjectDetailClientProps) {
 
       {/* Wishlist notes */}
       {project.wishlistNotes && (
-        <div className="mb-6 rounded-lg bg-amber-50 p-4 text-sm text-amber-800 border border-amber-200">
-          <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-amber-500">
+        <div className="mb-6 rounded-lg bg-amber-50 dark:bg-amber-950/40 p-4 text-sm text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
+          <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-amber-500 dark:text-amber-400">
             Wishlist / Parts Needed
           </p>
           <p className="whitespace-pre-wrap">{project.wishlistNotes}</p>
@@ -695,7 +695,7 @@ export function ProjectDetailClient({ id }: ProjectDetailClientProps) {
         </div>
 
         {removeError && (
-          <div className="mb-3 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+          <div className="mb-3 rounded-lg border border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-950/40 p-3 text-sm text-red-700 dark:text-red-400">
             {removeError}
           </div>
         )}
