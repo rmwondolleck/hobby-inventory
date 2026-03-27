@@ -42,7 +42,7 @@ safe-outputs:
     labels: [integration-report]
     max: 1
   jobs:
-    create-epic-pr:
+    create_epic_pr:
       description: "Create a pull request from the epic branch to main. Use this instead of create_pull_request to support epics with more than 100 files changed."
       runs-on: ubuntu-latest
       inputs:
