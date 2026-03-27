@@ -25,6 +25,8 @@ model Part {
   tags         String   @default("[]") // JSON array stored as string
   notes        String?
   parameters   String   @default("{}") // JSON object stored as string
+  // Quantity below which a lot is considered "low"; null = use client default
+  reorderPoint Int?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
   archivedAt   DateTime?

@@ -663,6 +663,102 @@ describe('POST /api/parts', () => {
   });
 });
 
+// ─── GET /api/parts — reorderPoint field ─────────────────────────────────────
+
+describe('GET /api/parts — reorderPoint field', () => {
+  it('returns reorderPoint as null for parts without a threshold configured', async () => {
+    mockFindMany.mockResolvedValue([{ ...basePart, reorderPoint: null }]);
+    mockCount.mockResolvedValue(1);
+
+    const res = await GET(makeRequest('http://localhost/api/parts'));
+    const json = await res.json();
+
+    expect(json.data[0].reorderPoint).toBeNull();
+  });
+
+  it('returns reorderPoint value when set on a part', async () => {
+    mockFindMany.mockResolvedValue([{ ...basePart, reorderPoint: 10 }]);
+    mockCount.mockResolvedValue(1);
+
+    const res = await GET(makeRequest('http://localhost/api/parts'));
+    const json = await res.json();
+
+    expect(json.data[0].reorderPoint).toBe(10);
+  });
+});
+
+// ─── POST /api/parts — reorderPoint field ────────────────────────────────────
+
+describe('POST /api/parts — reorderPoint field', () => {
+  it('persists reorderPoint when provided', async () => {
+    mockCreate.mockResolvedValue({ ...basePart, reorderPoint: 10 });
+
+    const req = makeRequest('http://localhost/api/parts', {
+      method: 'POST',
+      body: JSON.stringify({ name: 'ESP32', reorderPoint: 10 }),
+    });
+
+    await POST(req);
+
+    const createArgs = mockCreate.mock.calls[0][0].data;
+    expect(createArgs.reorderPoint).toBe(10);
+  });
+
+  it('returns reorderPoint in the response', async () => {
+    mockCreate.mockResolvedValue({ ...basePart, reorderPoint: 10 });
+
+    const req = makeRequest('http://localhost/api/parts', {
+      method: 'POST',
+      body: JSON.stringify({ name: 'ESP32', reorderPoint: 10 }),
+    });
+
+    const res = await POST(req);
+    const json = await res.json();
+
+    expect(json.reorderPoint).toBe(10);
+  });
+
+  it('stores null when reorderPoint is omitted', async () => {
+    mockCreate.mockResolvedValue({ ...basePart, reorderPoint: null });
+
+    const req = makeRequest('http://localhost/api/parts', {
+      method: 'POST',
+      body: JSON.stringify({ name: 'Bare Part' }),
+    });
+
+    await POST(req);
+
+    const createArgs = mockCreate.mock.calls[0][0].data;
+    expect(createArgs.reorderPoint).toBeNull();
+  });
+
+  it('returns 400 when reorderPoint is not an integer', async () => {
+    const req = makeRequest('http://localhost/api/parts', {
+      method: 'POST',
+      body: JSON.stringify({ name: 'Part', reorderPoint: 3.14 }),
+    });
+
+    const res = await POST(req);
+    expect(res.status).toBe(400);
+    const json = await res.json();
+    expect(json.error).toBe('validation_error');
+  });
+
+  it('accepts reorderPoint: null explicitly', async () => {
+    mockCreate.mockResolvedValue({ ...basePart, reorderPoint: null });
+
+    const req = makeRequest('http://localhost/api/parts', {
+      method: 'POST',
+      body: JSON.stringify({ name: 'Part', reorderPoint: null }),
+    });
+
+    const res = await POST(req);
+    expect(res.status).toBe(201);
+    const createArgs = mockCreate.mock.calls[0][0].data;
+    expect(createArgs.reorderPoint).toBeNull();
+  });
+});
+
 // ─── GET /api/parts — categoryRecord field ────────────────────────────────────
 
 describe('GET /api/parts (categoryRecord)', () => {

@@ -30,7 +30,7 @@ jest.mock('next/link', () => {
 type LotStub = {
   partId: string;
   quantity: number | null;
-  part: { id: string; name: string };
+  part: { id: string; name: string; reorderPoint?: number | null };
 };
 
 interface InventoryStatsStub {
@@ -49,11 +49,11 @@ const DEFAULT_STATS: InventoryStatsStub = {
   lotsWithoutCostData: 0,
 };
 
-function makeLot(partId: string, partName: string, quantity: number | null = 3): LotStub {
+function makeLot(partId: string, partName: string, quantity: number | null = 3, reorderPoint: number | null = null): LotStub {
   return {
     partId,
     quantity,
-    part: { id: partId, name: partName },
+    part: { id: partId, name: partName, reorderPoint },
   };
 }
 
@@ -62,7 +62,14 @@ function mockFetch(
   outLots: LotStub[] = [],
   stats: InventoryStatsStub | null = DEFAULT_STATS,
 ) {
-  global.fetch = jest.fn().mockImplementation((url: string) => {
+  global.fetch = jest.fn().mockImplementation((url: string, options?: RequestInit) => {
+    // Handle PATCH calls to /api/parts/[id] for threshold updates
+    if (options?.method === 'PATCH' && (url as string).includes('/api/parts/')) {
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({ data: {} }),
+      } as Response);
+    }
     // The unified Home component also fetches active projects — return empty array for that endpoint
     if ((url as string).includes('/api/projects')) {
       return Promise.resolve({
@@ -242,8 +249,8 @@ describe('Home page — low stock warnings', () => {
 });
 
 describe('Home page — threshold management', () => {
-  it('shows default threshold of 5 when localStorage is empty', async () => {
-    mockFetch([makeLot('part-1', 'Resistor 10k', 2)], []);
+  it('shows default threshold of 5 when part has null reorderPoint', async () => {
+    mockFetch([makeLot('part-1', 'Resistor 10k', 2, null)], []);
     render(<Home />);
 
     await waitFor(() => {
@@ -252,9 +259,8 @@ describe('Home page — threshold management', () => {
     });
   });
 
-  it('loads a persisted threshold from localStorage', async () => {
-    localStorage.setItem('stock-thresholds', JSON.stringify({ 'part-1': 10 }));
-    mockFetch([makeLot('part-1', 'Resistor 10k', 2)], []);
+  it('loads threshold from part reorderPoint in API response', async () => {
+    mockFetch([makeLot('part-1', 'Resistor 10k', 2, 10)], []);
     render(<Home />);
 
     await waitFor(() => {
@@ -274,7 +280,7 @@ describe('Home page — threshold management', () => {
     expect(input.value).toBe('15');
   });
 
-  it('saves valid threshold to localStorage on blur', async () => {
+  it('calls PATCH /api/parts/[id] with new reorderPoint on blur', async () => {
     mockFetch([makeLot('part-1', 'Resistor 10k', 2)], []);
     render(<Home />);
 
@@ -284,8 +290,14 @@ describe('Home page — threshold management', () => {
     fireEvent.change(input, { target: { value: '20' } });
     fireEvent.blur(input);
 
-    const stored = JSON.parse(localStorage.getItem('stock-thresholds') ?? '{}');
-    expect(stored['part-1']).toBe(20);
+    await waitFor(() => {
+      const patchCall = (global.fetch as jest.Mock).mock.calls.find(
+        ([url, opts]: [string, RequestInit]) => opts?.method === 'PATCH' && url.includes('/api/parts/part-1'),
+      );
+      expect(patchCall).toBeDefined();
+      const body = JSON.parse(patchCall[1].body as string);
+      expect(body.reorderPoint).toBe(20);
+    });
   });
 
   it('falls back to DEFAULT_THRESHOLD (5) when blur value is not a valid number', async () => {
@@ -298,9 +310,15 @@ describe('Home page — threshold management', () => {
     fireEvent.change(input, { target: { value: 'abc' } });
     fireEvent.blur(input);
 
-    expect(input.value).toBe('5');
-    const stored = JSON.parse(localStorage.getItem('stock-thresholds') ?? '{}');
-    expect(stored['part-1']).toBe(5);
+    await waitFor(() => {
+      const patchCall = (global.fetch as jest.Mock).mock.calls.find(
+        ([url, opts]: [string, RequestInit]) => opts?.method === 'PATCH' && url.includes('/api/parts/part-1'),
+      );
+      expect(patchCall).toBeDefined();
+      const body = JSON.parse(patchCall[1].body as string);
+      expect(body.reorderPoint).toBe(5);
+      expect(input.value).toBe('5');
+    });
   });
 
   it('falls back to DEFAULT_THRESHOLD when blur value is negative', async () => {
@@ -313,10 +331,18 @@ describe('Home page — threshold management', () => {
     fireEvent.change(input, { target: { value: '-3' } });
     fireEvent.blur(input);
 
-    expect(input.value).toBe('5');
+    await waitFor(() => {
+      const patchCall = (global.fetch as jest.Mock).mock.calls.find(
+        ([url, opts]: [string, RequestInit]) => opts?.method === 'PATCH' && url.includes('/api/parts/part-1'),
+      );
+      expect(patchCall).toBeDefined();
+      const body = JSON.parse(patchCall[1].body as string);
+      expect(body.reorderPoint).toBe(5);
+      expect(input.value).toBe('5');
+    });
   });
 
-  it('accepts 0 as a valid threshold', async () => {
+  it('accepts 0 as a valid threshold and calls PATCH with reorderPoint 0', async () => {
     mockFetch([makeLot('part-1', 'Resistor 10k', 2)], []);
     render(<Home />);
 
@@ -326,12 +352,18 @@ describe('Home page — threshold management', () => {
     fireEvent.change(input, { target: { value: '0' } });
     fireEvent.blur(input);
 
+    await waitFor(() => {
+      const patchCall = (global.fetch as jest.Mock).mock.calls.find(
+        ([url, opts]: [string, RequestInit]) => opts?.method === 'PATCH' && url.includes('/api/parts/part-1'),
+      );
+      expect(patchCall).toBeDefined();
+      const body = JSON.parse(patchCall[1].body as string);
+      expect(body.reorderPoint).toBe(0);
+    });
     expect(input.value).toBe('0');
-    const stored = JSON.parse(localStorage.getItem('stock-thresholds') ?? '{}');
-    expect(stored['part-1']).toBe(0);
   });
 
-  it('does not save to localStorage if input was not changed before blur', async () => {
+  it('does not call PATCH if input was not changed before blur', async () => {
     mockFetch([makeLot('part-1', 'Resistor 10k', 2)], []);
     render(<Home />);
 
@@ -340,8 +372,26 @@ describe('Home page — threshold management', () => {
     const input = screen.getByLabelText(/stock threshold for resistor 10k/i);
     fireEvent.blur(input);
 
-    // No change event fired, so thresholdInputs['part-1'] is undefined → no save
-    expect(localStorage.getItem('stock-thresholds')).toBeNull();
+    // No change event fired, so thresholdInputs['part-1'] is undefined → no PATCH
+    const patchCall = (global.fetch as jest.Mock).mock.calls.find(
+      ([url, opts]: [string, RequestInit]) => opts?.method === 'PATCH' && url.includes('/api/parts/part-1'),
+    );
+    expect(patchCall).toBeUndefined();
+  });
+
+  it('optimistically updates local state after PATCH succeeds', async () => {
+    mockFetch([makeLot('part-1', 'Resistor 10k', 2, null)], []);
+    render(<Home />);
+
+    await waitFor(() => screen.getByLabelText(/stock threshold for resistor 10k/i));
+
+    const input = screen.getByLabelText(/stock threshold for resistor 10k/i) as HTMLInputElement;
+    fireEvent.change(input, { target: { value: '8' } });
+    fireEvent.blur(input);
+
+    await waitFor(() => {
+      expect(input.value).toBe('8');
+    });
   });
 });
 

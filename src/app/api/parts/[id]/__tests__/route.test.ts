@@ -168,6 +168,15 @@ describe('GET /api/parts/[id]', () => {
 
     expect(json.data.parameters).toEqual({});
   });
+
+  it('returns reorderPoint in GET response', async () => {
+    mockFindUnique.mockResolvedValue({ ...basePart, reorderPoint: 5, lots: [] });
+
+    const res = await GET(new Request('http://localhost/api/parts/cltest001'), makeParams('cltest001'));
+    const json = await res.json();
+
+    expect(json.data.reorderPoint).toBe(5);
+  });
 });
 
 // ─── PATCH /api/parts/[id] ────────────────────────────────────────────────────
@@ -491,5 +500,57 @@ describe('PATCH /api/parts/[id] (category sync)', () => {
     expect(mockUpdate).toHaveBeenCalledWith(expect.objectContaining({
       data: expect.objectContaining({ category: null }),
     }));
+  });
+
+  it('persists reorderPoint: 15 when provided in PATCH', async () => {
+    const updated = { ...basePart, reorderPoint: 15 };
+    mockFindUnique.mockResolvedValue(basePart);
+    mockUpdate.mockResolvedValue(updated);
+
+    const req = new Request('http://localhost/api/parts/cltest001', {
+      method: 'PATCH',
+      body: JSON.stringify({ reorderPoint: 15 }),
+    });
+
+    await PATCH(req, makeParams('cltest001'));
+
+    expect(mockUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ reorderPoint: 15 }),
+      })
+    );
+  });
+
+  it('clears reorderPoint to null when PATCH sends reorderPoint: null', async () => {
+    const updated = { ...basePart, reorderPoint: null };
+    mockFindUnique.mockResolvedValue({ ...basePart, reorderPoint: 10 });
+    mockUpdate.mockResolvedValue(updated);
+
+    const req = new Request('http://localhost/api/parts/cltest001', {
+      method: 'PATCH',
+      body: JSON.stringify({ reorderPoint: null }),
+    });
+
+    await PATCH(req, makeParams('cltest001'));
+
+    expect(mockUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ reorderPoint: null }),
+      })
+    );
+  });
+
+  it('returns 400 when reorderPoint is not an integer in PATCH', async () => {
+    mockFindUnique.mockResolvedValue(basePart);
+
+    const req = new Request('http://localhost/api/parts/cltest001', {
+      method: 'PATCH',
+      body: JSON.stringify({ reorderPoint: 'ten' }),
+    });
+
+    const res = await PATCH(req, makeParams('cltest001'));
+    expect(res.status).toBe(400);
+    const json = await res.json();
+    expect(json.error).toBe('validation_error');
   });
 });
