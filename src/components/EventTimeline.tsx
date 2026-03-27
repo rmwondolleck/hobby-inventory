@@ -67,7 +67,7 @@ function formatDateTime(value: string): string {
 }
 
 function DeltaBadge({ delta }: { delta: number | null }) {
-  if (delta === null) return <span className="text-xs text-gray-400">—</span>;
+  if (delta === null) return <span className="text-xs text-muted-foreground">—</span>;
   return (
     <span
       className={cn(
@@ -84,7 +84,7 @@ function DeltaBadge({ delta }: { delta: number | null }) {
 export function EventTimeline({ events }: EventTimelineProps) {
   if (events.length === 0) {
     return (
-      <p className="text-sm text-gray-500">No history yet.</p>
+      <p className="text-sm text-muted-foreground">No history yet.</p>
     );
   }
 
@@ -96,16 +96,16 @@ export function EventTimeline({ events }: EventTimelineProps) {
 
         return (
           <div key={event.id} className="flex items-start gap-3">
-            <div className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-gray-100 text-gray-500">
+            <div className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground">
               <Icon className="h-3.5 w-3.5" />
             </div>
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
-                <span className="text-sm font-medium capitalize text-gray-900">{label}</span>
+                <span className="text-sm font-medium capitalize text-foreground">{label}</span>
                 <DeltaBadge delta={event.delta} />
                 {event.type === 'moved' &&
                   (event.fromLocation || event.toLocation) && (
-                    <span className="text-xs text-gray-500">
+                    <span className="text-xs text-muted-foreground">
                       {event.fromLocation?.path ?? event.fromLocation?.name ?? '?'}
                       {' → '}
                       {event.toLocation?.path ?? event.toLocation?.name ?? '?'}
@@ -120,12 +120,12 @@ export function EventTimeline({ events }: EventTimelineProps) {
                       Project ↗
                     </Link>
                   )}
-                <span className="ml-auto text-xs text-gray-400">
+                <span className="ml-auto text-xs text-muted-foreground">
                   {formatDateTime(event.createdAt)}
                 </span>
               </div>
               {event.notes && (
-                <p className="mt-0.5 text-xs text-gray-500">{event.notes}</p>
+                <p className="mt-0.5 text-xs text-muted-foreground">{event.notes}</p>
               )}
             </div>
           </div>
