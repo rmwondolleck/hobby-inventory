@@ -145,11 +145,10 @@ describe('GET /api/projects', () => {
     );
   });
 
-  it('filters by tags in-memory after DB query', async () => {
+  it('adds tag conditions to Prisma where clause', async () => {
     const projectWithArduino = { ...baseProject, tags: '["arduino"]' };
-    const projectWithRobot = { ...baseProject, id: 'proj-2', tags: '["robot"]' };
-    mockCount.mockResolvedValue(2);
-    mockFindMany.mockResolvedValue([projectWithArduino, projectWithRobot]);
+    mockCount.mockResolvedValue(1);
+    mockFindMany.mockResolvedValue([projectWithArduino]);
 
     const res = await GET(makeRequest('http://localhost/api/projects?tags=arduino'));
     const json = await res.json();
@@ -157,6 +156,117 @@ describe('GET /api/projects', () => {
     expect(json.data).toHaveLength(1);
     expect(json.data[0].id).toBe('proj001');
     expect(json.total).toBe(1);
+
+    expect(mockFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          AND: expect.arrayContaining([
+            { tags: { contains: '"arduino"' } },
+          ]),
+        }),
+      })
+    );
+    expect(mockCount).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          AND: expect.arrayContaining([
+            { tags: { contains: '"arduino"' } },
+          ]),
+        }),
+      })
+    );
+  });
+
+  it('total reflects DB count (not data.length) when tags filter spans multiple pages', async () => {
+    const page1Projects = Array.from({ length: 5 }, (_, i) => ({
+      ...baseProject,
+      id: `proj-page1-${i}`,
+      tags: '["arduino"]',
+    }));
+    // DB has 12 matching records but we only return 5 (limit=5)
+    mockCount.mockResolvedValue(12);
+    mockFindMany.mockResolvedValue(page1Projects);
+
+    const res = await GET(makeRequest('http://localhost/api/projects?tags=arduino&limit=5&offset=0'));
+    const json = await res.json();
+
+    expect(json.data).toHaveLength(5);
+    expect(json.total).toBe(12);
+    expect(json.total).toBeGreaterThan(json.data.length);
+  });
+
+  it('adds one AND condition per tag when multiple tags are supplied', async () => {
+    mockCount.mockResolvedValue(0);
+    mockFindMany.mockResolvedValue([]);
+
+    await GET(makeRequest('http://localhost/api/projects?tags=arduino,robot'));
+
+    expect(mockFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          AND: expect.arrayContaining([
+            { tags: { contains: '"arduino"' } },
+            { tags: { contains: '"robot"' } },
+          ]),
+        }),
+      })
+    );
+    expect(mockCount).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          AND: expect.arrayContaining([
+            { tags: { contains: '"arduino"' } },
+            { tags: { contains: '"robot"' } },
+          ]),
+        }),
+      })
+    );
+  });
+
+  it('trims whitespace from comma-separated tag values', async () => {
+    mockCount.mockResolvedValue(0);
+    mockFindMany.mockResolvedValue([]);
+
+    await GET(makeRequest('http://localhost/api/projects?tags=arduino%2C%20robot'));
+
+    expect(mockFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          AND: expect.arrayContaining([
+            { tags: { contains: '"arduino"' } },
+            { tags: { contains: '"robot"' } },
+          ]),
+        }),
+      })
+    );
+  });
+
+  it('does not add AND conditions when tags param is empty string', async () => {
+    mockCount.mockResolvedValue(1);
+    mockFindMany.mockResolvedValue([baseProject]);
+
+    await GET(makeRequest('http://localhost/api/projects?tags='));
+
+    const callArgs = mockFindMany.mock.calls[0][0];
+    expect(callArgs.where).not.toHaveProperty('AND');
+  });
+
+  it('merges tag AND conditions with existing status where clause', async () => {
+    mockCount.mockResolvedValue(0);
+    mockFindMany.mockResolvedValue([]);
+
+    await GET(makeRequest('http://localhost/api/projects?status=active&tags=arduino'));
+
+    expect(mockFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          status: 'active',
+          AND: expect.arrayContaining([
+            { tags: { contains: '"arduino"' } },
+          ]),
+        }),
+      })
+    );
   });
 
   it('returns empty data array when no projects match', async () => {

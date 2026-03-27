@@ -48,14 +48,6 @@ function matchesParameterFilters(
   return true;
 }
 
-/**
- * Match a part's tags array against the filter list.
- * All requested tags must be present (AND logic).
- */
-function matchesTagFilters(tags: string[], filters: string[]): boolean {
-  return filters.every(f => tags.includes(f));
-}
-
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
 
@@ -81,7 +73,7 @@ export async function GET(request: Request) {
   const sortDir: 'asc' | 'desc' = sortDirParam === 'asc' ? 'asc' : 'desc';
 
   try {
-    const where = {
+    const where: Record<string, unknown> = {
       ...(category ? { category } : {}),
       ...(archived === 'true'
         ? { archivedAt: { not: null } }
@@ -99,6 +91,15 @@ export async function GET(request: Request) {
           }
         : {}),
     };
+
+    // Tag filter: push conditions into the Prisma WHERE clause so that pagination
+    // and totals are computed at the DB level rather than in memory.
+    if (hasTagFilters) {
+      const tagConditions = tagFilters.map((tag) => ({
+        tags: { contains: `"${tag}"` },
+      }));
+      where.AND = [...(Array.isArray(where.AND) ? where.AND : []), ...tagConditions];
+    }
 
     const lotInclude = {
       lots: {
@@ -118,17 +119,14 @@ export async function GET(request: Request) {
       },
     };
 
-    // When parameter or tag filters are present, fetch all matching (without pagination)
-    // and apply in-memory filtering, then paginate manually.
-    if (hasParamFilters || hasTagFilters) {
+    // Parameter filters require in-memory JSON deserialization; fetch all records
+    // matching the (already tag-filtered) DB query and paginate in memory.
+    if (hasParamFilters) {
       const all = await prisma.part.findMany({ where, orderBy: { [sortBy]: sortDir }, include: lotInclude });
 
-      const filtered = all.filter((part: { parameters: string; tags: string }) => {
+      const filtered = all.filter((part: { parameters: string }) => {
         const params = safeParseJson<Record<string, unknown>>(part.parameters, {});
-        const tags = safeParseJson<string[]>(part.tags, []);
-        const passesParams = !hasParamFilters || matchesParameterFilters(params, paramFilters);
-        const passesTags = !hasTagFilters || matchesTagFilters(tags, tagFilters);
-        return passesParams && passesTags;
+        return matchesParameterFilters(params, paramFilters);
       });
 
       const total = filtered.length;
