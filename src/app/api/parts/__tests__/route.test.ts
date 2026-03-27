@@ -741,8 +741,37 @@ describe('GET /api/parts — tags filter', () => {
     parameters: '{}',
   };
 
+  it('pushes single tag condition into Prisma where.AND', async () => {
+    mockFindMany.mockResolvedValue([wifiPart]);
+    mockCount.mockResolvedValue(1);
+
+    await GET(makeRequest('http://localhost/api/parts?tags=wifi'));
+
+    const callArgs = mockFindMany.mock.calls[0][0];
+    expect(callArgs.where.AND).toEqual(
+      expect.arrayContaining([{ tags: { contains: '"wifi"' } }])
+    );
+  });
+
+  it('pushes one condition per tag for multi-tag AND filter into Prisma where.AND', async () => {
+    mockFindMany.mockResolvedValue([wifiPart]);
+    mockCount.mockResolvedValue(1);
+
+    await GET(makeRequest('http://localhost/api/parts?tags=wifi,bluetooth'));
+
+    const callArgs = mockFindMany.mock.calls[0][0];
+    expect(callArgs.where.AND).toEqual(
+      expect.arrayContaining([
+        { tags: { contains: '"wifi"' } },
+        { tags: { contains: '"bluetooth"' } },
+      ])
+    );
+  });
+
   it('returns only parts matching a single tag filter', async () => {
-    mockFindMany.mockResolvedValue([wifiPart, btOnlyPart, untaggedPart]);
+    // The DB applies the tag WHERE clause; mock returns already-filtered results.
+    mockFindMany.mockResolvedValue([wifiPart]);
+    mockCount.mockResolvedValue(1);
 
     const res = await GET(makeRequest('http://localhost/api/parts?tags=wifi'));
     expect(res.status).toBe(200);
@@ -754,7 +783,9 @@ describe('GET /api/parts — tags filter', () => {
   });
 
   it('returns only parts matching ALL tags in a multi-tag AND filter', async () => {
-    mockFindMany.mockResolvedValue([wifiPart, btOnlyPart, untaggedPart]);
+    // The DB applies AND conditions; mock returns only the part with both tags.
+    mockFindMany.mockResolvedValue([wifiPart]);
+    mockCount.mockResolvedValue(1);
 
     const res = await GET(makeRequest('http://localhost/api/parts?tags=wifi,bluetooth'));
     expect(res.status).toBe(200);
@@ -787,9 +818,9 @@ describe('GET /api/parts — tags filter', () => {
       tags: '["wifi","sensor"]',
       parameters: '{}',
     };
-    // mockFindMany already applies the category WHERE clause server-side;
-    // simulate it returning only Sensors-category parts
+    // Simulate Prisma returning only the Sensors-category wifi part via WHERE clause.
     mockFindMany.mockResolvedValue([sensorWifi]);
+    mockCount.mockResolvedValue(1);
 
     const res = await GET(makeRequest('http://localhost/api/parts?tags=wifi&category=Sensors'));
     expect(res.status).toBe(200);
@@ -800,7 +831,9 @@ describe('GET /api/parts — tags filter', () => {
   });
 
   it('returns empty data when no parts match the tag filter', async () => {
-    mockFindMany.mockResolvedValue([untaggedPart]);
+    // Simulate DB returning no results for an unmatched tag WHERE condition.
+    mockFindMany.mockResolvedValue([]);
+    mockCount.mockResolvedValue(0);
 
     const res = await GET(makeRequest('http://localhost/api/parts?tags=nonexistent'));
     expect(res.status).toBe(200);
@@ -808,5 +841,51 @@ describe('GET /api/parts — tags filter', () => {
     const json = await res.json();
     expect(json.data).toHaveLength(0);
     expect(json.total).toBe(0);
+  });
+
+  it('uses $transaction (not in-memory path) for tag-only filter', async () => {
+    mockFindMany.mockResolvedValue([wifiPart]);
+    mockCount.mockResolvedValue(1);
+
+    await GET(makeRequest('http://localhost/api/parts?tags=wifi'));
+
+    expect(mockTransaction).toHaveBeenCalledTimes(1);
+  });
+
+  it('returns correct total > limit and supports pagination for tag-filtered queries', async () => {
+    // Simulate 55 matching parts in the DB; first page returns 50 (default limit).
+    const firstPage = Array.from({ length: 50 }, (_, i) => ({
+      ...basePart,
+      id: `wifi-part-${i}`,
+      tags: '["wifi"]',
+      parameters: '{}',
+    }));
+    mockFindMany.mockResolvedValue(firstPage);
+    mockCount.mockResolvedValue(55);
+
+    const res = await GET(makeRequest('http://localhost/api/parts?tags=wifi'));
+    expect(res.status).toBe(200);
+
+    const json = await res.json();
+    expect(json.total).toBe(55);
+    expect(json.total).toBeGreaterThan(json.limit);
+    expect(json.data).toHaveLength(50);
+    expect(json.offset).toBe(0);
+
+    // Second page: offset=50, should return remaining 5
+    const secondPage = Array.from({ length: 5 }, (_, i) => ({
+      ...basePart,
+      id: `wifi-part-${50 + i}`,
+      tags: '["wifi"]',
+      parameters: '{}',
+    }));
+    mockFindMany.mockResolvedValue(secondPage);
+    mockCount.mockResolvedValue(55);
+
+    const res2 = await GET(makeRequest('http://localhost/api/parts?tags=wifi&offset=50'));
+    const json2 = await res2.json();
+    expect(json2.total).toBe(55);
+    expect(json2.data).toHaveLength(5);
+    expect(json2.offset).toBe(50);
   });
 });
