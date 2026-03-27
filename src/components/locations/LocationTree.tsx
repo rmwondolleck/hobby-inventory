@@ -94,30 +94,30 @@ function TreeNode({
   return (
     <div>
       <div
-        className="flex items-center gap-1 py-1.5 px-2 rounded-md hover:bg-gray-100 group"
+        className="flex items-center gap-1 py-1.5 px-2 rounded-md hover:bg-accent group"
         style={{ paddingLeft: `${depth * 20 + 8}px` }}
       >
         <button
           onClick={() => hasChildren && onToggle(node.id)}
-          className={`w-5 h-5 flex items-center justify-center text-gray-400 flex-shrink-0 text-xs ${
-            !hasChildren ? 'invisible' : 'hover:text-gray-700'
+          className={`w-5 h-5 flex items-center justify-center text-muted-foreground flex-shrink-0 text-xs ${
+            !hasChildren ? 'invisible' : 'hover:text-foreground'
           }`}
           aria-label={isExpanded ? 'Collapse' : 'Expand'}
         >
           {hasChildren ? (isExpanded ? '▼' : '▶') : ''}
         </button>
 
-        <span className="text-gray-500 flex-shrink-0 text-sm">📦</span>
+        <span className="text-muted-foreground flex-shrink-0 text-sm">📦</span>
 
         <Link
           href={`/locations/${node.id}`}
-          className="flex-1 text-sm font-medium text-gray-800 hover:text-blue-600 truncate"
+          className="flex-1 text-sm font-medium text-foreground hover:text-blue-600 truncate"
         >
           {node.name}
         </Link>
 
         {node._count.lots > 0 && (
-          <span className="text-xs text-gray-400 flex-shrink-0 mr-2">
+          <span className="text-xs text-muted-foreground flex-shrink-0 mr-2">
             {node._count.lots} lot{node._count.lots !== 1 ? 's' : ''}
           </span>
         )}
@@ -138,7 +138,7 @@ function TreeNode({
               e.stopPropagation();
               onEdit(node);
             }}
-            className="text-xs px-1.5 py-0.5 text-gray-600 hover:bg-gray-200 rounded"
+            className="text-xs px-1.5 py-0.5 text-muted-foreground hover:bg-accent rounded"
             title="Edit location"
           >
             Edit
@@ -270,9 +270,9 @@ export default function LocationTree({ locations }: LocationTreeProps) {
             placeholder="Search locations..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full px-3 py-2 pl-9 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full px-3 py-2 pl-9 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
-          <span className="absolute left-3 top-2.5 text-gray-400 text-sm pointer-events-none">
+          <span className="absolute left-3 top-2.5 text-muted-foreground text-sm pointer-events-none">
             🔍
           </span>
         </div>
@@ -286,12 +286,12 @@ export default function LocationTree({ locations }: LocationTreeProps) {
 
       {/* Expand/collapse controls */}
       {tree.length > 0 && (
-        <div className="flex items-center gap-2 mb-2 text-xs text-gray-500">
-          <button onClick={expandAll} className="hover:text-gray-700 underline-offset-2 hover:underline">
+        <div className="flex items-center gap-2 mb-2 text-xs text-muted-foreground">
+          <button onClick={expandAll} className="hover:text-foreground underline-offset-2 hover:underline">
             Expand all
           </button>
           <span>·</span>
-          <button onClick={collapseAll} className="hover:text-gray-700 underline-offset-2 hover:underline">
+          <button onClick={collapseAll} className="hover:text-foreground underline-offset-2 hover:underline">
             Collapse all
           </button>
           <span>·</span>
@@ -315,9 +315,9 @@ export default function LocationTree({ locations }: LocationTreeProps) {
       )}
 
       {/* Tree */}
-      <div className="border border-gray-200 rounded-lg bg-white">
+      <div className="border border-border rounded-lg bg-card">
         {filteredTree.length === 0 ? (
-          <div className="p-8 text-center text-gray-400 text-sm">
+          <div className="p-8 text-center text-muted-foreground text-sm">
             {search
               ? `No locations match "${search}"`
               : 'No locations yet. Add your first location to get started.'}
@@ -358,11 +358,11 @@ export default function LocationTree({ locations }: LocationTreeProps) {
       {/* Delete confirmation dialog */}
       {deleteTarget && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl shadow-xl p-6 max-w-sm w-full mx-4">
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">Delete Location</h3>
-            <p className="text-gray-600 text-sm mb-2">
+          <div className="bg-card rounded-xl shadow-xl p-6 max-w-sm w-full mx-4">
+            <h3 className="text-lg font-semibold text-foreground mb-2">Delete Location</h3>
+            <p className="text-muted-foreground text-sm mb-2">
               Are you sure you want to delete{' '}
-              <strong className="text-gray-900">{deleteTarget.name}</strong>?
+              <strong className="text-foreground">{deleteTarget.name}</strong>?
             </p>
             {deleteTarget._count.children > 0 && (
               <p className="text-amber-700 bg-amber-50 border border-amber-200 rounded p-2 text-sm mb-2">
@@ -379,7 +379,7 @@ export default function LocationTree({ locations }: LocationTreeProps) {
             <div className="flex gap-3 mt-4 justify-end">
               <button
                 onClick={() => setDeleteTarget(null)}
-                className="px-4 py-2 text-sm text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50"
+                className="px-4 py-2 text-sm text-foreground border border-border rounded-lg hover:bg-accent"
               >
                 Cancel
               </button>
