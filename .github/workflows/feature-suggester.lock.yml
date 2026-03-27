@@ -21,9 +21,9 @@
 #
 # For more information: https://github.github.com/gh-aw/introduction/overview/
 #
-# Weekly feature discovery agent — analyzes the codebase, domain model, and backlog to suggest grounded, implementable feature ideas
+# Weekly feature discovery agent — analyzes the codebase, domain model, and backlog to suggest grounded, implementable feature ideas and surface existing regressions or polish gaps
 #
-# gh-aw-metadata: {"schema_version":"v2","frontmatter_hash":"1b295260e3b3531837257cfd863230d9f5875075845df4293fcfeedd032c64a0","compiler_version":"v0.57.2","strict":true}
+# gh-aw-metadata: {"schema_version":"v2","frontmatter_hash":"578047f1d4b53ab270f98046a5c69e5e69ac004040f9aa74d138725589d13a01","compiler_version":"v0.57.2","strict":true}
 
 name: "Feature Suggester — Weekly Discovery Agent"
 "on":
@@ -895,7 +895,7 @@ jobs:
         uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
         env:
           WORKFLOW_NAME: "Feature Suggester — Weekly Discovery Agent"
-          WORKFLOW_DESCRIPTION: "Weekly feature discovery agent — analyzes the codebase, domain model, and backlog to suggest grounded, implementable feature ideas"
+          WORKFLOW_DESCRIPTION: "Weekly feature discovery agent — analyzes the codebase, domain model, and backlog to suggest grounded, implementable feature ideas and surface existing regressions or polish gaps"
           HAS_PATCH: ${{ steps.collect_output.outputs.has_patch }}
         with:
           script: |

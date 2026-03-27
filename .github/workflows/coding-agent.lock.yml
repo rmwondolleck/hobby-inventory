@@ -23,7 +23,7 @@
 #
 # Implements features from GitHub issues, creates PRs, and reports completion to orchestrator
 #
-# gh-aw-metadata: {"schema_version":"v2","frontmatter_hash":"2395e8f795676058ea8ce9c45ead70185c01477484389587b1c86b28d9d4512b","compiler_version":"v0.57.2","strict":true}
+# gh-aw-metadata: {"schema_version":"v2","frontmatter_hash":"fa5c07efceb208cab6327a26b91466c430649a7eb76cba4b27acf2714a9a2c71","compiler_version":"v0.57.2","strict":true}
 
 name: "Coding Agent"
 "on":
@@ -304,26 +304,6 @@ jobs:
         uses: github/gh-aw/actions/setup@32b3a711a9ee97d38e3989c90af0385aff0066a7 # v0.57.2
         with:
           destination: /opt/gh-aw/actions
-      - name: Create epic branch if not exists
-        env:
-          GH_TOKEN: ${{ secrets.COPILOT_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
-        run: |
-          BRANCH="${{ github.event.inputs.epic_branch }}"
-          if gh api "repos/${{ github.repository }}/git/refs/heads/${BRANCH}" --silent; then
-            echo "Branch '${BRANCH}' already exists."
-          else
-            echo "Branch '${BRANCH}' does not exist. Creating from main..."
-            MAIN_SHA=$(gh api "repos/${{ github.repository }}/git/refs/heads/main" --jq '.object.sha')
-            if [ -z "${MAIN_SHA}" ] || [ "${MAIN_SHA}" = "null" ]; then
-              echo "Error: Could not determine SHA for main branch. Cannot create epic branch."
-              exit 1
-            fi
-            gh api "repos/${{ github.repository }}/git/refs" \
-              --method POST \
-              --field "ref=refs/heads/${BRANCH}" \
-              --field "sha=${MAIN_SHA}"
-            echo "Branch '${BRANCH}' created from main (${MAIN_SHA})."
-          fi
       - name: Checkout repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
