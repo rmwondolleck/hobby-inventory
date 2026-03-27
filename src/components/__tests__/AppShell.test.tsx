@@ -13,6 +13,13 @@ jest.mock('next/navigation', () => ({
   useRouter: () => ({ push: mockPush, replace: jest.fn(), prefetch: jest.fn() }),
 }));
 
+// Mock BottomTabBar
+jest.mock('@/components/BottomTabBar', () => {
+  const MockBottomTabBar = () => <nav data-testid="bottom-tab-bar" />;
+  MockBottomTabBar.displayName = 'BottomTabBar';
+  return MockBottomTabBar;
+});
+
 // Mock KeyboardShortcutsModal
 jest.mock('../KeyboardShortcutsModal', () => ({
   KeyboardShortcutsModal: ({ open }: { open: boolean; onOpenChange: (o: boolean) => void }) =>
@@ -76,6 +83,26 @@ describe('AppShell', () => {
     render(<AppShell><div /></AppShell>);
     expect(screen.getByText('Hobby Inventory')).toBeInTheDocument();
     expect(screen.getByText("Maker's Workshop")).toBeInTheDocument();
+  });
+
+  it('renders BottomTabBar', () => {
+    render(<AppShell><div /></AppShell>);
+    expect(screen.getByTestId('bottom-tab-bar')).toBeInTheDocument();
+  });
+
+  it('hides the sidebar nav rail on mobile (hidden md:flex)', () => {
+    const { container } = render(<AppShell><div /></AppShell>);
+    const aside = container.querySelector('aside');
+    expect(aside?.className).toContain('hidden');
+    expect(aside?.className).toContain('md:flex');
+    expect(aside?.className).toContain('flex-col');
+  });
+
+  it('adds pb-16 md:pb-0 to main content area', () => {
+    const { container } = render(<AppShell><div /></AppShell>);
+    const main = container.querySelector('main');
+    expect(main?.className).toContain('pb-16');
+    expect(main?.className).toContain('md:pb-0');
   });
 
   it('renders version number', () => {

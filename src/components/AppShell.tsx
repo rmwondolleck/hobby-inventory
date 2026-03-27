@@ -19,6 +19,7 @@ import { useTheme } from 'next-themes';
 import { cn } from '@/components/ui/utils';
 import { CommandPalette } from '@/components/CommandPalette';
 import { KeyboardShortcutsModal } from '@/components/KeyboardShortcutsModal';
+import BottomTabBar from '@/components/BottomTabBar';
 
 const navigation = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard },
@@ -121,7 +122,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   return (
     <div className="flex h-screen bg-background">
       {/* Left sidebar */}
-      <aside className="w-64 border-r border-border bg-sidebar flex flex-col shrink-0">
+      <aside className="hidden md:flex flex-col w-64 border-r border-border bg-sidebar shrink-0">
         {/* Logo/Brand */}
         <div className="p-6 border-b border-sidebar-border">
           <h1 className="font-semibold text-lg text-sidebar-foreground">
@@ -185,9 +186,11 @@ export function AppShell({ children }: { children: ReactNode }) {
       </aside>
 
       {/* Main content */}
-      <main className="flex-1 overflow-auto">
+      <main className="flex-1 overflow-auto pb-16 md:pb-0">
         {children}
       </main>
+
+      <BottomTabBar />
 
       <CommandPalette open={commandPaletteOpen} onOpenChange={setCommandPaletteOpen} />
       <KeyboardShortcutsModal open={shortcutsModalOpen} onOpenChange={setShortcutsModalOpen} />
