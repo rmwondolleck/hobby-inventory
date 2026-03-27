@@ -40,6 +40,17 @@ export async function GET(request: Request) {
       ];
     }
 
+    if (tagsParam) {
+      const filterTags = tagsParam
+        .split(',')
+        .map((t) => t.trim())
+        .filter(Boolean);
+      const tagConditions = filterTags.map((tag) => ({
+        tags: { contains: `"${tag}"` },
+      }));
+      where.AND = [...(Array.isArray(where.AND) ? where.AND : []), ...tagConditions];
+    }
+
     const [total, projects] = await Promise.all([
       prisma.project.count({ where }),
       prisma.project.findMany({
@@ -75,16 +86,7 @@ export async function GET(request: Request) {
       };
     });
 
-    // In-memory tag filter
-    if (tagsParam) {
-      const filterTags = tagsParam
-        .split(',')
-        .map((t) => t.trim())
-        .filter(Boolean);
-      data = data.filter((p) => filterTags.every((tag) => p.tags.includes(tag)));
-    }
-
-    return NextResponse.json({ data, total: tagsParam ? data.length : total, limit, offset });
+    return NextResponse.json({ data, total, limit, offset });
   } catch {
     return NextResponse.json(
       { error: 'internal_error', message: 'An unexpected error occurred' },
