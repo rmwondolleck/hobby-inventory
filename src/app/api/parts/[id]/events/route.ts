@@ -31,13 +31,13 @@ export async function GET(
   });
 
   // Enrich events with location data for moved events
-  const locationIds = [
-    ...new Set(
+  const locationIds = Array.from(
+    new Set(
       events.flatMap((e: { fromLocationId: string | null; toLocationId: string | null }) =>
         [e.fromLocationId, e.toLocationId].filter(Boolean) as string[]
       )
-    ),
-  ];
+    )
+  );
 
   const locationMap = new Map<string, { name: string; path: string }>();
   if (locationIds.length > 0) {

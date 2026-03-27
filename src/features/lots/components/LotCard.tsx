@@ -51,8 +51,8 @@ export function LotCard({ lot }: LotCardProps) {
       <div
         className={cn(
           'rounded-lg border bg-card p-4 shadow-sm transition-shadow hover:shadow-md',
-          isOutOfStock && 'border-red-200 bg-red-50',
-          isLowStock && 'border-yellow-200 bg-yellow-50'
+          isOutOfStock && 'border-red-200 bg-red-50 dark:border-red-900 dark:bg-red-950/40',
+          isLowStock && 'border-yellow-200 bg-yellow-50 dark:border-yellow-800 dark:bg-yellow-950/30'
         )}
       >
         <div className="flex items-start justify-between gap-2">
@@ -71,8 +71,8 @@ export function LotCard({ lot }: LotCardProps) {
             <span
               className={cn(
                 'font-medium',
-                isOutOfStock && 'text-red-600',
-                isLowStock && 'text-yellow-700'
+                isOutOfStock && 'text-red-600 dark:text-red-400',
+                isLowStock && 'text-yellow-700 dark:text-yellow-400'
               )}
             >
               {formatQuantity(lot.quantity, lot.quantityMode, lot.qualitativeStatus, lot.unit)}

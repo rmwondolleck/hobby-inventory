@@ -108,11 +108,11 @@ export default async function LotDetailPage({ params }: PageProps) {
   const hasSource = Object.keys(source).length > 0;
 
   // Enrich events with location names for moved events
-  const locationIds = [
-    ...new Set(
+  const locationIds = Array.from(
+    new Set(
       lot.events.flatMap(e => [e.fromLocationId, e.toLocationId].filter(Boolean) as string[])
-    ),
-  ];
+    )
+  );
   const locationMap = new Map<string, { name: string; path: string }>();
   if (locationIds.length > 0) {
     const locations = await prisma.location.findMany({

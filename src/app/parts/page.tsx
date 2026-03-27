@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { Suspense } from 'react';
 import { PartsListClient } from '@/features/parts/components/PartsListClient';
 import { PageHeader } from '@/components/PageHeader';
 
@@ -15,7 +16,9 @@ export default function PartsPage() {
           title="Parts"
           description="Browse and manage your parts catalog"
         />
-        <PartsListClient />
+        <Suspense fallback={null}>
+          <PartsListClient />
+        </Suspense>
       </div>
     </div>
   );

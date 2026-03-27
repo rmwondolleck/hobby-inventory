@@ -18,9 +18,10 @@ const badgeVariants = cva(
         outline:
           "text-foreground [a&]:hover:bg-accent [a&]:hover:text-accent-foreground",
         // Application-specific variants
-        success: "border-transparent bg-green-100 text-green-800",
-        warning: "border-transparent bg-yellow-100 text-yellow-800",
-        danger: "border-transparent bg-red-100 text-red-800",
+        success: "border-transparent bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300",
+        warning: "border-transparent bg-yellow-100 text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-300",
+        danger: "border-transparent bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300",
+        deployed: "border-transparent bg-teal-100 text-teal-800 dark:bg-teal-500/20 dark:text-teal-300",
       },
     },
     defaultVariants: {

@@ -14,12 +14,12 @@ const STATUS_LABELS: Record<string, string> = {
 
 const STATUS_VARIANTS: Record<
   string,
-  'default' | 'secondary' | 'success' | 'warning' | 'danger'
+  'default' | 'secondary' | 'success' | 'warning' | 'danger' | 'deployed'
 > = {
   idea: 'secondary',
   planned: 'default',
   active: 'success',
-  deployed: 'warning',
+  deployed: 'deployed',
   retired: 'danger',
 };
 

@@ -203,7 +203,7 @@ export default function Home() {
   const unpinnedProjects = projects.filter((p) => !pinnedIds.includes(p.id));
 
   return (
-    <main className="min-h-screen bg-gray-50">
+    <main className="min-h-screen bg-background">
       <div className="mx-auto max-w-5xl px-4 py-10">
         <PageHeader
           title="Welcome to Hobby Inventory"
@@ -215,31 +215,31 @@ export default function Home() {
             <Collapsible open={valueWidgetOpen} onOpenChange={handleValueWidgetOpenChange}>
               <div className="rounded-xl border border-border bg-card shadow-sm">
                 <CollapsibleTrigger className="flex w-full items-center justify-between px-5 py-4 text-left">
-                  <h2 className="flex items-center gap-2 text-lg font-semibold text-gray-800">
+                  <h2 className="flex items-center gap-2 text-lg font-semibold text-foreground">
                     💰 Inventory Value
                     {!valueWidgetOpen && inventoryStats.lotsWithCostData > 0 && (
-                      <span className="ml-2 text-base font-normal text-gray-500">
+                      <span className="ml-2 text-base font-normal text-muted-foreground">
                         {formatCurrency(inventoryStats.totalValue)}
                       </span>
                     )}
                   </h2>
-                  <span className="text-gray-400 text-sm select-none">
+                  <span className="text-muted-foreground text-sm select-none">
                     {valueWidgetOpen ? '▲' : '▼'}
                   </span>
                 </CollapsibleTrigger>
                 <CollapsibleContent>
                   <div className="border-t border-border px-5 py-4">
                     {inventoryStats.lotsWithCostData === 0 ? (
-                      <p className="text-sm text-gray-500">
+                      <p className="text-sm text-muted-foreground">
                         Add purchase prices to lots to see inventory value.
                       </p>
                     ) : (
                       <>
-                        <p className="text-2xl font-bold text-gray-900">
+                        <p className="text-2xl font-bold text-foreground">
                           {formatCurrency(inventoryStats.totalValue)}
                         </p>
                         {inventoryStats.lotsWithoutCostData > 0 && (
-                          <p className="mt-1 text-xs text-gray-400">
+                          <p className="mt-1 text-xs text-muted-foreground">
                             {inventoryStats.lotsWithoutCostData} lot
                             {inventoryStats.lotsWithoutCostData === 1 ? '' : 's'} without cost
                             data excluded
@@ -247,7 +247,7 @@ export default function Home() {
                         )}
                         {inventoryStats.valueByCategoryTop5.length > 0 && (
                           <div className="mt-4">
-                            <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-500">
+                            <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                               Top Categories
                             </h3>
                             <ul className="space-y-1">
@@ -256,8 +256,8 @@ export default function Home() {
                                   key={item.category}
                                   className="flex items-center justify-between text-sm"
                                 >
-                                  <span className="text-gray-700">{item.category}</span>
-                                  <span className="font-medium text-gray-900">
+                                  <span className="text-foreground/80">{item.category}</span>
+                                  <span className="font-medium text-foreground">
                                     {formatCurrency(item.value)}
                                   </span>
                                 </li>
@@ -276,15 +276,19 @@ export default function Home() {
 
         {lowStockParts.length > 0 && (
           <section className="mt-8">
-            <h2 className="mb-3 flex items-center gap-2 text-lg font-semibold text-gray-800">
+            <h2 className="mb-3 flex items-center gap-2 text-lg font-semibold text-foreground">
               ⚠️ Low Stock Warnings
             </h2>
             <div className="flex flex-col gap-3">
               {lowStockParts.map((part) => (
-                <Alert key={part.partId} variant="default" className="border-yellow-300 bg-yellow-50">
-                  <AlertTitle className="text-yellow-800">{part.partName}</AlertTitle>
+                <Alert
+                  key={part.partId}
+                  variant="default"
+                  className="border-yellow-300 bg-yellow-50 dark:border-yellow-700 dark:bg-yellow-950/40"
+                >
+                  <AlertTitle className="text-yellow-800 dark:text-yellow-300">{part.partName}</AlertTitle>
                   <AlertDescription>
-                    <div className="flex flex-wrap items-center gap-4 text-yellow-700">
+                    <div className="flex flex-wrap items-center gap-4 text-yellow-700 dark:text-yellow-400">
                       <span>Qty: {part.totalQuantity}</span>
                       <span className="flex items-center gap-1">
                         Threshold:
@@ -296,13 +300,13 @@ export default function Home() {
                             setThresholdInputs((prev) => ({ ...prev, [part.partId]: e.target.value }))
                           }
                           onBlur={() => handleThresholdBlur(part.partId)}
-                          className="ml-1 w-16 rounded border border-yellow-300 bg-white px-1 py-0.5 text-sm text-gray-800 focus:outline-none focus:ring-1 focus:ring-yellow-400"
+                          className="ml-1 w-16 rounded border border-yellow-300 dark:border-yellow-700 bg-white dark:bg-input-background px-1 py-0.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-yellow-400"
                           aria-label={`Stock threshold for ${part.partName}`}
                         />
                       </span>
                       <Link
                         href={`/parts/${part.partId}`}
-                        className="font-medium text-blue-600 underline hover:text-blue-800"
+                        className="font-medium text-blue-600 underline hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
                       >
                         View Part
                       </Link>
@@ -316,7 +320,7 @@ export default function Home() {
 
         {pinnedProjects.length > 0 && (
           <section className="mt-8">
-            <h2 className="mb-3 text-lg font-semibold text-gray-800">📌 Pinned Projects</h2>
+            <h2 className="mb-3 text-lg font-semibold text-foreground">📌 Pinned Projects</h2>
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {pinnedProjects.map((project) => (
                 <ProjectCard
@@ -333,11 +337,11 @@ export default function Home() {
         <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <Link
             href="/intake"
-            className="group flex flex-col gap-2 rounded-xl border border-blue-200 bg-blue-50 p-5 shadow-sm transition hover:shadow-md"
+            className="group flex flex-col gap-2 rounded-xl border border-blue-200 bg-blue-50 p-5 shadow-sm transition hover:shadow-md dark:border-blue-800 dark:bg-blue-950/40"
           >
             <span className="text-2xl">＋</span>
-            <h2 className="text-base font-semibold text-blue-800">Add to Inventory</h2>
-            <p className="text-sm text-blue-600">
+            <h2 className="text-base font-semibold text-blue-800 dark:text-blue-300">Add to Inventory</h2>
+            <p className="text-sm text-blue-600 dark:text-blue-400">
               Quick-add new parts and lots in under 60 seconds.
             </p>
           </Link>
@@ -347,8 +351,8 @@ export default function Home() {
             className="group flex flex-col gap-2 rounded-xl border border-border bg-card p-5 shadow-sm transition hover:shadow-md"
           >
             <span className="text-2xl">📦</span>
-            <h2 className="text-base font-semibold text-gray-800">Browse Parts</h2>
-            <p className="text-sm text-gray-500">Search and filter your parts catalog.</p>
+            <h2 className="text-base font-semibold text-foreground">Browse Parts</h2>
+            <p className="text-sm text-muted-foreground">Search and filter your parts catalog.</p>
           </Link>
 
           <Link
@@ -356,17 +360,17 @@ export default function Home() {
             className="group flex flex-col gap-2 rounded-xl border border-border bg-card p-5 shadow-sm transition hover:shadow-md"
           >
             <span className="text-2xl">🗂️</span>
-            <h2 className="text-base font-semibold text-gray-800">Lots</h2>
-            <p className="text-sm text-gray-500">View stock quantities, sources, and locations.</p>
+            <h2 className="text-base font-semibold text-foreground">Lots</h2>
+            <p className="text-sm text-muted-foreground">View stock quantities, sources, and locations.</p>
           </Link>
 
           <Link
             href="/locations"
             className="group flex flex-col gap-2 rounded-xl border border-border bg-card p-5 shadow-sm transition hover:shadow-md"
           >
-            <span className="text-2xl">��</span>
-            <h2 className="text-base font-semibold text-gray-800">Locations</h2>
-            <p className="text-sm text-gray-500">Manage storage locations and hierarchy.</p>
+            <span className="text-2xl">📍</span>
+            <h2 className="text-base font-semibold text-foreground">Locations</h2>
+            <p className="text-sm text-muted-foreground">Manage storage locations and hierarchy.</p>
           </Link>
 
           <Link
@@ -374,14 +378,14 @@ export default function Home() {
             className="group flex flex-col gap-2 rounded-xl border border-border bg-card p-5 shadow-sm transition hover:shadow-md"
           >
             <span className="text-2xl">🔧</span>
-            <h2 className="text-base font-semibold text-gray-800">Projects</h2>
-            <p className="text-sm text-gray-500">Track part allocations across builds.</p>
+            <h2 className="text-base font-semibold text-foreground">Projects</h2>
+            <p className="text-sm text-muted-foreground">Track part allocations across builds.</p>
           </Link>
         </div>
 
         {unpinnedProjects.length > 0 && (
           <section className="mt-8">
-            <h2 className="mb-3 text-lg font-semibold text-gray-800">Active Projects</h2>
+            <h2 className="mb-3 text-lg font-semibold text-foreground">Active Projects</h2>
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {unpinnedProjects.map((project) => (
                 <ProjectCard
