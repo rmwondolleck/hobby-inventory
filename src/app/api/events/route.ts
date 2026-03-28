@@ -42,53 +42,60 @@ export async function GET(request: Request) {
     );
   }
 
-  let lotIds: string[] | undefined;
+  try {
+    let lotIds: string[] | undefined;
 
-  if (partId) {
-    const lots = await prisma.lot.findMany({
-      where: { partId },
-      select: { id: true },
-    });
-    lotIds = lots.map((l: { id: string }) => l.id);
-    if (lotIds!.length === 0) {
-      return NextResponse.json({ data: [], total: 0, limit, offset });
+    if (partId) {
+      const lots = await prisma.lot.findMany({
+        where: { partId },
+        select: { id: true },
+      });
+      lotIds = lots.map((l: { id: string }) => l.id);
+      if (lotIds!.length === 0) {
+        return NextResponse.json({ data: [], total: 0, limit, offset });
+      }
     }
-  }
 
-  if (lotId) {
-    const lot = await prisma.lot.findUnique({ where: { id: lotId }, select: { id: true } });
-    if (!lot) {
-      return NextResponse.json(
-        { error: 'not_found', message: 'Lot not found' },
-        { status: 404 },
-      );
+    if (lotId) {
+      const lot = await prisma.lot.findUnique({ where: { id: lotId }, select: { id: true } });
+      if (!lot) {
+        return NextResponse.json(
+          { error: 'not_found', message: 'Lot not found' },
+          { status: 404 },
+        );
+      }
+      lotIds = lotIds ? lotIds.filter((id) => id === lotId) : [lotId];
     }
-    lotIds = lotIds ? lotIds.filter((id) => id === lotId) : [lotId];
+
+    const where = {
+      ...(lotIds ? { lotId: { in: lotIds } } : {}),
+      ...(projectId ? { projectId } : {}),
+      ...(typeParam ? { type: typeParam } : {}),
+      ...((since || until)
+        ? {
+            createdAt: {
+              ...(since ? { gte: new Date(since) } : {}),
+              ...(until ? { lte: new Date(until) } : {}),
+            },
+          }
+        : {}),
+    };
+
+    const [events, total] = await Promise.all([
+      prisma.event.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        take: limit,
+        skip: offset,
+      }),
+      prisma.event.count({ where }),
+    ]);
+
+    return NextResponse.json({ data: events, total, limit, offset });
+  } catch {
+    return NextResponse.json(
+      { error: 'internal_error', message: 'An unexpected error occurred' },
+      { status: 500 },
+    );
   }
-
-  const where = {
-    ...(lotIds ? { lotId: { in: lotIds } } : {}),
-    ...(projectId ? { projectId } : {}),
-    ...(typeParam ? { type: typeParam } : {}),
-    ...((since || until)
-      ? {
-          createdAt: {
-            ...(since ? { gte: new Date(since) } : {}),
-            ...(until ? { lte: new Date(until) } : {}),
-          },
-        }
-      : {}),
-  };
-
-  const [events, total] = await Promise.all([
-    prisma.event.findMany({
-      where,
-      orderBy: { createdAt: 'desc' },
-      take: limit,
-      skip: offset,
-    }),
-    prisma.event.count({ where }),
-  ]);
-
-  return NextResponse.json({ data: events, total, limit, offset });
 }

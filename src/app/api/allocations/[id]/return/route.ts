@@ -29,22 +29,29 @@ export async function POST(_request: Request, { params }: RouteParams) {
     );
   }
 
-  // Mark allocation as recovered and create event in a transaction
-  const [updated] = await prisma.$transaction([
-    prisma.allocation.update({
-      where: { id },
-      data: { status: 'recovered' },
-    }),
-    prisma.event.create({
-      data: {
-        lotId: allocation.lotId,
-        type: 'returned',
-        delta: allocation.quantity !== null ? allocation.quantity : null,
-        projectId: allocation.projectId,
-        notes: `Returned allocation ${id} to stock`,
-      },
-    }),
-  ]);
+  try {
+    // Mark allocation as recovered and create event in a transaction
+    const [updated] = await prisma.$transaction([
+      prisma.allocation.update({
+        where: { id },
+        data: { status: 'recovered' },
+      }),
+      prisma.event.create({
+        data: {
+          lotId: allocation.lotId,
+          type: 'returned',
+          delta: allocation.quantity !== null ? allocation.quantity : null,
+          projectId: allocation.projectId,
+          notes: `Returned allocation ${id} to stock`,
+        },
+      }),
+    ]);
 
-  return NextResponse.json({ data: updated });
+    return NextResponse.json({ data: updated });
+  } catch {
+    return NextResponse.json(
+      { error: 'internal_error', message: 'An unexpected error occurred' },
+      { status: 500 },
+    );
+  }
 }

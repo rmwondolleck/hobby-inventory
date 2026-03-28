@@ -34,38 +34,45 @@ export async function POST(_request: Request, { params }: RouteParams) {
     );
   }
 
-  const updated = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
-    // Mark allocation recovered (removes it from active count)
-    const updatedAllocation = await tx.allocation.update({
-      where: { id },
-      data: { status: 'recovered' },
-    });
-
-    // Create scrap event
-    await tx.event.create({
-      data: {
-        lotId: allocation.lotId,
-        type: 'scrapped',
-        delta: allocation.quantity !== null ? -allocation.quantity : null,
-        projectId: allocation.projectId,
-        notes: `Scrapped allocation ${id}`,
-      },
-    });
-
-    // Permanently reduce lot quantity for exact-count lots
-    if (
-      allocation.lot.quantityMode === 'exact' &&
-      allocation.lot.quantity !== null &&
-      allocation.quantity !== null
-    ) {
-      await tx.lot.update({
-        where: { id: allocation.lotId },
-        data: { quantity: Math.max(0, allocation.lot.quantity - allocation.quantity) },
+  try {
+    const updated = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+      // Mark allocation recovered (removes it from active count)
+      const updatedAllocation = await tx.allocation.update({
+        where: { id },
+        data: { status: 'recovered' },
       });
-    }
 
-    return updatedAllocation;
-  });
+      // Create scrap event
+      await tx.event.create({
+        data: {
+          lotId: allocation.lotId,
+          type: 'scrapped',
+          delta: allocation.quantity !== null ? -allocation.quantity : null,
+          projectId: allocation.projectId,
+          notes: `Scrapped allocation ${id}`,
+        },
+      });
 
-  return NextResponse.json({ data: updated });
+      // Permanently reduce lot quantity for exact-count lots
+      if (
+        allocation.lot.quantityMode === 'exact' &&
+        allocation.lot.quantity !== null &&
+        allocation.quantity !== null
+      ) {
+        await tx.lot.update({
+          where: { id: allocation.lotId },
+          data: { quantity: Math.max(0, allocation.lot.quantity - allocation.quantity) },
+        });
+      }
+
+      return updatedAllocation;
+    });
+
+    return NextResponse.json({ data: updated });
+  } catch {
+    return NextResponse.json(
+      { error: 'internal_error', message: 'An unexpected error occurred' },
+      { status: 500 },
+    );
+  }
 }
