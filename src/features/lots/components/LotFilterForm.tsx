@@ -48,12 +48,37 @@ export function LotFilterForm({ partOptions, locationOptions }: LotFilterFormPro
     [router, pathname, searchParams]
   );
 
+  const currentQ = searchParams.get('q') ?? '';
   const currentStatus = searchParams.get('status') ?? '';
   const currentPartId = searchParams.get('partId') ?? '';
   const currentLocationId = searchParams.get('locationId') ?? '';
   const currentSeller = searchParams.get('seller') ?? '';
   const currentSortBy = searchParams.get('sortBy') ?? '';
   const currentSortDir = searchParams.get('sortDir') ?? 'desc';
+
+  // Local state for q search input to avoid pushing on every keystroke
+  const [qInput, setQInput] = useState(currentQ);
+  const qDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Keep q state in sync when the URL param changes externally (e.g. clear filters)
+  useEffect(() => {
+    setQInput(currentQ);
+  }, [currentQ]);
+
+  // Clean up pending q debounce timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (qDebounceRef.current) clearTimeout(qDebounceRef.current);
+    };
+  }, []);
+
+  const handleQChange = (value: string) => {
+    setQInput(value);
+    if (qDebounceRef.current) clearTimeout(qDebounceRef.current);
+    qDebounceRef.current = setTimeout(() => {
+      updateFilter('q', value);
+    }, 300);
+  };
 
   // Local state for seller input to avoid pushing on every keystroke
   const [sellerInput, setSellerInput] = useState(currentSeller);
@@ -79,7 +104,7 @@ export function LotFilterForm({ partOptions, locationOptions }: LotFilterFormPro
     }, 400);
   };
 
-  const hasActiveFilters = !!(currentStatus || currentPartId || currentLocationId || currentSeller);
+  const hasActiveFilters = !!(currentQ || currentStatus || currentPartId || currentLocationId || currentSeller);
 
   return (
     <aside className="w-56 shrink-0">
@@ -95,6 +120,33 @@ export function LotFilterForm({ partOptions, locationOptions }: LotFilterFormPro
               Clear all
             </button>
           )}
+        </div>
+
+        {/* Search */}
+        <div className="mt-4">
+          <label htmlFor="filter-search" className={SECTION_LABEL}>
+            Search
+          </label>
+          <div className="relative">
+            <input
+              id="filter-search"
+              type="text"
+              value={qInput}
+              onChange={e => handleQChange(e.target.value)}
+              placeholder="Search lots…"
+              className={`${SELECT_CLASS}${qInput ? ' pr-7' : ''}`}
+            />
+            {qInput && (
+              <button
+                type="button"
+                onClick={() => handleQChange('')}
+                aria-label="Clear search"
+                className="absolute inset-y-0 right-2 mt-2 flex items-center text-muted-foreground hover:text-foreground"
+              >
+                ×
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Status */}

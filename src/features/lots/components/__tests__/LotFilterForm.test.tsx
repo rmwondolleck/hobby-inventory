@@ -2,7 +2,7 @@
  * @jest-environment jsdom
  */
 import React from 'react';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, act } from '@testing-library/react';
 import { LotFilterForm } from '../LotFilterForm';
 
 const mockPush = jest.fn();
@@ -116,3 +116,81 @@ describe('LotFilterForm — sort controls', () => {
     expect(screen.queryByRole('button', { name: /clear filters/i })).not.toBeInTheDocument();
   });
 });
+
+describe('LotFilterForm — q search', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockSearchParams = new URLSearchParams();
+    jest.useFakeTimers();
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
+  it('renders search input', () => {
+    render(<LotFilterForm partOptions={[]} locationOptions={[]} />);
+    expect(screen.getByRole('textbox', { name: /search/i })).toBeInTheDocument();
+  });
+
+  it('search input is initialized from ?q= URL param', () => {
+    mockSearchParams = new URLSearchParams('q=resistor');
+    render(<LotFilterForm partOptions={[]} locationOptions={[]} />);
+    expect(screen.getByRole('textbox', { name: /search/i })).toHaveValue('resistor');
+  });
+
+  it('typing debounces and calls updateFilter with q value after 300ms', () => {
+    render(<LotFilterForm partOptions={[]} locationOptions={[]} />);
+    const input = screen.getByRole('textbox', { name: /search/i });
+
+    fireEvent.change(input, { target: { value: 'cap' } });
+    expect(mockPush).not.toHaveBeenCalled();
+
+    act(() => {
+      jest.advanceTimersByTime(300);
+    });
+
+    expect(mockPush).toHaveBeenCalledWith(expect.stringContaining('q=cap'));
+  });
+
+  it('clear search button appears when qInput is non-empty', () => {
+    mockSearchParams = new URLSearchParams('q=cap');
+    render(<LotFilterForm partOptions={[]} locationOptions={[]} />);
+    expect(screen.getByRole('button', { name: /clear search/i })).toBeInTheDocument();
+  });
+
+  it('clear search button is not shown when search is empty', () => {
+    render(<LotFilterForm partOptions={[]} locationOptions={[]} />);
+    expect(screen.queryByRole('button', { name: /clear search/i })).not.toBeInTheDocument();
+  });
+
+  it('clicking clear search button removes q param', () => {
+    mockSearchParams = new URLSearchParams('q=cap');
+    render(<LotFilterForm partOptions={[]} locationOptions={[]} />);
+
+    fireEvent.click(screen.getByRole('button', { name: /clear search/i }));
+
+    act(() => {
+      jest.advanceTimersByTime(300);
+    });
+
+    const calledUrl = mockPush.mock.calls[0][0] as string;
+    expect(calledUrl).not.toContain('q=');
+  });
+
+  it('q is included in hasActiveFilters — shows Clear all button', () => {
+    mockSearchParams = new URLSearchParams('q=resistor');
+    render(<LotFilterForm partOptions={[]} locationOptions={[]} />);
+    expect(screen.getByRole('button', { name: /clear all/i })).toBeInTheDocument();
+  });
+
+  it('search input appears before Status section', () => {
+    render(<LotFilterForm partOptions={[]} locationOptions={[]} />);
+    const searchInput = screen.getByRole('textbox', { name: /search/i });
+    const statusSelect = screen.getByRole('combobox', { name: /status/i });
+    expect(
+      searchInput.compareDocumentPosition(statusSelect) & Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy();
+  });
+});
+

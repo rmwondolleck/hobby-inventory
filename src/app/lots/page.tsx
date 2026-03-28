@@ -11,6 +11,7 @@ interface PageProps {
     locationId?: string;
     status?: string;
     seller?: string;
+    q?: string;
     offset?: string;
     sortBy?: string;
     sortDir?: string;
@@ -31,10 +32,26 @@ async function getLotsData(params: Awaited<PageProps['searchParams']>) {
       : 'updatedAt';
   const sortDir: 'asc' | 'desc' = params.sortDir === 'asc' ? 'asc' : 'desc';
 
-  const where: { partId?: string; locationId?: string; status?: string } = {};
-  if (params.partId) where.partId = params.partId;
-  if (params.locationId) where.locationId = params.locationId;
-  if (params.status) where.status = params.status;
+  const where = {
+    AND: [
+      ...(params.partId ? [{ partId: params.partId }] : []),
+      ...(params.locationId ? [{ locationId: params.locationId }] : []),
+      ...(params.status ? [{ status: params.status }] : []),
+      ...(params.q
+        ? [
+            {
+              OR: [
+                { part: { name: { contains: params.q } } },
+                { part: { mpn: { contains: params.q } } },
+                { notes: { contains: params.q } },
+                { source: { contains: params.q } },
+                { location: { name: { contains: params.q } } },
+              ],
+            },
+          ]
+        : []),
+    ],
+  };
 
   // When seller filter is active, fetch all matching rows first (source is a JSON string
   // field and cannot be filtered at the database level), then apply in-memory filtering
@@ -118,6 +135,7 @@ export default async function LotsPage({ searchParams }: PageProps) {
     if (params.locationId) p.set('locationId', params.locationId);
     if (params.status) p.set('status', params.status);
     if (params.seller) p.set('seller', params.seller);
+    if (params.q) p.set('q', params.q);
     if (params.sortBy) p.set('sortBy', params.sortBy);
     if (params.sortDir) p.set('sortDir', params.sortDir);
     p.set('offset', String(newOffset));
