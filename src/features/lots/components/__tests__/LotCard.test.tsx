@@ -9,6 +9,13 @@ import type { LotCardLot } from '../LotCard';
 jest.mock('@/lib/utils', () => ({
   cn: (...classes: (string | undefined | null | false)[]) =>
     classes.filter(Boolean).join(' '),
+  safeParseJson: <T,>(value: string, fallback: T): T => {
+    try {
+      return JSON.parse(value) as T;
+    } catch {
+      return fallback;
+    }
+  },
 }));
 
 jest.mock('next/link', () => {
@@ -139,5 +146,57 @@ describe('LotCard', () => {
       />
     );
     expect(screen.getByText('Drawer 1')).toBeInTheDocument();
+  });
+
+  it('shows unit cost and total value for exact mode lot with unitCost', () => {
+    render(
+      <LotCard
+        lot={{
+          ...baseLot,
+          quantity: 10,
+          quantityMode: 'quantitative',
+          source: JSON.stringify({ unitCost: 3.5 }),
+        }}
+      />
+    );
+    expect(screen.getByText(/\$3\.50\/ea/)).toBeInTheDocument();
+    expect(screen.getByText(/≈.*\$35\.00 total/)).toBeInTheDocument();
+  });
+
+  it('shows only unit cost for qualitative mode lot with unitCost', () => {
+    render(
+      <LotCard
+        lot={{
+          ...baseLot,
+          quantityMode: 'qualitative',
+          qualitativeStatus: 'plenty',
+          quantity: null,
+          source: JSON.stringify({ unitCost: 3.5 }),
+        }}
+      />
+    );
+    expect(screen.getByText(/\$3\.50\/ea/)).toBeInTheDocument();
+    expect(screen.queryByText(/total/)).not.toBeInTheDocument();
+  });
+
+  it('shows nothing cost-related when unitCost is absent', () => {
+    render(<LotCard lot={{ ...baseLot, source: undefined }} />);
+    expect(screen.queryByText(/\/ea/)).not.toBeInTheDocument();
+  });
+
+  it('shows nothing cost-related when unitCost is zero', () => {
+    render(
+      <LotCard
+        lot={{ ...baseLot, source: JSON.stringify({ unitCost: 0 }) }}
+      />
+    );
+    expect(screen.queryByText(/\/ea/)).not.toBeInTheDocument();
+  });
+
+  it('does not crash on malformed source string', () => {
+    expect(() =>
+      render(<LotCard lot={{ ...baseLot, source: 'not-valid-json{{{' }} />)
+    ).not.toThrow();
+    expect(screen.queryByText(/\/ea/)).not.toBeInTheDocument();
   });
 });

@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { cn } from '@/lib/utils';
+import { cn, safeParseJson } from '@/lib/utils';
 import { LotStatusBadge } from './LotStatusBadge';
 
 export interface LotCardLot {
@@ -10,6 +10,7 @@ export interface LotCardLot {
   unit: string | null;
   status: string;
   notes: string | null;
+  source?: string | Record<string, unknown> | null;
   part: {
     id: string;
     name: string;
@@ -36,11 +37,23 @@ function formatQuantity(
   return unit ? `${quantity} ${unit}` : String(quantity);
 }
 
+const usd = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' });
+
 interface LotCardProps {
   lot: LotCardLot;
 }
 
 export function LotCard({ lot }: LotCardProps) {
+  const source = safeParseJson<{ unitCost?: number; currency?: string }>(
+    lot.source as string,
+    {}
+  );
+  const unitCost =
+    typeof source.unitCost === 'number' && source.unitCost > 0 ? source.unitCost : null;
+  const totalValue =
+    unitCost !== null && lot.quantityMode !== 'qualitative' && typeof lot.quantity === 'number' && lot.quantity > 0
+      ? unitCost * lot.quantity
+      : null;
   const isOutOfStock =
     lot.status === 'out' || lot.qualitativeStatus === 'out';
   const isLowStock =
@@ -88,6 +101,14 @@ export function LotCard({ lot }: LotCardProps) {
 
         {lot.notes && (
           <p className="mt-2 truncate text-xs text-muted-foreground">{lot.notes}</p>
+        )}
+
+        {unitCost !== null && (
+          <p className="mt-2 text-xs text-muted-foreground">
+            {totalValue !== null
+              ? `${usd.format(unitCost)}/ea · ≈ ${usd.format(totalValue)} total`
+              : `${usd.format(unitCost)}/ea`}
+          </p>
         )}
       </div>
     </Link>
