@@ -33,6 +33,7 @@ export async function GET(request: Request) {
   const locationId = searchParams.get('locationId') ?? undefined;
   const projectId = searchParams.get('projectId') ?? undefined;
   const partId = searchParams.get('partId') ?? undefined;
+  const category = searchParams.get('category') ?? undefined;
   const sourceSeller = searchParams.get('source.seller') ?? undefined;
   const limit = Math.min(parseInt(searchParams.get('limit') ?? String(DEFAULT_LIMIT), 10) || DEFAULT_LIMIT, MAX_LIMIT);
   const offset = Math.max(parseInt(searchParams.get('offset') ?? '0', 10) || 0, 0);
@@ -68,6 +69,7 @@ export async function GET(request: Request) {
   const where = {
     AND: [
       ...(partId ? [{ partId }] : []),
+      ...(category ? [{ part: { category } }] : []),
       ...(statusList && statusList.length > 0
         ? [{ status: { in: statusList } }]
         : []),

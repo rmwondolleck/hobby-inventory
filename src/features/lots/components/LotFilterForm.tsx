@@ -11,6 +11,7 @@ interface FilterOption {
 interface LotFilterFormProps {
   partOptions: FilterOption[];
   locationOptions: FilterOption[];
+  categoryOptions: string[];
 }
 
 const STATUS_OPTIONS: FilterOption[] = [
@@ -29,7 +30,7 @@ const SELECT_CLASS =
 
 const SECTION_LABEL = 'block text-xs font-medium uppercase tracking-wide text-muted-foreground';
 
-export function LotFilterForm({ partOptions, locationOptions }: LotFilterFormProps) {
+export function LotFilterForm({ partOptions, locationOptions, categoryOptions }: LotFilterFormProps) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -53,6 +54,7 @@ export function LotFilterForm({ partOptions, locationOptions }: LotFilterFormPro
   const currentPartId = searchParams.get('partId') ?? '';
   const currentLocationId = searchParams.get('locationId') ?? '';
   const currentSeller = searchParams.get('seller') ?? '';
+  const currentCategory = searchParams.get('category') ?? '';
   const currentSortBy = searchParams.get('sortBy') ?? '';
   const currentSortDir = searchParams.get('sortDir') ?? 'desc';
 
@@ -104,7 +106,7 @@ export function LotFilterForm({ partOptions, locationOptions }: LotFilterFormPro
     }, 400);
   };
 
-  const hasActiveFilters = !!(currentQ || currentStatus || currentPartId || currentLocationId || currentSeller);
+  const hasActiveFilters = !!(currentQ || currentStatus || currentPartId || currentLocationId || currentSeller || currentCategory);
 
   return (
     <aside className="w-56 shrink-0">
@@ -206,6 +208,28 @@ export function LotFilterForm({ partOptions, locationOptions }: LotFilterFormPro
               {locationOptions.map(opt => (
                 <option key={opt.value} value={opt.value}>
                   {opt.label}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+
+        {/* Category */}
+        {categoryOptions.length > 0 && (
+          <div className="mt-4">
+            <label htmlFor="filter-category" className={SECTION_LABEL}>
+              Category
+            </label>
+            <select
+              id="filter-category"
+              value={currentCategory}
+              onChange={e => updateFilter('category', e.target.value)}
+              className={SELECT_CLASS}
+            >
+              <option value="">All Categories</option>
+              {categoryOptions.map(cat => (
+                <option key={cat} value={cat}>
+                  {cat}
                 </option>
               ))}
             </select>

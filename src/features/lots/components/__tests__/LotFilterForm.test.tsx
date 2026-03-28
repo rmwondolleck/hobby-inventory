@@ -21,7 +21,7 @@ describe('LotFilterForm — sort controls', () => {
   });
 
   it('renders Sort By select with all allowed options', () => {
-    render(<LotFilterForm partOptions={[]} locationOptions={[]} />);
+    render(<LotFilterForm partOptions={[]} locationOptions={[]} categoryOptions={[]} />);
 
     const sortBySelect = screen.getByRole('combobox', { name: /sort by/i });
     expect(sortBySelect).toBeInTheDocument();
@@ -37,18 +37,18 @@ describe('LotFilterForm — sort controls', () => {
   });
 
   it('Sort Direction select is hidden when sortBy is empty', () => {
-    render(<LotFilterForm partOptions={[]} locationOptions={[]} />);
+    render(<LotFilterForm partOptions={[]} locationOptions={[]} categoryOptions={[]} />);
     expect(screen.queryByRole('combobox', { name: /sort direction/i })).not.toBeInTheDocument();
   });
 
   it('Sort Direction select appears when a sortBy value is selected', () => {
     mockSearchParams = new URLSearchParams('sortBy=quantity');
-    render(<LotFilterForm partOptions={[]} locationOptions={[]} />);
+    render(<LotFilterForm partOptions={[]} locationOptions={[]} categoryOptions={[]} />);
     expect(screen.getByRole('combobox', { name: /sort direction/i })).toBeInTheDocument();
   });
 
   it('changing Sort By calls router.push with sortBy param', () => {
-    render(<LotFilterForm partOptions={[]} locationOptions={[]} />);
+    render(<LotFilterForm partOptions={[]} locationOptions={[]} categoryOptions={[]} />);
 
     fireEvent.change(screen.getByRole('combobox', { name: /sort by/i }), {
       target: { value: 'quantity' },
@@ -61,7 +61,7 @@ describe('LotFilterForm — sort controls', () => {
 
   it('changing Sort By removes offset param (resets pagination)', () => {
     mockSearchParams = new URLSearchParams('offset=20');
-    render(<LotFilterForm partOptions={[]} locationOptions={[]} />);
+    render(<LotFilterForm partOptions={[]} locationOptions={[]} categoryOptions={[]} />);
 
     fireEvent.change(screen.getByRole('combobox', { name: /sort by/i }), {
       target: { value: 'status' },
@@ -74,7 +74,7 @@ describe('LotFilterForm — sort controls', () => {
 
   it('changing Sort Direction calls router.push with sortDir param', () => {
     mockSearchParams = new URLSearchParams('sortBy=quantity&sortDir=desc');
-    render(<LotFilterForm partOptions={[]} locationOptions={[]} />);
+    render(<LotFilterForm partOptions={[]} locationOptions={[]} categoryOptions={[]} />);
 
     fireEvent.change(screen.getByRole('combobox', { name: /sort direction/i }), {
       target: { value: 'asc' },
@@ -87,7 +87,7 @@ describe('LotFilterForm — sort controls', () => {
 
   it('clearing sortBy via empty value removes sortBy param', () => {
     mockSearchParams = new URLSearchParams('sortBy=quantity');
-    render(<LotFilterForm partOptions={[]} locationOptions={[]} />);
+    render(<LotFilterForm partOptions={[]} locationOptions={[]} categoryOptions={[]} />);
 
     fireEvent.change(screen.getByRole('combobox', { name: /sort by/i }), {
       target: { value: '' },
@@ -99,20 +99,20 @@ describe('LotFilterForm — sort controls', () => {
 
   it('shows Clear filters button when sortBy is active', () => {
     mockSearchParams = new URLSearchParams('sortBy=createdAt');
-    render(<LotFilterForm partOptions={[]} locationOptions={[]} />);
+    render(<LotFilterForm partOptions={[]} locationOptions={[]} categoryOptions={[]} />);
     expect(screen.getByRole('button', { name: /clear filters/i })).toBeInTheDocument();
   });
 
   it('Clear filters button resets to base pathname', () => {
     mockSearchParams = new URLSearchParams('sortBy=createdAt&sortDir=asc');
-    render(<LotFilterForm partOptions={[]} locationOptions={[]} />);
+    render(<LotFilterForm partOptions={[]} locationOptions={[]} categoryOptions={[]} />);
 
     fireEvent.click(screen.getByRole('button', { name: /clear filters/i }));
     expect(mockPush).toHaveBeenCalledWith('/lots');
   });
 
   it('does not show Clear filters button when no filters active', () => {
-    render(<LotFilterForm partOptions={[]} locationOptions={[]} />);
+    render(<LotFilterForm partOptions={[]} locationOptions={[]} categoryOptions={[]} />);
     expect(screen.queryByRole('button', { name: /clear filters/i })).not.toBeInTheDocument();
   });
 });
@@ -129,18 +129,18 @@ describe('LotFilterForm — q search', () => {
   });
 
   it('renders search input', () => {
-    render(<LotFilterForm partOptions={[]} locationOptions={[]} />);
+    render(<LotFilterForm partOptions={[]} locationOptions={[]} categoryOptions={[]} />);
     expect(screen.getByRole('textbox', { name: /search/i })).toBeInTheDocument();
   });
 
   it('search input is initialized from ?q= URL param', () => {
     mockSearchParams = new URLSearchParams('q=resistor');
-    render(<LotFilterForm partOptions={[]} locationOptions={[]} />);
+    render(<LotFilterForm partOptions={[]} locationOptions={[]} categoryOptions={[]} />);
     expect(screen.getByRole('textbox', { name: /search/i })).toHaveValue('resistor');
   });
 
   it('typing debounces and calls updateFilter with q value after 300ms', () => {
-    render(<LotFilterForm partOptions={[]} locationOptions={[]} />);
+    render(<LotFilterForm partOptions={[]} locationOptions={[]} categoryOptions={[]} />);
     const input = screen.getByRole('textbox', { name: /search/i });
 
     fireEvent.change(input, { target: { value: 'cap' } });
@@ -155,18 +155,18 @@ describe('LotFilterForm — q search', () => {
 
   it('clear search button appears when qInput is non-empty', () => {
     mockSearchParams = new URLSearchParams('q=cap');
-    render(<LotFilterForm partOptions={[]} locationOptions={[]} />);
+    render(<LotFilterForm partOptions={[]} locationOptions={[]} categoryOptions={[]} />);
     expect(screen.getByRole('button', { name: /clear search/i })).toBeInTheDocument();
   });
 
   it('clear search button is not shown when search is empty', () => {
-    render(<LotFilterForm partOptions={[]} locationOptions={[]} />);
+    render(<LotFilterForm partOptions={[]} locationOptions={[]} categoryOptions={[]} />);
     expect(screen.queryByRole('button', { name: /clear search/i })).not.toBeInTheDocument();
   });
 
   it('clicking clear search button removes q param', () => {
     mockSearchParams = new URLSearchParams('q=cap');
-    render(<LotFilterForm partOptions={[]} locationOptions={[]} />);
+    render(<LotFilterForm partOptions={[]} locationOptions={[]} categoryOptions={[]} />);
 
     fireEvent.click(screen.getByRole('button', { name: /clear search/i }));
 
@@ -180,12 +180,12 @@ describe('LotFilterForm — q search', () => {
 
   it('q is included in hasActiveFilters — shows Clear all button', () => {
     mockSearchParams = new URLSearchParams('q=resistor');
-    render(<LotFilterForm partOptions={[]} locationOptions={[]} />);
+    render(<LotFilterForm partOptions={[]} locationOptions={[]} categoryOptions={[]} />);
     expect(screen.getByRole('button', { name: /clear all/i })).toBeInTheDocument();
   });
 
   it('search input appears before Status section', () => {
-    render(<LotFilterForm partOptions={[]} locationOptions={[]} />);
+    render(<LotFilterForm partOptions={[]} locationOptions={[]} categoryOptions={[]} />);
     const searchInput = screen.getByRole('textbox', { name: /search/i });
     const statusSelect = screen.getByRole('combobox', { name: /status/i });
     expect(
