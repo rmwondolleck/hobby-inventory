@@ -86,4 +86,16 @@ describe('GET /api/projects/[id]/events', () => {
       orderBy: { createdAt: 'desc' },
     });
   });
+
+  it('returns 500 when Prisma throws', async () => {
+    (mockPrisma.project.findUnique as jest.Mock).mockRejectedValue(new Error('DB connection failed'));
+
+    const res = await GET(new Request('http://localhost/api/projects/proj-1/events'), {
+      params: Promise.resolve({ id: 'proj-1' }),
+    });
+    const body = await res.json();
+
+    expect(res.status).toBe(500);
+    expect(body.error).toBe('internal_error');
+  });
 });

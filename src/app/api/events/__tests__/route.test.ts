@@ -179,4 +179,15 @@ describe('GET /api/events', () => {
       }),
     );
   });
+
+  it('returns 500 when Prisma throws', async () => {
+    (mockPrisma.event.findMany as jest.Mock).mockRejectedValue(new Error('DB connection failed'));
+    (mockPrisma.event.count as jest.Mock).mockRejectedValue(new Error('DB connection failed'));
+
+    const res = await GET(makeRequest());
+    const body = await res.json();
+
+    expect(res.status).toBe(500);
+    expect(body.error).toBe('internal_error');
+  });
 });

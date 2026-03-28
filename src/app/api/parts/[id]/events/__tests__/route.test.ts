@@ -194,4 +194,16 @@ describe('GET /api/parts/[id]/events', () => {
     expect(body.data[0].fromLocation).toBeNull();
     expect(body.data[0].toLocation).toBeNull();
   });
+
+  it('returns 500 when Prisma throws', async () => {
+    (mockPrisma.part.findUnique as jest.Mock).mockRejectedValue(new Error('DB connection failed'));
+
+    const res = await GET(new Request('http://localhost/api/parts/part-1/events'), {
+      params: Promise.resolve({ id: 'part-1' }),
+    });
+    const body = await res.json();
+
+    expect(res.status).toBe(500);
+    expect(body.error).toBe('internal_error');
+  });
 });

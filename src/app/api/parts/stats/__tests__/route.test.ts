@@ -156,4 +156,14 @@ describe('GET /api/parts/stats', () => {
       })
     );
   });
+
+  it('returns 500 when Prisma throws', async () => {
+    mockFindMany.mockRejectedValue(new Error('DB connection failed'));
+
+    const res = await GET();
+    const json = await res.json();
+
+    expect(res.status).toBe(500);
+    expect(json.error).toBe('internal_error');
+  });
 });
