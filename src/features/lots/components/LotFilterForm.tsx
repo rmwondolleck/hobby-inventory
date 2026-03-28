@@ -229,7 +229,17 @@ export function LotFilterForm({ partOptions, locationOptions }: LotFilterFormPro
 
         {/* Sort — visually separated */}
         <div className="mt-4 border-t border-border pt-4">
-          <h3 className={SECTION_LABEL}>Sort</h3>
+          <div className="flex items-center justify-between">
+            <h3 className={SECTION_LABEL}>Sort</h3>
+            {currentSortBy && (
+              <button
+                onClick={() => router.push(pathname)}
+                className="text-xs text-primary hover:underline"
+              >
+                Clear filters
+              </button>
+            )}
+          </div>
           <select
             id="filter-sort-by"
             value={currentSortBy}
@@ -243,16 +253,18 @@ export function LotFilterForm({ partOptions, locationOptions }: LotFilterFormPro
             <option value="quantity">Quantity</option>
             <option value="status">Status</option>
           </select>
-          <select
-            id="filter-sort-dir"
-            value={currentSortDir}
-            onChange={e => updateFilter('sortDir', e.target.value)}
-            className={SELECT_CLASS}
-            aria-label="Sort direction"
-          >
-            <option value="desc">Descending</option>
-            <option value="asc">Ascending</option>
-          </select>
+          {currentSortBy && (
+            <select
+              id="filter-sort-dir"
+              value={currentSortDir}
+              onChange={e => updateFilter('sortDir', e.target.value)}
+              className={SELECT_CLASS}
+              aria-label="Sort direction"
+            >
+              <option value="desc">Descending</option>
+              <option value="asc">Ascending</option>
+            </select>
+          )}
         </div>
       </div>
     </aside>
