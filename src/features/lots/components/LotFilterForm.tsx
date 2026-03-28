@@ -79,7 +79,7 @@ export function LotFilterForm({ partOptions, locationOptions }: LotFilterFormPro
     }, 400);
   };
 
-  const hasActiveFilters = !!(currentStatus || currentPartId || currentLocationId || currentSeller);
+  const hasActiveFilters = !!(currentStatus || currentPartId || currentLocationId || currentSeller || currentSortBy);
 
   return (
     <aside className="w-56 shrink-0">
@@ -92,7 +92,7 @@ export function LotFilterForm({ partOptions, locationOptions }: LotFilterFormPro
               onClick={() => router.push(pathname)}
               className="text-xs text-primary hover:underline"
             >
-              Clear all
+              Clear filters
             </button>
           )}
         </div>
@@ -191,16 +191,18 @@ export function LotFilterForm({ partOptions, locationOptions }: LotFilterFormPro
             <option value="quantity">Quantity</option>
             <option value="status">Status</option>
           </select>
-          <select
-            id="filter-sort-dir"
-            value={currentSortDir}
-            onChange={e => updateFilter('sortDir', e.target.value)}
-            className={SELECT_CLASS}
-            aria-label="Sort direction"
-          >
-            <option value="desc">Descending</option>
-            <option value="asc">Ascending</option>
-          </select>
+          {currentSortBy && (
+            <select
+              id="filter-sort-dir"
+              value={currentSortDir}
+              onChange={e => updateFilter('sortDir', e.target.value)}
+              className={SELECT_CLASS}
+              aria-label="Sort direction"
+            >
+              <option value="desc">Descending</option>
+              <option value="asc">Ascending</option>
+            </select>
+          )}
         </div>
       </div>
     </aside>
