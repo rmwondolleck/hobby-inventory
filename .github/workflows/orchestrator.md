@@ -125,8 +125,8 @@ Find or create an issue titled `[Orchestrator] Work Queue`. This is the **single
 
 | Issue | Title | Stage | Agent | PR | Started |
 |-------|-------|-------|-------|-----|---------|
-| #5 | Domain model | `ready-to-merge` | - | #32 | 2024-01-15 10:00 |
-| #6 | Statuses | `building` | build-agent | #33 | 2024-01-15 11:30 |
+| #5 | Domain model | `ready-to-merge` | - | [#32](https://github.com/rmwondolleck/hobby-inventory/pull/32) | 2024-01-15 10:00 |
+| #6 | Statuses | `building` | build-agent | [#33](https://github.com/rmwondolleck/hobby-inventory/pull/33) | 2024-01-15 11:30 |
 
 ## 🎯 Epic Integration Status
 
@@ -477,10 +477,10 @@ Collect PR numbers from the `PR` column of the Active Work table for every issue
    ## 🎉 Epic #1 Foundation - Ready for Integration!
    
    All 4 issues have completed the pipeline and are ready to merge:
-   - #5 Domain model (PR #32) ✅
-   - #6 Statuses (PR #33) ✅
-   - #7 Skeleton (PR #34) ✅
-   - #8 Migrations (PR #35) ✅
+   - #5 Domain model ([PR #32](https://github.com/rmwondolleck/hobby-inventory/pull/32)) ✅
+   - #6 Statuses ([PR #33](https://github.com/rmwondolleck/hobby-inventory/pull/33)) ✅
+   - #7 Skeleton ([PR #34](https://github.com/rmwondolleck/hobby-inventory/pull/34)) ✅
+   - #8 Migrations ([PR #35](https://github.com/rmwondolleck/hobby-inventory/pull/35)) ✅
    
    **Dispatching integration-agent** to synthesize and create epic PR...
    ```
@@ -517,7 +517,7 @@ AGENT_REPORT: {
    ```markdown
    ## 🎯 EPIC #1 READY FOR REVIEW
    
-   **ONE PR to review**: [PR #99 - Epic 1: Foundation](link)
+   **ONE PR to review**: [PR #99 — Epic 1: Foundation](https://github.com/rmwondolleck/hobby-inventory/pull/99)
    
    ### What's Included
    - Domain model (#5)
@@ -606,7 +606,7 @@ Call `update-issue` with a completely rebuilt body on **every single run** — e
 
 #### Section 1 — Active Work Table
 List every issue currently in stages: `coding`, `testing`, `building`, `review`, `ready-to-merge`, `awaiting-integration`.
-One row per issue. Columns: Issue #, Title (truncated), Stage (backtick-wrapped), Agent (current agent name or `-`), PR (`#N` or `-`), Started (date).
+One row per issue. Columns: Issue #, Title (truncated), Stage (backtick-wrapped), Agent (current agent name or `-`), PR (markdown link `[#N](https://github.com/rmwondolleck/hobby-inventory/pull/N)` or `-` when no PR yet), Started (date).
 
 #### Section 2 — Epic Integration Status Table
 Compute this table fresh from the Active Work data on **every run**. **Do not copy-paste from the previous body.**
@@ -626,7 +626,7 @@ For each active epic (epics not yet in Completed Epics):
 
 #### Section 3 — Completed Epics Table
 List every epic whose epic PR has been merged to `main`.
-Include: Epic issue #, title, date integrated, PR #.
+Include: Epic issue #, title, date integrated, PR # as a markdown link `[#N](https://github.com/rmwondolleck/hobby-inventory/pull/N)`.
 
 #### Section 4 — Blocked Issues Table
 List every issue in `blocked` stage with its blocker.
