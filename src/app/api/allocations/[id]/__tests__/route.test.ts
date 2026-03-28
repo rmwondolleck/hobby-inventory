@@ -196,6 +196,20 @@ describe('POST /api/allocations/[id]/return', () => {
     const json = await res.json();
     expect(json.error).toBe('invalid_state');
   });
+
+  it('returns 500 when $transaction throws', async () => {
+    mockAllocationFindUnique.mockResolvedValue(baseAllocation);
+    mockTransaction.mockRejectedValue(new Error('DB connection failed'));
+
+    const res = await RETURN_POST(
+      makeRequest('http://localhost/api/allocations/alloc001/return', { method: 'POST' }),
+      makeParams('alloc001'),
+    );
+    expect(res.status).toBe(500);
+
+    const json = await res.json();
+    expect(json.error).toBe('internal_error');
+  });
 });
 
 // ─── POST /api/allocations/[id]/scrap ────────────────────────────────────────
@@ -251,5 +265,22 @@ describe('POST /api/allocations/[id]/scrap', () => {
 
     const json = await res.json();
     expect(json.error).toBe('invalid_state');
+  });
+
+  it('returns 500 when $transaction throws', async () => {
+    mockAllocationFindUnique.mockResolvedValue({
+      ...baseAllocation,
+      lot: { quantity: 10, quantityMode: 'exact' },
+    });
+    mockTransaction.mockRejectedValue(new Error('DB connection failed'));
+
+    const res = await SCRAP_POST(
+      makeRequest('http://localhost/api/allocations/alloc001/scrap', { method: 'POST' }),
+      makeParams('alloc001'),
+    );
+    expect(res.status).toBe(500);
+
+    const json = await res.json();
+    expect(json.error).toBe('internal_error');
   });
 });
