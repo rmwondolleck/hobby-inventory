@@ -194,3 +194,106 @@ describe('LotFilterForm — q search', () => {
   });
 });
 
+describe('LotFilterForm — category filter', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockSearchParams = new URLSearchParams();
+  });
+
+  it('does not render category dropdown when categoryOptions is empty', () => {
+    render(<LotFilterForm partOptions={[]} locationOptions={[]} categoryOptions={[]} />);
+    expect(screen.queryByRole('combobox', { name: /category/i })).not.toBeInTheDocument();
+  });
+
+  it('renders category dropdown when categoryOptions has values', () => {
+    render(
+      <LotFilterForm
+        partOptions={[]}
+        locationOptions={[]}
+        categoryOptions={['Resistors', 'Capacitors']}
+      />
+    );
+    expect(screen.getByRole('combobox', { name: /category/i })).toBeInTheDocument();
+  });
+
+  it('renders all category options plus "All Categories" placeholder', () => {
+    render(
+      <LotFilterForm
+        partOptions={[]}
+        locationOptions={[]}
+        categoryOptions={['Resistors', 'Capacitors', 'ICs']}
+      />
+    );
+    const select = screen.getByRole('combobox', { name: /category/i });
+    const options = Array.from(select.querySelectorAll('option')).map(o => o.value);
+    expect(options).toEqual(['', 'Resistors', 'Capacitors', 'ICs']);
+  });
+
+  it('initialises category select from ?category= URL param', () => {
+    mockSearchParams = new URLSearchParams('category=Resistors');
+    render(
+      <LotFilterForm
+        partOptions={[]}
+        locationOptions={[]}
+        categoryOptions={['Resistors', 'Capacitors']}
+      />
+    );
+    expect(screen.getByRole('combobox', { name: /category/i })).toHaveValue('Resistors');
+  });
+
+  it('changing category calls router.push with category param', () => {
+    render(
+      <LotFilterForm
+        partOptions={[]}
+        locationOptions={[]}
+        categoryOptions={['Resistors', 'Capacitors']}
+      />
+    );
+    fireEvent.change(screen.getByRole('combobox', { name: /category/i }), {
+      target: { value: 'Capacitors' },
+    });
+    expect(mockPush).toHaveBeenCalledWith(expect.stringContaining('category=Capacitors'));
+  });
+
+  it('selecting "All Categories" removes category param from URL', () => {
+    mockSearchParams = new URLSearchParams('category=Resistors');
+    render(
+      <LotFilterForm
+        partOptions={[]}
+        locationOptions={[]}
+        categoryOptions={['Resistors', 'Capacitors']}
+      />
+    );
+    fireEvent.change(screen.getByRole('combobox', { name: /category/i }), {
+      target: { value: '' },
+    });
+    const calledUrl = mockPush.mock.calls[0][0] as string;
+    expect(calledUrl).not.toContain('category=');
+  });
+
+  it('active category is included in hasActiveFilters — shows Clear all button', () => {
+    mockSearchParams = new URLSearchParams('category=Resistors');
+    render(
+      <LotFilterForm
+        partOptions={[]}
+        locationOptions={[]}
+        categoryOptions={['Resistors', 'Capacitors']}
+      />
+    );
+    expect(screen.getByRole('button', { name: /clear (all|filters)/i })).toBeInTheDocument();
+  });
+
+  it('clearing all filters removes category param', () => {
+    mockSearchParams = new URLSearchParams('category=Resistors');
+    render(
+      <LotFilterForm
+        partOptions={[]}
+        locationOptions={[]}
+        categoryOptions={['Resistors', 'Capacitors']}
+      />
+    );
+    fireEvent.click(screen.getByRole('button', { name: /clear (all|filters)/i }));
+    expect(mockPush).toHaveBeenCalledWith('/lots');
+  });
+});
+
