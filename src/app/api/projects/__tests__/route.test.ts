@@ -313,6 +313,107 @@ describe('GET /api/projects', () => {
     expect(json.data[0].tags).toEqual([]);
   });
 
+  it('sorts alphabetically when sortBy=name&sortDir=asc', async () => {
+    const projectA = { ...baseProject, id: 'proj-a', name: 'Alpha Project' };
+    const projectB = { ...baseProject, id: 'proj-b', name: 'Beta Project' };
+    mockCount.mockResolvedValue(2);
+    mockFindMany.mockResolvedValue([projectA, projectB]);
+
+    await GET(makeRequest('http://localhost/api/projects?sortBy=name&sortDir=asc'));
+
+    expect(mockFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({ orderBy: { name: 'asc' } })
+    );
+  });
+
+  it('falls back to updatedAt desc when sortBy is unrecognised', async () => {
+    mockCount.mockResolvedValue(0);
+    mockFindMany.mockResolvedValue([]);
+
+    await GET(makeRequest('http://localhost/api/projects?sortBy=invalid_field'));
+
+    expect(mockFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({ orderBy: { updatedAt: 'desc' } })
+    );
+  });
+
+  it('uses updatedAt desc when no sort params present', async () => {
+    mockCount.mockResolvedValue(0);
+    mockFindMany.mockResolvedValue([]);
+
+    await GET(makeRequest('http://localhost/api/projects'));
+
+    expect(mockFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({ orderBy: { updatedAt: 'desc' } })
+    );
+  });
+
+  it('sorts by status asc when sortBy=status&sortDir=asc', async () => {
+    mockCount.mockResolvedValue(0);
+    mockFindMany.mockResolvedValue([]);
+
+    await GET(makeRequest('http://localhost/api/projects?sortBy=status&sortDir=asc'));
+
+    expect(mockFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({ orderBy: { status: 'asc' } })
+    );
+  });
+
+  it('sorts by createdAt desc when sortBy=createdAt&sortDir=desc', async () => {
+    mockCount.mockResolvedValue(0);
+    mockFindMany.mockResolvedValue([]);
+
+    await GET(makeRequest('http://localhost/api/projects?sortBy=createdAt&sortDir=desc'));
+
+    expect(mockFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({ orderBy: { createdAt: 'desc' } })
+    );
+  });
+
+  it('sorts by updatedAt asc when sortBy=updatedAt&sortDir=asc', async () => {
+    mockCount.mockResolvedValue(0);
+    mockFindMany.mockResolvedValue([]);
+
+    await GET(makeRequest('http://localhost/api/projects?sortBy=updatedAt&sortDir=asc'));
+
+    expect(mockFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({ orderBy: { updatedAt: 'asc' } })
+    );
+  });
+
+  it('defaults sortDir to desc when sortBy is valid but sortDir is omitted', async () => {
+    mockCount.mockResolvedValue(0);
+    mockFindMany.mockResolvedValue([]);
+
+    await GET(makeRequest('http://localhost/api/projects?sortBy=name'));
+
+    expect(mockFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({ orderBy: { name: 'desc' } })
+    );
+  });
+
+  it('defaults sortDir to desc when sortDir value is unrecognised', async () => {
+    mockCount.mockResolvedValue(0);
+    mockFindMany.mockResolvedValue([]);
+
+    await GET(makeRequest('http://localhost/api/projects?sortBy=name&sortDir=DESC'));
+
+    expect(mockFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({ orderBy: { name: 'desc' } })
+    );
+  });
+
+  it('uses updatedAt desc when sortDir is provided alone without sortBy', async () => {
+    mockCount.mockResolvedValue(0);
+    mockFindMany.mockResolvedValue([]);
+
+    await GET(makeRequest('http://localhost/api/projects?sortDir=asc'));
+
+    expect(mockFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({ orderBy: { updatedAt: 'asc' } })
+    );
+  });
+
   it('returns 500 on unexpected DB error', async () => {
     mockCount.mockRejectedValue(new Error('DB connection lost'));
     mockFindMany.mockRejectedValue(new Error('DB connection lost'));

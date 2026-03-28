@@ -39,6 +39,13 @@ jest.mock('@/lib/utils', () => ({
   cn: (...classes: (string | undefined | null | false)[]) => classes.filter(Boolean).join(' '),
 }));
 
+// Minimal mock for next/navigation used by ProjectsListClient
+jest.mock('next/navigation', () => ({
+  useRouter: () => ({ push: jest.fn() }),
+  usePathname: () => '/projects',
+  useSearchParams: () => new URLSearchParams(),
+}));
+
 // ── Import component under test AFTER mocks ─────────────────────────────────
 // We test via a thin wrapper that exposes only the sub-component we care about.
 // Because NewProjectDialog is not exported we render ProjectsListClient and

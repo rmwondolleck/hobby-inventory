@@ -8,6 +8,9 @@ const MAX_LIMIT = 500;
 
 const VALID_STATUSES: ProjectStatus[] = ['idea', 'planned', 'active', 'deployed', 'retired'];
 
+const PROJECTS_SORT_ALLOWLIST = ['name', 'status', 'createdAt', 'updatedAt'] as const;
+type ProjectsSortField = (typeof PROJECTS_SORT_ALLOWLIST)[number];
+
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
@@ -21,6 +24,14 @@ export async function GET(request: Request) {
       MAX_LIMIT,
     );
     const offset = Math.max(parseInt(searchParams.get('offset') ?? '0', 10) || 0, 0);
+
+    const sortByParam = searchParams.get('sortBy');
+    const sortDirParam = searchParams.get('sortDir');
+    const sortBy: ProjectsSortField =
+      sortByParam && (PROJECTS_SORT_ALLOWLIST as readonly string[]).includes(sortByParam)
+        ? (sortByParam as ProjectsSortField)
+        : 'updatedAt';
+    const sortDir: 'asc' | 'desc' = sortDirParam === 'asc' ? 'asc' : 'desc';
 
     const where: Record<string, unknown> = {};
 
@@ -57,7 +68,7 @@ export async function GET(request: Request) {
         where,
         skip: offset,
         take: limit,
-        orderBy: { updatedAt: 'desc' },
+        orderBy: { [sortBy]: sortDir },
         include: {
           allocations: {
             select: { status: true },

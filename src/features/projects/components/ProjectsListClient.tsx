@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import { useForm, Controller } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -41,6 +42,13 @@ const PROJECT_STATUSES: Array<{ value: ProjectStatus; label: string }> = [
   { value: 'deployed', label: 'Deployed' },
   { value: 'retired', label: 'Retired' },
 ];
+
+const PROJECTS_SORT_OPTIONS = [
+  { value: 'updatedAt', label: 'Recently Updated' },
+  { value: 'createdAt', label: 'Date Created' },
+  { value: 'name', label: 'Name' },
+  { value: 'status', label: 'Status' },
+] as const;
 
 function NewProjectDialog({ onCreated }: { onCreated: (project: ProjectListItem) => void }) {
   const [open, setOpen] = useState(false);
@@ -316,6 +324,10 @@ function FilterSidebar({
 }
 
 export function ProjectsListClient() {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
   const [projects, setProjects] = useState<ProjectListItem[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -327,10 +339,23 @@ export function ProjectsListClient() {
     tags: [],
   });
 
+  const sortBy = searchParams.get('sortBy') ?? 'updatedAt';
+  const sortDir = (searchParams.get('sortDir') ?? 'desc') as 'asc' | 'desc';
+
+  const updateSort = useCallback(
+    (newSortBy: string, newSortDir: 'asc' | 'desc') => {
+      const params = new URLSearchParams(searchParams.toString());
+      params.set('sortBy', newSortBy);
+      params.set('sortDir', newSortDir);
+      router.push(`${pathname}?${params.toString()}`);
+    },
+    [router, pathname, searchParams]
+  );
+
   const sidebarInitialized = useRef(false);
   const refreshControllerRef = useRef<AbortController | null>(null);
 
-  const fetchProjects = useCallback(async (currentFilters: ProjectFilters, signal: AbortSignal) => {
+  const fetchProjects = useCallback(async (currentFilters: ProjectFilters, currentSortBy: string, currentSortDir: 'asc' | 'desc', signal: AbortSignal) => {
     setLoading(true);
     setError(null);
     try {
@@ -340,6 +365,8 @@ export function ProjectsListClient() {
       if (currentFilters.tags.length > 0)
         params.set('tags', currentFilters.tags.join(','));
       params.set('limit', '200');
+      params.set('sortBy', currentSortBy);
+      params.set('sortDir', currentSortDir);
 
       const res = await fetch(`/api/projects?${params.toString()}`, { signal });
       if (!res.ok) throw new Error('Failed to fetch projects');
@@ -363,9 +390,9 @@ export function ProjectsListClient() {
 
   useEffect(() => {
     const controller = new AbortController();
-    fetchProjects(filters, controller.signal);
+    fetchProjects(filters, sortBy, sortDir, controller.signal);
     return () => controller.abort();
-  }, [fetchProjects, filters]);
+  }, [fetchProjects, filters, sortBy, sortDir]);
 
   useEffect(() => {
     return () => { refreshControllerRef.current?.abort(); };
@@ -375,8 +402,8 @@ export function ProjectsListClient() {
     refreshControllerRef.current?.abort();
     const controller = new AbortController();
     refreshControllerRef.current = controller;
-    fetchProjects(filters, controller.signal);
-  }, [fetchProjects, filters]);
+    fetchProjects(filters, sortBy, sortDir, controller.signal);
+  }, [fetchProjects, filters, sortBy, sortDir]);
 
   return (
     <div className="flex gap-6">
@@ -387,12 +414,36 @@ export function ProjectsListClient() {
       />
 
       <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 mb-4">
           <div className="flex-1">
             <SearchInput
               value={filters.search}
               onChange={(search) => setFilters((f) => ({ ...f, search }))}
             />
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <label htmlFor="projects-sort-by" className="text-sm text-muted-foreground whitespace-nowrap">
+              Sort by
+            </label>
+            <select
+              id="projects-sort-by"
+              value={sortBy}
+              onChange={e => updateSort(e.target.value, sortDir)}
+              className="rounded-md border border-border bg-card px-2 py-1.5 text-sm"
+            >
+              {PROJECTS_SORT_OPTIONS.map(opt => (
+                <option key={opt.value} value={opt.value}>{opt.label}</option>
+              ))}
+            </select>
+            <select
+              id="projects-sort-dir"
+              value={sortDir}
+              onChange={e => updateSort(sortBy, e.target.value as 'asc' | 'desc')}
+              className="rounded-md border border-border bg-card px-2 py-1.5 text-sm"
+            >
+              <option value="desc">Descending</option>
+              <option value="asc">Ascending</option>
+            </select>
           </div>
           <NewProjectDialog onCreated={handleProjectCreated} />
         </div>
