@@ -11,6 +11,7 @@ interface PageProps {
     locationId?: string;
     status?: string;
     seller?: string;
+    staleSince?: string;
     offset?: string;
     sortBy?: string;
     sortDir?: string;

@@ -224,6 +224,50 @@ describe('GET /api/lots', () => {
       expect.objectContaining({ orderBy: { updatedAt: 'desc' } })
     );
   });
+
+  it('returns 400 for invalid staleSince date string', async () => {
+    const res = await GET(makeRequest('http://localhost/api/lots?staleSince=not-a-date'));
+    expect(res.status).toBe(400);
+    const json = await res.json();
+    expect(json.error).toBe('invalid_param');
+  });
+
+  it('passes staleSince relation filter for stale lot (no events after cutoff)', async () => {
+    mockLotCount.mockResolvedValue(1);
+    mockLotFindMany.mockResolvedValue([baseLot]);
+
+    const cutoff = new Date(Date.now() - 95 * 24 * 60 * 60 * 1000).toISOString();
+    await GET(makeRequest(`http://localhost/api/lots?staleSince=${cutoff}`));
+
+    const cutoffDate = new Date(cutoff);
+    expect(mockLotFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          AND: expect.arrayContaining([
+            expect.objectContaining({
+              OR: expect.arrayContaining([
+                { events: { none: { createdAt: { gt: cutoffDate } } } },
+                { events: { none: {} } },
+              ]),
+            }),
+          ]),
+        }),
+      })
+    );
+  });
+
+  it('does not include staleSince filter when param is absent', async () => {
+    mockLotCount.mockResolvedValue(1);
+    mockLotFindMany.mockResolvedValue([baseLot]);
+
+    await GET(makeRequest('http://localhost/api/lots'));
+
+    const call = mockLotFindMany.mock.calls[0][0] as { where: { AND: unknown[] } };
+    const hasOrFilter = call.where.AND.some(
+      (c) => typeof c === 'object' && c !== null && 'OR' in c
+    );
+    expect(hasOrFilter).toBe(false);
+  });
 });
 
 // ─── POST /api/lots ───────────────────────────────────────────────────────────

@@ -45,6 +45,15 @@ export async function GET(request: Request) {
       : 'updatedAt';
   const sortDir: 'asc' | 'desc' = sortDirParam === 'asc' ? 'asc' : 'desc';
 
+  const staleSince = searchParams.get('staleSince') ?? undefined;
+  let staleSinceDate: Date | undefined;
+  if (staleSince) {
+    staleSinceDate = new Date(staleSince);
+    if (isNaN(staleSinceDate.getTime())) {
+      return NextResponse.json({ error: 'invalid_param', message: 'staleSince must be a valid ISO date string' }, { status: 400 });
+    }
+  }
+
   // Resolve locationId filter - include children via path prefix match
   let locationIds: string[] | undefined;
   if (locationId) {
@@ -91,6 +100,16 @@ export async function GET(request: Request) {
           ]
         : []),
       ...(sourceSeller ? [{ source: { contains: sourceSeller } }] : []),
+      ...(staleSinceDate
+        ? [
+            {
+              OR: [
+                { events: { none: { createdAt: { gt: staleSinceDate } } } },
+                { events: { none: {} } },
+              ],
+            },
+          ]
+        : []),
     ],
   };
 
