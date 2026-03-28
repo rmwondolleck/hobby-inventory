@@ -40,6 +40,8 @@ const QUALITATIVE_LABELS: Record<string, string> = {
   out: 'Out',
 };
 
+const currencyFmt = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' });
+
 function formatQuantity(
   quantity: number | null,
   quantityMode: string,
@@ -104,8 +106,17 @@ export default async function LotDetailPage({ params }: PageProps) {
 
   if (!lot) notFound();
 
-  const source = safeParseJson<SourceData>(lot.source, {});
+  const source = safeParseJson<SourceData>(lot.source ?? '{}', {});
   const hasSource = Object.keys(source).length > 0;
+
+  const unitCost = typeof source.unitCost === 'number' && source.unitCost > 0 ? source.unitCost : null;
+  const estimatedValue =
+    unitCost !== null &&
+    lot.quantityMode !== 'qualitative' &&
+    typeof lot.quantity === 'number' &&
+    lot.quantity > 0
+      ? unitCost * lot.quantity
+      : null;
 
   // Enrich events with location names for moved events
   const locationIds = Array.from(
@@ -239,12 +250,12 @@ export default async function LotDetailPage({ params }: PageProps) {
                 {source.orderRef && (
                   <DefinitionItem label="Order Ref">{source.orderRef}</DefinitionItem>
                 )}
-                {source.unitCost !== undefined && (
-                  <DefinitionItem label="Unit Cost">
-                    {source.currency ?? '$'}
-                    {source.unitCost}
-                  </DefinitionItem>
-                )}
+                <DefinitionItem label="Unit Cost">
+                  {unitCost !== null ? currencyFmt.format(unitCost) : '—'}
+                </DefinitionItem>
+                <DefinitionItem label="Estimated Value">
+                  {estimatedValue !== null ? currencyFmt.format(estimatedValue) : '—'}
+                </DefinitionItem>
                 {source.purchaseDate && (
                   <DefinitionItem label="Purchase Date">
                     {formatDate(source.purchaseDate)}

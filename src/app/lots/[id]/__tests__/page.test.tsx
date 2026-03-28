@@ -208,6 +208,66 @@ describe('LotDetailPage', () => {
       await renderPage(makeLot({ source: JSON.stringify({ url: 'javascript:alert(1)' }) }));
       expect(screen.queryByText(/re-order/i)).not.toBeInTheDocument();
     });
+
+    it('renders Unit Cost with Intl.NumberFormat when unitCost is present', async () => {
+      await renderPage(makeLot({ source: JSON.stringify({ type: 'amazon', unitCost: 1.5 }) }));
+      expect(screen.getByText('Unit Cost')).toBeInTheDocument();
+      expect(screen.getByText('$1.50')).toBeInTheDocument();
+    });
+
+    it('renders Unit Cost as "—" when unitCost is absent', async () => {
+      await renderPage(makeLot({ source: JSON.stringify({ type: 'amazon' }) }));
+      const dt = screen.getByText('Unit Cost');
+      const dd = dt.closest('div')?.querySelector('dd');
+      expect(dd?.textContent).toBe('—');
+    });
+
+    it('renders Unit Cost as "—" when unitCost is zero', async () => {
+      await renderPage(makeLot({ source: JSON.stringify({ type: 'amazon', unitCost: 0 }) }));
+      const dt = screen.getByText('Unit Cost');
+      const dd = dt.closest('div')?.querySelector('dd');
+      expect(dd?.textContent).toBe('—');
+    });
+
+    it('renders Estimated Value for exact-mode lots with positive quantity and unitCost', async () => {
+      await renderPage(
+        makeLot({ source: JSON.stringify({ type: 'amazon', unitCost: 2.5 }), quantity: 4, quantityMode: 'exact' })
+      );
+      expect(screen.getByText('Estimated Value')).toBeInTheDocument();
+      expect(screen.getByText('$10.00')).toBeInTheDocument();
+    });
+
+    it('renders Estimated Value as "—" for qualitative lots', async () => {
+      await renderPage(
+        makeLot({
+          source: JSON.stringify({ type: 'amazon', unitCost: 2.5 }),
+          quantityMode: 'qualitative',
+          qualitativeStatus: 'plenty',
+          quantity: null,
+        })
+      );
+      const dt = screen.getByText('Estimated Value');
+      const dd = dt.closest('div')?.querySelector('dd');
+      expect(dd?.textContent).toBe('—');
+    });
+
+    it('renders Estimated Value as "—" when unitCost is absent', async () => {
+      await renderPage(makeLot({ source: JSON.stringify({ type: 'amazon' }), quantity: 10, quantityMode: 'exact' }));
+      const unitCostDt = screen.getByText('Unit Cost');
+      expect(unitCostDt.closest('div')?.querySelector('dd')?.textContent).toBe('—');
+      const estDt = screen.getByText('Estimated Value');
+      expect(estDt.closest('div')?.querySelector('dd')?.textContent).toBe('—');
+    });
+
+    it('does not crash when source is null', async () => {
+      await renderPage(makeLot({ source: null }));
+      expect(screen.queryByText('Source')).not.toBeInTheDocument();
+    });
+
+    it('does not crash when source is malformed JSON', async () => {
+      await renderPage(makeLot({ source: 'not-json' }));
+      expect(screen.queryByText('Source')).not.toBeInTheDocument();
+    });
   });
 
   describe('Allocations section', () => {
