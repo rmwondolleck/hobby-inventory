@@ -281,7 +281,7 @@ export function PartDetailClient() {
 
   if (error || !part) {
     return (
-      <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-red-700">
+      <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-red-700 dark:border-red-800 dark:bg-red-900/30 dark:text-red-400">
         {error ?? 'Part not found'}
       </div>
     );
@@ -353,21 +353,21 @@ export function PartDetailClient() {
 
       {/* Quantity breakdown stat cards */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <div className="rounded-lg border border-green-200 bg-green-50 p-3 text-center">
-          <div className="text-2xl font-bold text-green-700">{availableQuantity}</div>
-          <div className="text-xs font-medium text-green-600">Available</div>
+        <div className="rounded-lg border border-green-200 bg-green-50 p-3 text-center dark:border-green-800 dark:bg-green-900/30">
+          <div className="text-2xl font-bold text-green-700 dark:text-green-400">{availableQuantity}</div>
+          <div className="text-xs font-medium text-green-600 dark:text-green-500">Available</div>
         </div>
-        <div className="rounded-lg border border-yellow-200 bg-yellow-50 p-3 text-center">
-          <div className="text-2xl font-bold text-yellow-700">{reservedQuantity}</div>
-          <div className="text-xs font-medium text-yellow-600">Reserved</div>
+        <div className="rounded-lg border border-yellow-200 bg-yellow-50 p-3 text-center dark:border-yellow-800 dark:bg-yellow-900/30">
+          <div className="text-2xl font-bold text-yellow-700 dark:text-yellow-400">{reservedQuantity}</div>
+          <div className="text-xs font-medium text-yellow-600 dark:text-yellow-500">Reserved</div>
         </div>
-        <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-center">
-          <div className="text-2xl font-bold text-blue-700">{inUseQuantity}</div>
-          <div className="text-xs font-medium text-blue-600">In-Use</div>
+        <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-center dark:border-blue-800 dark:bg-blue-900/30">
+          <div className="text-2xl font-bold text-blue-700 dark:text-blue-400">{inUseQuantity}</div>
+          <div className="text-xs font-medium text-blue-600 dark:text-blue-500">In-Use</div>
         </div>
-        <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-center">
-          <div className="text-2xl font-bold text-red-700">{scrappedQuantity}</div>
-          <div className="text-xs font-medium text-red-600">Scrapped</div>
+        <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-center dark:border-red-800 dark:bg-red-900/30">
+          <div className="text-2xl font-bold text-red-700 dark:text-red-400">{scrappedQuantity}</div>
+          <div className="text-xs font-medium text-red-600 dark:text-red-500">Scrapped</div>
         </div>
       </div>
 

@@ -23,7 +23,7 @@ jest.mock('next/link', () => {
     href: string;
     className?: string;
     'aria-label'?: string;
-    'aria-current'?: string;
+    'aria-current'?: React.AriaAttributes['aria-current'];
   }) => (
     <a href={href} className={className} aria-label={ariaLabel} aria-current={ariaCurrent}>
       {children}
