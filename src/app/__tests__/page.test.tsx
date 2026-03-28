@@ -28,8 +28,15 @@ jest.mock('next/link', () => {
 // ---------------------------------------------------------------------------
 
 type LotStub = {
+  id?: string;
   partId: string;
   quantity: number | null;
+  quantityMode?: string;
+  qualitativeStatus?: string | null;
+  unit?: string | null;
+  status?: string;
+  updatedAt?: string;
+  createdAt?: string;
   part: { id: string; name: string; reorderPoint?: number | null };
 };
 
@@ -49,10 +56,23 @@ const DEFAULT_STATS: InventoryStatsStub = {
   lotsWithoutCostData: 0,
 };
 
+function deriveStatus(quantity: number | null): string {
+  if (quantity === 0) return 'out';
+  if (quantity !== null && quantity <= 5) return 'low';
+  return 'in_stock';
+}
+
 function makeLot(partId: string, partName: string, quantity: number | null = 3, reorderPoint: number | null = null): LotStub {
   return {
+    id: `lot-${partId}`,
     partId,
     quantity,
+    quantityMode: 'exact',
+    qualitativeStatus: null,
+    unit: null,
+    status: deriveStatus(quantity),
+    updatedAt: new Date(Date.now() - 100 * 24 * 60 * 60 * 1000).toISOString(),
+    createdAt: new Date(Date.now() - 200 * 24 * 60 * 60 * 1000).toISOString(),
     part: { id: partId, name: partName, reorderPoint },
   };
 }
@@ -61,29 +81,37 @@ function mockFetch(
   lowLots: LotStub[] = [],
   outLots: LotStub[] = [],
   stats: InventoryStatsStub | null = DEFAULT_STATS,
+  staleLots: LotStub[] = [],
+  staleTotal = 0,
 ) {
   global.fetch = jest.fn().mockImplementation((url: string, options?: RequestInit) => {
     // Handle PATCH calls to /api/parts/[id] for threshold updates
-    if (options?.method === 'PATCH' && (url as string).includes('/api/parts/')) {
+    if (options?.method === 'PATCH' && url.includes('/api/parts/')) {
       return Promise.resolve({
         ok: true,
         json: () => Promise.resolve({ data: {} }),
       } as Response);
     }
     // The unified Home component also fetches active projects — return empty array for that endpoint
-    if ((url as string).includes('/api/projects')) {
+    if (url.includes('/api/projects')) {
       return Promise.resolve({
         ok: true,
         json: () => Promise.resolve({ data: [] }),
       } as Response);
     }
-    if ((url as string).includes('/api/parts/stats')) {
+    if (url.includes('/api/parts/stats')) {
       if (stats === null) {
         return Promise.resolve({ ok: false, json: () => Promise.resolve({}) } as unknown as Response);
       }
       return Promise.resolve({
         ok: true,
         json: () => Promise.resolve(stats),
+      } as Response);
+    }
+    if (url.includes('staleSince')) {
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({ data: staleLots, total: staleTotal, limit: 6, offset: 0 }),
       } as Response);
     }
     const lots = url.includes('status=low') ? lowLots : outLots;
@@ -124,7 +152,7 @@ describe('Home page — low stock warnings', () => {
     render(<Home />);
 
     await waitFor(() => {
-      expect(global.fetch).toHaveBeenCalledTimes(4);
+      expect(global.fetch).toHaveBeenCalledTimes(5);
     });
 
     expect(screen.queryByText(/low stock warnings/i)).not.toBeInTheDocument();
@@ -214,7 +242,7 @@ describe('Home page — low stock warnings', () => {
     mockFetchError();
     render(<Home />);
 
-    await waitFor(() => expect(global.fetch).toHaveBeenCalledTimes(4));
+    await waitFor(() => expect(global.fetch).toHaveBeenCalledTimes(5));
 
     expect(screen.queryByText(/low stock warnings/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/error/i)).not.toBeInTheDocument();
@@ -224,7 +252,7 @@ describe('Home page — low stock warnings', () => {
     mockFetchNotOk();
     render(<Home />);
 
-    await waitFor(() => expect(global.fetch).toHaveBeenCalledTimes(4));
+    await waitFor(() => expect(global.fetch).toHaveBeenCalledTimes(5));
 
     expect(screen.queryByText(/low stock warnings/i)).not.toBeInTheDocument();
   });
@@ -234,7 +262,7 @@ describe('Home page — low stock warnings', () => {
     render(<Home />);
 
     await waitFor(() => {
-      expect(global.fetch).toHaveBeenCalledTimes(4);
+      expect(global.fetch).toHaveBeenCalledTimes(5);
     });
 
     const calls = (global.fetch as jest.Mock).mock.calls.map(([url]: [string]) => url);
@@ -421,7 +449,7 @@ describe('Home page — Inventory Value widget', () => {
     mockFetch([], [], null);
     render(<Home />);
 
-    await waitFor(() => expect(global.fetch).toHaveBeenCalledTimes(4));
+    await waitFor(() => expect(global.fetch).toHaveBeenCalledTimes(5));
 
     expect(screen.queryByText(/inventory value/i)).not.toBeInTheDocument();
   });
@@ -549,5 +577,134 @@ describe('Home page — Inventory Value widget', () => {
     await waitFor(() => {
       expect(screen.getByText('$99.99')).toBeInTheDocument();
     });
+  });
+});
+
+describe('Home page — Stale Stock widget', () => {
+  function makeStale(id: string, partId: string, partName: string, daysOld = 100): LotStub {
+    return {
+      id,
+      partId,
+      quantity: 5,
+      quantityMode: 'exact',
+      qualitativeStatus: null,
+      unit: null,
+      status: 'in_stock',
+      updatedAt: new Date(Date.now() - daysOld * 24 * 60 * 60 * 1000).toISOString(),
+      createdAt: new Date(Date.now() - daysOld * 24 * 60 * 60 * 1000).toISOString(),
+      part: { id: partId, name: partName, reorderPoint: null },
+    };
+  }
+
+  it('does not render stale stock widget when staleTotal is 0', async () => {
+    mockFetch([], [], DEFAULT_STATS, [], 0);
+    render(<Home />);
+
+    await waitFor(() => expect(global.fetch).toHaveBeenCalledTimes(5));
+
+    expect(screen.queryByText(/stale stock/i)).not.toBeInTheDocument();
+  });
+
+  it('renders stale stock widget heading when staleTotal > 0', async () => {
+    const stale = makeStale('lot-1', 'part-1', 'Old Capacitor');
+    mockFetch([], [], DEFAULT_STATS, [stale], 1);
+    render(<Home />);
+
+    await waitFor(() => {
+      expect(screen.getByText(/🕰️ Stale Stock/)).toBeInTheDocument();
+    });
+  });
+
+  it('shows the lot count badge', async () => {
+    const stale = makeStale('lot-1', 'part-1', 'Old Capacitor');
+    mockFetch([], [], DEFAULT_STATS, [stale], 3);
+    render(<Home />);
+
+    await waitFor(() => {
+      expect(screen.getByText('3 lots')).toBeInTheDocument();
+    });
+  });
+
+  it('shows singular "lot" when staleTotal is 1', async () => {
+    const stale = makeStale('lot-1', 'part-1', 'Old Capacitor');
+    mockFetch([], [], DEFAULT_STATS, [stale], 1);
+    render(<Home />);
+
+    await waitFor(() => {
+      expect(screen.getByText('1 lot')).toBeInTheDocument();
+    });
+  });
+
+  it('renders part name linked to /parts/[partId]', async () => {
+    const stale = makeStale('lot-1', 'part-abc', 'Old Capacitor');
+    mockFetch([], [], DEFAULT_STATS, [stale], 1);
+    render(<Home />);
+
+    await waitFor(() => {
+      const link = screen.getByRole('link', { name: 'Old Capacitor' });
+      expect(link).toHaveAttribute('href', '/parts/part-abc');
+    });
+  });
+
+  it('renders "Last touched X days ago" label', async () => {
+    const stale = makeStale('lot-1', 'part-1', 'Old Resistor', 105);
+    mockFetch([], [], DEFAULT_STATS, [stale], 1);
+    render(<Home />);
+
+    await waitFor(() => {
+      expect(screen.getByText(/last touched/i)).toBeInTheDocument();
+      expect(screen.getByText(/days ago/i)).toBeInTheDocument();
+    });
+  });
+
+  it('renders "View all stale lots →" link with staleSince query param', async () => {
+    const stale = makeStale('lot-1', 'part-1', 'Old Resistor');
+    mockFetch([], [], DEFAULT_STATS, [stale], 1);
+    render(<Home />);
+
+    await waitFor(() => {
+      const link = screen.getByRole('link', { name: /view all stale lots/i });
+      expect(link).toHaveAttribute('href', expect.stringContaining('/lots?staleSince='));
+    });
+  });
+
+  it('persists collapsed state to localStorage when stale widget is toggled', async () => {
+    const stale = makeStale('lot-1', 'part-1', 'Old Resistor');
+    mockFetch([], [], DEFAULT_STATS, [stale], 1);
+    render(<Home />);
+
+    await waitFor(() => {
+      expect(screen.getByText(/🕰️ Stale Stock/)).toBeInTheDocument();
+    });
+
+    const trigger = screen.getByText(/🕰️ Stale Stock/).closest('button') as HTMLElement;
+    fireEvent.click(trigger);
+
+    expect(localStorage.getItem('stale-stock-collapsed')).toBe('true');
+  });
+
+  it('restores collapsed state from localStorage', async () => {
+    localStorage.setItem('stale-stock-collapsed', 'true');
+    const stale = makeStale('lot-1', 'part-1', 'Old Resistor');
+    mockFetch([], [], DEFAULT_STATS, [stale], 1);
+    render(<Home />);
+
+    await waitFor(() => {
+      expect(screen.getByText(/🕰️ Stale Stock/)).toBeInTheDocument();
+    });
+
+    expect(localStorage.getItem('stale-stock-collapsed')).toBe('true');
+  });
+
+  it('fetches the staleSince endpoint', async () => {
+    mockFetch([], [], DEFAULT_STATS, [], 0);
+    render(<Home />);
+
+    await waitFor(() => {
+      expect(global.fetch).toHaveBeenCalledTimes(5);
+    });
+
+    const calls = (global.fetch as jest.Mock).mock.calls.map(([url]: [string]) => url);
+    expect(calls).toEqual(expect.arrayContaining([expect.stringContaining('staleSince')]));
   });
 });
