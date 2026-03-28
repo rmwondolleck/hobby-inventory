@@ -12,6 +12,7 @@ interface PageProps {
     status?: string;
     seller?: string;
     q?: string;
+    category?: string;
     offset?: string;
     sortBy?: string;
     sortDir?: string;
@@ -37,6 +38,7 @@ async function getLotsData(params: Awaited<PageProps['searchParams']>) {
       ...(params.partId ? [{ partId: params.partId }] : []),
       ...(params.locationId ? [{ locationId: params.locationId }] : []),
       ...(params.status ? [{ status: params.status }] : []),
+      ...(params.category ? [{ part: { category: params.category } }] : []),
       ...(params.q
         ? [
             {
@@ -58,7 +60,7 @@ async function getLotsData(params: Awaited<PageProps['searchParams']>) {
   // before slicing for pagination.
   if (params.seller) {
     const sellerLower = params.seller.toLowerCase();
-    const [allLots, parts, locations] = await Promise.all([
+    const [allLots, parts, locations, categoryRows] = await Promise.all([
       prisma.lot.findMany({
         where,
         include: {
@@ -69,6 +71,12 @@ async function getLotsData(params: Awaited<PageProps['searchParams']>) {
       }),
       prisma.part.findMany({ select: { id: true, name: true }, orderBy: { name: 'asc' } }),
       prisma.location.findMany({ select: { id: true, name: true, path: true }, orderBy: { path: 'asc' } }),
+      prisma.part.findMany({
+        where: { category: { not: null } },
+        distinct: ['category'],
+        select: { category: true },
+        orderBy: { category: 'asc' },
+      }),
     ]);
 
     const filtered = allLots.filter(lot => {
@@ -80,10 +88,11 @@ async function getLotsData(params: Awaited<PageProps['searchParams']>) {
       source: safeParseJson<Record<string, unknown>>(lot.source, {}),
     })) satisfies LotCardLot[];
 
-    return { lots, total: filtered.length, parts, locations, offset };
+    const categoryOptions = categoryRows.map((r: { category: string | null }) => r.category as string);
+    return { lots, total: filtered.length, parts, locations, categoryOptions, offset };
   }
 
-  const [lots, total, parts, locations] = await Promise.all([
+  const [lots, total, parts, locations, categoryRows] = await Promise.all([
     prisma.lot.findMany({
       where,
       include: {
@@ -103,6 +112,12 @@ async function getLotsData(params: Awaited<PageProps['searchParams']>) {
       select: { id: true, name: true, path: true },
       orderBy: { path: 'asc' },
     }),
+    prisma.part.findMany({
+      where: { category: { not: null } },
+      distinct: ['category'],
+      select: { category: true },
+      orderBy: { category: 'asc' },
+    }),
   ]);
 
   const lotsWithSource = lots.map(lot => ({
@@ -110,18 +125,21 @@ async function getLotsData(params: Awaited<PageProps['searchParams']>) {
     source: safeParseJson<Record<string, unknown>>(lot.source, {}),
   })) satisfies LotCardLot[];
 
+  const categoryOptions = categoryRows.map((r: { category: string | null }) => r.category as string);
+
   return {
     lots: lotsWithSource,
     total,
     parts,
     locations,
+    categoryOptions,
     offset,
   };
 }
 
 export default async function LotsPage({ searchParams }: PageProps) {
   const params = await searchParams;
-  const { lots, total, parts, locations, offset } = await getLotsData(params);
+  const { lots, total, parts, locations, categoryOptions, offset } = await getLotsData(params);
 
   const partOptions = parts.map(p => ({ value: p.id, label: p.name }));
   const locationOptions = locations.map(l => ({
@@ -136,6 +154,7 @@ export default async function LotsPage({ searchParams }: PageProps) {
     if (params.status) p.set('status', params.status);
     if (params.seller) p.set('seller', params.seller);
     if (params.q) p.set('q', params.q);
+    if (params.category) p.set('category', params.category);
     if (params.sortBy) p.set('sortBy', params.sortBy);
     if (params.sortDir) p.set('sortDir', params.sortDir);
     p.set('offset', String(newOffset));
@@ -172,6 +191,7 @@ export default async function LotsPage({ searchParams }: PageProps) {
             <LotFilterForm
               partOptions={partOptions}
               locationOptions={locationOptions}
+              categoryOptions={categoryOptions}
             />
           </Suspense>
 

@@ -203,6 +203,55 @@ describe('GET /api/lots', () => {
     );
   });
 
+  it('passes category filter to prisma query', async () => {
+    mockLotCount.mockResolvedValue(1);
+    mockLotFindMany.mockResolvedValue([baseLot]);
+
+    await GET(makeRequest('http://localhost/api/lots?category=Resistors'));
+
+    expect(mockLotFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          AND: expect.arrayContaining([
+            expect.objectContaining({ part: { category: 'Resistors' } }),
+          ]),
+        }),
+      })
+    );
+  });
+
+  it('composes category filter with status filter', async () => {
+    mockLotCount.mockResolvedValue(0);
+    mockLotFindMany.mockResolvedValue([]);
+
+    await GET(makeRequest('http://localhost/api/lots?category=Resistors&status=in_stock'));
+
+    expect(mockLotFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          AND: expect.arrayContaining([
+            expect.objectContaining({ part: { category: 'Resistors' } }),
+            expect.objectContaining({ status: { in: ['in_stock'] } }),
+          ]),
+        }),
+      })
+    );
+  });
+
+  it('does not include category filter when param is absent', async () => {
+    mockLotCount.mockResolvedValue(0);
+    mockLotFindMany.mockResolvedValue([]);
+
+    await GET(makeRequest('http://localhost/api/lots'));
+
+    const callArgs = mockLotFindMany.mock.calls[0][0];
+    const andArray: unknown[] = callArgs.where.AND;
+    const hasCategoryFilter = andArray.some(
+      (clause) => typeof clause === 'object' && clause !== null && 'part' in clause
+    );
+    expect(hasCategoryFilter).toBe(false);
+  });
+
   it('falls back to updatedAt desc for unrecognised sortBy', async () => {
     mockLotCount.mockResolvedValue(0);
     mockLotFindMany.mockResolvedValue([]);
