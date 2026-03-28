@@ -116,3 +116,70 @@ describe('LotsPage', () => {
     expect(screen.getByText('1 lot found')).toBeInTheDocument();
   });
 });
+
+describe('LotsPage — q (free-text) search param', () => {
+  it('passes q OR filter to prisma when ?q= is provided', async () => {
+    const prisma = require('@/lib/db').default;
+    prisma.lot.findMany.mockResolvedValueOnce([]);
+    prisma.lot.count.mockResolvedValueOnce(0);
+
+    await renderLotsPage({ q: 'capacitor' });
+
+    expect(prisma.lot.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          AND: expect.arrayContaining([
+            {
+              OR: expect.arrayContaining([
+                { part: { name: { contains: 'capacitor' } } },
+                { part: { mpn: { contains: 'capacitor' } } },
+                { notes: { contains: 'capacitor' } },
+                { source: { contains: 'capacitor' } },
+                { location: { name: { contains: 'capacitor' } } },
+              ]),
+            },
+          ]),
+        }),
+      })
+    );
+  });
+
+  it('does not include OR filter when q is absent', async () => {
+    const prisma = require('@/lib/db').default;
+    prisma.lot.findMany.mockResolvedValueOnce([]);
+    prisma.lot.count.mockResolvedValueOnce(0);
+
+    await renderLotsPage();
+
+    const callArgs = prisma.lot.findMany.mock.calls[0][0];
+    const andClause: unknown[] = callArgs.where.AND;
+    const hasOrClause = andClause.some(
+      (item: unknown) => typeof item === 'object' && item !== null && 'OR' in item
+    );
+    expect(hasOrClause).toBe(false);
+  });
+
+  it('includes q in pagination URL when navigating pages', async () => {
+    const prisma = require('@/lib/db').default;
+    const manyLots = Array.from({ length: 50 }, (_, i) => ({
+      id: `lot-${i}`,
+      partId: 'part001',
+      locationId: null,
+      quantity: 1,
+      status: 'in_stock',
+      source: '{}',
+      notes: null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      part: { id: 'part001', name: 'Resistor', category: 'Passive' },
+      location: null,
+    }));
+    prisma.lot.findMany.mockResolvedValueOnce(manyLots);
+    prisma.lot.count.mockResolvedValueOnce(51);
+
+    await renderLotsPage({ q: 'resistor' });
+
+    const nextLink = screen.getByRole('link', { name: /next/i });
+    expect(nextLink.getAttribute('href')).toContain('q=resistor');
+  });
+});
