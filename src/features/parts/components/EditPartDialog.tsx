@@ -210,7 +210,7 @@ export function EditPartDialog({ open, onOpenChange, part, onSave }: EditPartDia
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Name */}
           <div>
-            <label htmlFor="edit-part-name" className="mb-1 block text-sm font-medium text-gray-700">
+            <label htmlFor="edit-part-name" className="mb-1 block text-sm font-medium text-foreground">
               Name <span className="text-red-500">*</span>
             </label>
             <Input
@@ -224,7 +224,7 @@ export function EditPartDialog({ open, onOpenChange, part, onSave }: EditPartDia
 
           {/* Category */}
           <div>
-            <label htmlFor="edit-part-category" className="mb-1 block text-sm font-medium text-gray-700">
+            <label htmlFor="edit-part-category" className="mb-1 block text-sm font-medium text-foreground">
               Category
             </label>
             <CategoryCombobox
@@ -239,7 +239,7 @@ export function EditPartDialog({ open, onOpenChange, part, onSave }: EditPartDia
           {/* Manufacturer + MPN */}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label htmlFor="edit-part-manufacturer" className="mb-1 block text-sm font-medium text-gray-700">
+              <label htmlFor="edit-part-manufacturer" className="mb-1 block text-sm font-medium text-foreground">
                 Manufacturer
               </label>
               <Input
@@ -250,7 +250,7 @@ export function EditPartDialog({ open, onOpenChange, part, onSave }: EditPartDia
               />
             </div>
             <div>
-              <label htmlFor="edit-part-mpn" className="mb-1 block text-sm font-medium text-gray-700">
+              <label htmlFor="edit-part-mpn" className="mb-1 block text-sm font-medium text-foreground">
                 MPN
               </label>
               <Input
@@ -264,7 +264,7 @@ export function EditPartDialog({ open, onOpenChange, part, onSave }: EditPartDia
 
           {/* Notes */}
           <div>
-            <label htmlFor="edit-part-notes" className="mb-1 block text-sm font-medium text-gray-700">
+            <label htmlFor="edit-part-notes" className="mb-1 block text-sm font-medium text-foreground">
               Notes
             </label>
             <textarea
@@ -279,8 +279,8 @@ export function EditPartDialog({ open, onOpenChange, part, onSave }: EditPartDia
 
           {/* Tags */}
           <div>
-            <label htmlFor="edit-part-tags" className="mb-1 block text-sm font-medium text-gray-700">
-              Tags <span className="text-xs font-normal text-gray-500">(comma-separated)</span>
+            <label htmlFor="edit-part-tags" className="mb-1 block text-sm font-medium text-foreground">
+              Tags <span className="text-xs font-normal text-muted-foreground">(comma-separated)</span>
             </label>
             <Input
               id="edit-part-tags"
@@ -293,7 +293,7 @@ export function EditPartDialog({ open, onOpenChange, part, onSave }: EditPartDia
           {/* Parameters */}
           <div>
             <div className="mb-2 flex items-center justify-between">
-              <span className="text-sm font-medium text-gray-700">Parameters</span>
+              <span className="text-sm font-medium text-foreground">Parameters</span>
               <Button type="button" variant="outline" size="sm" onClick={addParamRow}>
                 <PlusIcon className="size-3.5" />
                 Add row
@@ -301,7 +301,7 @@ export function EditPartDialog({ open, onOpenChange, part, onSave }: EditPartDia
             </div>
 
             {paramRows.length === 0 ? (
-              <p className="text-sm text-gray-400 italic">No parameters. Click "Add row" to add one.</p>
+              <p className="text-sm text-muted-foreground italic">No parameters. Click "Add row" to add one.</p>
             ) : (
               <div className="space-y-2">
                 {paramRows.map((row, i) => (
@@ -312,7 +312,7 @@ export function EditPartDialog({ open, onOpenChange, part, onSave }: EditPartDia
                       placeholder="Key"
                       className="flex-1"
                     />
-                    <span className="text-gray-400">:</span>
+                    <span className="text-muted-foreground">:</span>
                     <div className="relative flex-1">
                       <Input
                         value={row.value}
@@ -332,7 +332,7 @@ export function EditPartDialog({ open, onOpenChange, part, onSave }: EditPartDia
                       variant="ghost"
                       size="icon"
                       onClick={() => removeParamRow(i)}
-                      className="shrink-0 text-gray-400 hover:text-red-500"
+                      className="shrink-0 text-muted-foreground hover:text-destructive"
                     >
                       <TrashIcon className="size-4" />
                       <span className="sr-only">Remove row</span>
@@ -345,7 +345,7 @@ export function EditPartDialog({ open, onOpenChange, part, onSave }: EditPartDia
 
           {/* Error */}
           {error && (
-            <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+            <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-800 dark:bg-red-900/30 dark:text-red-400">
               {error}
             </div>
           )}
@@ -368,3 +368,4 @@ export function EditPartDialog({ open, onOpenChange, part, onSave }: EditPartDia
     </Dialog>
   );
 }
+

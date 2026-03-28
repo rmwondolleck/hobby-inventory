@@ -303,7 +303,7 @@ export default function LocationTree({ locations }: LocationTreeProps) {
 
       {/* Error banner */}
       {error && (
-        <div className="mb-3 p-3 bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg flex items-center gap-2">
+        <div className="mb-3 p-3 bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg flex items-center gap-2 dark:bg-red-900/30 dark:border-red-800 dark:text-red-400">
           <span className="flex-1">{error}</span>
           <button
             onClick={() => setError(null)}
@@ -371,7 +371,7 @@ export default function LocationTree({ locations }: LocationTreeProps) {
               </p>
             )}
             {deleteTarget._count.lots > 0 && (
-              <p className="text-red-700 bg-red-50 border border-red-200 rounded p-2 text-sm mb-2">
+              <p className="text-red-700 bg-red-50 border border-red-200 rounded p-2 text-sm mb-2 dark:bg-red-900/30 dark:border-red-800 dark:text-red-400">
                 ⚠️ This location contains {deleteTarget._count.lots} lot(s). Move or reassign them
                 before deleting.
               </p>
@@ -396,3 +396,4 @@ export default function LocationTree({ locations }: LocationTreeProps) {
     </div>
   );
 }
+

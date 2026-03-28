@@ -210,7 +210,7 @@ export function IntakeForm() {
 
   if (success) {
     return (
-      <div className="rounded-xl border border-green-200 bg-green-50 p-6 text-center">
+      <div className="rounded-xl border border-green-200 bg-green-50 p-6 text-center dark:border-green-800 dark:bg-green-900/30">
         <div className="mb-2 text-2xl">✓</div>
         <h2 className="text-lg font-semibold text-green-800">Added to inventory</h2>
         <p className="mt-1 text-sm text-green-700">
@@ -429,10 +429,10 @@ export function IntakeForm() {
                       'flex-1 rounded-lg border px-3 py-2 text-sm font-medium capitalize transition-colors',
                       lot.qualitativeStatus === level
                         ? level === 'plenty'
-                          ? 'border-green-500 bg-green-50 text-green-700'
+                          ? 'border-green-500 bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-400'
                           : level === 'low'
-                          ? 'border-yellow-500 bg-yellow-50 text-yellow-700'
-                          : 'border-red-500 bg-red-50 text-red-700'
+                          ? 'border-yellow-500 bg-yellow-50 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400'
+                          : 'border-red-500 bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-400'
                         : 'border-border bg-card text-muted-foreground hover:bg-muted',
                     )}
                   >
@@ -448,7 +448,7 @@ export function IntakeForm() {
             <label htmlFor="lot-source-url" className="mb-1 block text-xs font-medium text-foreground">
               Source URL
               {detectedSource && detectedSource !== 'manual' && (
-                <span className="ml-2 rounded-full bg-blue-100 px-2 py-0.5 text-xs text-blue-700 capitalize">
+                <span className="ml-2 rounded-full bg-blue-100 px-2 py-0.5 text-xs text-blue-700 capitalize dark:bg-blue-900/30 dark:text-blue-400">
                   {detectedSource}
                 </span>
               )}
@@ -501,7 +501,7 @@ export function IntakeForm() {
 
       {/* Error */}
       {error && (
-        <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+        <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-800 dark:bg-red-900/30 dark:text-red-400">
           {error}
         </div>
       )}
@@ -517,3 +517,4 @@ export function IntakeForm() {
     </form>
   );
 }
+

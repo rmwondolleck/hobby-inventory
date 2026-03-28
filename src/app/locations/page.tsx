@@ -66,6 +66,8 @@ export default function LocationsPage() {
   const [locations, setLocations] = useState<LocationData[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [search, setSearch] = useState('');
+  const [topLevelOnly, setTopLevelOnly] = useState(false);
 
   // Dialog state
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -159,6 +161,18 @@ export default function LocationsPage() {
     }
   };
 
+  // Filtered view for the table (client-side search + top-level toggle)
+  const filteredLocations = locations.filter((loc) => {
+    if (topLevelOnly && loc.parentId !== null) return false;
+    if (search) {
+      const q = search.toLowerCase();
+      return loc.name.toLowerCase().includes(q) || loc.path.toLowerCase().includes(q);
+    }
+    return true;
+  });
+
+  const hasActiveFilters = search !== '' || topLevelOnly;
+
   // Parent dropdown excludes the location being edited and all its descendants.
   const parentOptions = editingLocation
     ? locations.filter((l) => {
@@ -205,47 +219,127 @@ export default function LocationsPage() {
             No locations found.
           </div>
         ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Path</TableHead>
-                <TableHead>Notes</TableHead>
-                <TableHead>Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {locations.map((location) => (
-                <TableRow key={location.id}>
-                  <TableCell className="font-medium">
-                    <Link
-                      href={`/locations/${location.id}`}
-                      className="text-primary hover:underline"
+          <div className="flex gap-6">
+            {/* Filter sidebar */}
+            <aside className="w-56 shrink-0">
+              <div className="rounded-lg border bg-card p-4 shadow-sm">
+                <div className="flex items-center justify-between">
+                  <h2 className="font-semibold text-foreground">Filters</h2>
+                  {hasActiveFilters && (
+                    <button
+                      onClick={() => { setSearch(''); setTopLevelOnly(false); }}
+                      className="text-xs text-primary hover:underline"
                     >
-                      {location.name}
-                    </Link>
-                  </TableCell>
-                  <TableCell className="text-muted-foreground font-mono text-xs">
-                    {location.path}
-                  </TableCell>
-                  <TableCell className="text-muted-foreground">
-                    {location.notes ?? '—'}
-                  </TableCell>
-                  <TableCell>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => openEditDialog(location)}
-                      title="Edit this location"
+                      Clear all
+                    </button>
+                  )}
+                </div>
+
+                {/* Search */}
+                <div className="mt-4">
+                  <label htmlFor="loc-search" className="block text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                    Search
+                  </label>
+                  <div className="relative mt-2">
+                    <svg
+                      className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground"
+                      fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"
                     >
-                      <PencilIcon className="size-4" />
-                      <span className="sr-only">Edit</span>
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                        d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                    <input
+                      id="loc-search"
+                      type="text"
+                      value={search}
+                      onChange={(e) => setSearch(e.target.value)}
+                      placeholder="Name or path…"
+                      className="w-full rounded-md border border-border bg-background py-1.5 pl-8 pr-8 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                    />
+                    {search && (
+                      <button
+                        onClick={() => setSearch('')}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                        aria-label="Clear search"
+                      >
+                        ✕
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Depth filter */}
+                <div className="mt-4 border-t border-border pt-4">
+                  <label className="flex cursor-pointer items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={topLevelOnly}
+                      onChange={() => setTopLevelOnly((v) => !v)}
+                      className="rounded border-border"
+                    />
+                    <span className="text-sm text-foreground">Top-level only</span>
+                  </label>
+                </div>
+              </div>
+            </aside>
+
+            {/* Main content */}
+            <div className="min-w-0 flex-1">
+              {filteredLocations.length === 0 ? (
+                <div className="rounded-lg border border-dashed border-border p-8 text-center">
+                  <p className="text-muted-foreground">No locations match your filters.</p>
+                </div>
+              ) : (
+                <>
+                  <p className="mb-3 text-sm text-muted-foreground">
+                    {filteredLocations.length} location{filteredLocations.length !== 1 ? 's' : ''}
+                    {hasActiveFilters ? ' matching filters' : ' total'}
+                  </p>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Name</TableHead>
+                        <TableHead>Path</TableHead>
+                        <TableHead>Notes</TableHead>
+                        <TableHead>Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredLocations.map((location) => (
+                        <TableRow key={location.id}>
+                          <TableCell className="font-medium">
+                            <Link
+                              href={`/locations/${location.id}`}
+                              className="text-primary hover:underline"
+                            >
+                              {location.name}
+                            </Link>
+                          </TableCell>
+                          <TableCell className="text-muted-foreground font-mono text-xs">
+                            {location.path}
+                          </TableCell>
+                          <TableCell className="text-muted-foreground">
+                            {location.notes ?? '—'}
+                          </TableCell>
+                          <TableCell>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => openEditDialog(location)}
+                              title="Edit this location"
+                            >
+                              <PencilIcon className="size-4" />
+                              <span className="sr-only">Edit</span>
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </>
+              )}
+            </div>
+          </div>
         )}
       </div>
 

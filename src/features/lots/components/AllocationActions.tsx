@@ -159,20 +159,20 @@ export function AllocationActions({
           <button
             onClick={handleAdvanceStatus}
             disabled={advancing}
-            className="inline-flex items-center rounded px-2 py-0.5 text-xs font-medium bg-green-100 text-green-700 hover:bg-green-200 disabled:opacity-50"
+            className="inline-flex items-center rounded px-2 py-0.5 text-xs font-medium bg-green-100 text-green-700 hover:bg-green-200 disabled:opacity-50 dark:bg-green-900/30 dark:text-green-400 dark:hover:bg-green-900/50"
           >
             {NEXT_STATUS_LABEL[nextStatus]}
           </button>
         )}
         <button
           onClick={() => setActiveModal('return')}
-          className="inline-flex items-center rounded px-2 py-0.5 text-xs font-medium bg-blue-100 text-blue-700 hover:bg-blue-200"
+          className="inline-flex items-center rounded px-2 py-0.5 text-xs font-medium bg-blue-100 text-blue-700 hover:bg-blue-200 dark:bg-blue-900/30 dark:text-blue-400 dark:hover:bg-blue-900/50"
         >
           Return to Stock
         </button>
         <button
           onClick={() => setActiveModal('scrap')}
-          className="inline-flex items-center rounded px-2 py-0.5 text-xs font-medium bg-red-100 text-red-700 hover:bg-red-200"
+          className="inline-flex items-center rounded px-2 py-0.5 text-xs font-medium bg-red-100 text-red-700 hover:bg-red-200 dark:bg-red-900/30 dark:text-red-400 dark:hover:bg-red-900/50"
         >
           Scrap
         </button>

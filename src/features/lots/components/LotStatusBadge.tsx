@@ -30,7 +30,7 @@ export function LotStatusBadge({ status, className }: LotStatusBadgeProps) {
     <span
       className={cn(
         'inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium',
-        STATUS_STYLES[status] ?? 'bg-gray-100 text-gray-800',
+        STATUS_STYLES[status] ?? 'bg-muted text-muted-foreground',
         className
       )}
     >

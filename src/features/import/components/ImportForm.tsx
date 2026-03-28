@@ -16,10 +16,10 @@ const TABS: { type: ImportType; label: string }[] = [
 ];
 
 const ACTION_COLORS: Record<string, string> = {
-  create: 'text-green-700 bg-green-50',
-  update: 'text-blue-700 bg-blue-50',
-  skip: 'text-gray-500 bg-gray-50',
-  error: 'text-red-700 bg-red-50',
+  create: 'text-green-700 bg-green-50 dark:text-green-400 dark:bg-green-900/30',
+  update: 'text-blue-700 bg-blue-50 dark:text-blue-400 dark:bg-blue-900/30',
+  skip: 'text-muted-foreground bg-muted',
+  error: 'text-red-700 bg-red-50 dark:text-red-400 dark:bg-red-900/30',
 };
 
 // ---------------------------------------------------------------------------
@@ -28,15 +28,15 @@ const ACTION_COLORS: Record<string, string> = {
 
 function PlanSummaryBar({ plan }: { plan: ImportPlan }) {
   return (
-    <div className="flex flex-wrap gap-3 rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-sm">
-      <span className="font-medium text-gray-700">Dry-run results:</span>
+    <div className="flex flex-wrap gap-3 rounded-lg border border-border bg-muted px-4 py-3 text-sm">
+      <span className="font-medium text-foreground">Dry-run results:</span>
       <span className="text-green-700">
         <strong>{plan.willCreate}</strong> will create
       </span>
       <span className="text-blue-700">
         <strong>{plan.willUpdate}</strong> will update
       </span>
-      <span className="text-gray-500">
+      <span className="text-muted-foreground">
         <strong>{plan.willSkip}</strong> will skip
       </span>
       {plan.errorCount > 0 && (
@@ -50,7 +50,7 @@ function PlanSummaryBar({ plan }: { plan: ImportPlan }) {
 
 function SummarySummaryBar({ summary }: { summary: ImportSummary }) {
   return (
-    <div className="flex flex-wrap gap-3 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm">
+    <div className="flex flex-wrap gap-3 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm dark:border-green-800 dark:bg-green-900/30">
       <span className="font-medium text-green-800">Import complete:</span>
       <span className="text-green-700">
         <strong>{summary.created}</strong> created
@@ -58,7 +58,7 @@ function SummarySummaryBar({ summary }: { summary: ImportSummary }) {
       <span className="text-blue-700">
         <strong>{summary.updated}</strong> updated
       </span>
-      <span className="text-gray-500">
+      <span className="text-muted-foreground">
         <strong>{summary.skipped}</strong> skipped
       </span>
       {summary.errors > 0 && (
@@ -77,24 +77,24 @@ function PreviewTable({ plan }: { plan: ImportPlan }) {
     : [];
 
   return (
-    <div className="overflow-x-auto rounded-lg border border-gray-200">
+    <div className="overflow-x-auto rounded-lg border border-border">
       <table className="min-w-full text-xs">
-        <thead className="bg-gray-50 text-left">
+        <thead className="bg-muted text-left">
           <tr>
-            <th className="px-3 py-2 font-medium text-gray-500">Row</th>
-            <th className="px-3 py-2 font-medium text-gray-500">Action</th>
+            <th className="px-3 py-2 font-medium text-muted-foreground">Row</th>
+            <th className="px-3 py-2 font-medium text-muted-foreground">Action</th>
             {columns.map((col) => (
-              <th key={col} className="px-3 py-2 font-medium text-gray-500">
+              <th key={col} className="px-3 py-2 font-medium text-muted-foreground">
                 {col}
               </th>
             ))}
-            <th className="px-3 py-2 font-medium text-gray-500">Errors</th>
+            <th className="px-3 py-2 font-medium text-muted-foreground">Errors</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-gray-100">
           {preview.map((row) => (
-            <tr key={row.rowIndex} className={row.action === 'error' ? 'bg-red-50' : ''}>
-              <td className="px-3 py-1.5 text-gray-400">{row.rowIndex}</td>
+            <tr key={row.rowIndex} className={row.action === 'error' ? 'bg-red-50 dark:bg-red-900/20' : ''}>
+              <td className="px-3 py-1.5 text-muted-foreground">{row.rowIndex}</td>
               <td className="px-3 py-1.5">
                 <span
                   className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${ACTION_COLORS[row.action] ?? ''}`}
@@ -103,7 +103,7 @@ function PreviewTable({ plan }: { plan: ImportPlan }) {
                 </span>
               </td>
               {columns.map((col) => (
-                <td key={col} className="max-w-[160px] truncate px-3 py-1.5 text-gray-700">
+                <td key={col} className="max-w-[160px] truncate px-3 py-1.5 text-foreground">
                   {String(row.data[col] ?? '')}
                 </td>
               ))}
@@ -119,7 +119,7 @@ function PreviewTable({ plan }: { plan: ImportPlan }) {
         </tbody>
       </table>
       {plan.rows.length > 100 && (
-        <p className="px-3 py-2 text-xs text-gray-400">
+        <p className="px-3 py-2 text-xs text-muted-foreground">
           Showing first 100 of {plan.rows.length} rows
         </p>
       )}
@@ -221,7 +221,7 @@ export function ImportForm() {
   return (
     <div className="space-y-6">
       {/* Type tabs */}
-      <div className="flex overflow-hidden rounded-lg border border-gray-200">
+      <div className="flex overflow-hidden rounded-lg border border-border">
         {TABS.map(({ type, label }) => (
           <button
             key={type}
@@ -230,7 +230,7 @@ export function ImportForm() {
             className={`flex-1 px-4 py-2 text-sm font-medium transition-colors ${
               activeType === type
                 ? 'bg-blue-600 text-white'
-                : 'bg-white text-gray-600 hover:bg-gray-50'
+                : 'bg-background text-muted-foreground hover:bg-accent'
             }`}
           >
             {label}
@@ -240,11 +240,11 @@ export function ImportForm() {
 
       {/* Template download */}
       <div className="flex items-center gap-3 text-sm">
-        <span className="text-gray-500">Need a template?</span>
+        <span className="text-muted-foreground">Need a template?</span>
         <a
           href={`/api/import/templates/${activeType}`}
           download
-          className="inline-flex items-center gap-1 rounded-md border border-gray-300 px-3 py-1 text-gray-700 hover:bg-gray-50"
+          className="inline-flex items-center gap-1 rounded-md border border-border px-3 py-1 text-foreground hover:bg-accent"
         >
           ⬇ Download {activeType} template
         </a>
@@ -263,7 +263,7 @@ export function ImportForm() {
             </button>
             <a
               href={`/${activeType === 'lots' ? 'lots' : activeType}`}
-              className="rounded-lg border border-gray-300 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+              className="rounded-lg border border-border px-4 py-2 text-sm text-foreground hover:bg-accent"
             >
               View {activeType}
             </a>
@@ -274,7 +274,7 @@ export function ImportForm() {
         <div className="space-y-4">
           {/* File upload */}
           <div>
-            <label className="mb-1 block text-xs font-medium text-gray-700">
+            <label className="mb-1 block text-xs font-medium text-foreground">
               Upload CSV file
             </label>
             <input
@@ -282,13 +282,13 @@ export function ImportForm() {
               type="file"
               accept=".csv,text/csv"
               onChange={handleFileUpload}
-              className="block w-full text-sm text-gray-500 file:mr-4 file:rounded-md file:border-0 file:bg-blue-50 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-blue-700 hover:file:bg-blue-100"
+              className="block w-full text-sm text-muted-foreground file:mr-4 file:rounded-md file:border-0 file:bg-blue-50 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-blue-700 hover:file:bg-blue-100 dark:file:bg-blue-900/30 dark:file:text-blue-400"
             />
           </div>
 
           {/* Or paste */}
           <div>
-            <label className="mb-1 block text-xs font-medium text-gray-700">
+            <label className="mb-1 block text-xs font-medium text-foreground">
               Or paste CSV content
             </label>
             <textarea
@@ -296,12 +296,12 @@ export function ImportForm() {
               onChange={(e) => { setCsvText(e.target.value); setStep('input'); setPlan(null); }}
               rows={8}
               placeholder={`name,category,manufacturer,mpn,tags,notes\n"ESP32","Microcontrollers","Espressif","ESP32-WROOM-32","iot,wifi",""`}
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 font-mono text-xs focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              className="w-full rounded-lg border border-border bg-background px-3 py-2 font-mono text-xs focus:border-ring focus:outline-none focus:ring-1 focus:ring-blue-500"
             />
           </div>
 
           {error && (
-            <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+            <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-800 dark:bg-red-900/30 dark:text-red-400">
               {error}
             </div>
           )}
@@ -319,7 +319,7 @@ export function ImportForm() {
             <button
               onClick={handleDryRun}
               disabled={loading || csvText.trim() === ''}
-              className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+              className="rounded-lg border border-border px-4 py-2 text-sm font-medium text-foreground hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
             >
               {loading && step === 'input' ? 'Validating…' : '🔍 Dry Run'}
             </button>
@@ -345,4 +345,7 @@ export function ImportForm() {
     </div>
   );
 }
+
+
+
 

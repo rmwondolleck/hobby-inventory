@@ -63,7 +63,7 @@ export function FilterSidebar({
                     className={cn(
                       'w-full rounded px-2 py-1 text-left text-sm transition-colors',
                       filters.category === cat
-                        ? 'bg-blue-50 font-medium text-blue-700'
+                        ? 'bg-blue-50 font-medium text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
                         : 'text-foreground hover:bg-muted'
                     )}
                   >
@@ -116,3 +116,4 @@ export function FilterSidebar({
     </aside>
   );
 }
+

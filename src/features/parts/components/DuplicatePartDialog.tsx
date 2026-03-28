@@ -275,7 +275,7 @@ export function DuplicatePartDialog({ part, open, onOpenChange }: DuplicatePartD
                   size="sm"
                   onClick={() => removeParamRow(i)}
                   aria-label="Remove parameter"
-                  className="shrink-0 text-gray-400 hover:text-red-600"
+                  className="shrink-0 text-muted-foreground hover:text-destructive"
                 >
                   ✕
                 </Button>
@@ -287,7 +287,7 @@ export function DuplicatePartDialog({ part, open, onOpenChange }: DuplicatePartD
           </div>
 
           {error && (
-            <div className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>
+            <div className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-900/30 dark:text-red-400">{error}</div>
           )}
 
           <DialogFooter>
@@ -303,3 +303,4 @@ export function DuplicatePartDialog({ part, open, onOpenChange }: DuplicatePartD
     </Dialog>
   );
 }
+

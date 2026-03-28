@@ -298,9 +298,9 @@ export default async function LotDetailPage({ params }: PageProps) {
                         <span
                           className={cn(
                             'inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium',
-                            alloc.status === 'reserved' && 'bg-blue-100 text-blue-800',
-                            alloc.status === 'in_use' && 'bg-green-100 text-green-800',
-                            alloc.status === 'deployed' && 'bg-purple-100 text-purple-800',
+                            alloc.status === 'reserved' && 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400',
+                            alloc.status === 'in_use' && 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400',
+                            alloc.status === 'deployed' && 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400',
                             alloc.status === 'recovered' && 'bg-muted text-muted-foreground'
                           )}
                         >

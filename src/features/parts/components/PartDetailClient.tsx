@@ -408,7 +408,7 @@ export function PartDetailClient() {
           </div>
         ) : (
           <div className="overflow-x-auto rounded-lg border bg-card">
-            <table className="min-w-full divide-y divide-gray-200 text-sm">
+            <table className="min-w-full divide-y divide-border text-sm">
               <thead className="bg-muted">
                 <tr>
                   <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">Quantity</th>
@@ -419,7 +419,7 @@ export function PartDetailClient() {
                   <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100">
+              <tbody className="divide-y divide-border">
                 {part.lots.map((lot) => {
                   const availableQty = getAvailableQuantity(lot);
                   const canAllocate =
@@ -464,7 +464,7 @@ export function PartDetailClient() {
         <section>
           <h2 className="mb-3 text-lg font-semibold text-foreground">Allocations by Project</h2>
           <div className="overflow-x-auto rounded-lg border bg-card">
-            <table className="min-w-full divide-y divide-gray-200 text-sm">
+            <table className="min-w-full divide-y divide-border text-sm">
               <thead className="bg-muted">
                 <tr>
                   <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">Project</th>
@@ -472,7 +472,7 @@ export function PartDetailClient() {
                   <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">Allocated</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100">
+              <tbody className="divide-y divide-border">
                 {Array.from(projectAllocations.entries()).map(([projId, data]) => (
                   <tr key={projId} className="hover:bg-muted">
                     <td className="px-4 py-3 font-medium text-foreground">{data.name}</td>

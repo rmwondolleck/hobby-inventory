@@ -106,14 +106,14 @@ function NewProjectDialog({ onCreated }: { onCreated: (project: ProjectListItem)
         </DialogHeader>
         <form onSubmit={handleSubmit(onSubmit)} className="mt-2 space-y-4">
           <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">
+            <label className="mb-1 block text-sm font-medium text-foreground">
               Name <span className="text-red-500">*</span>
             </label>
             <input
               {...register('name')}
               type="text"
               placeholder="e.g. RC Car Build"
-              className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm placeholder:text-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus:border-ring focus:outline-none focus:ring-1 focus:ring-ring"
             />
             {errors.name && (
               <p className="mt-1 text-xs text-red-600">{errors.name.message}</p>
@@ -121,7 +121,7 @@ function NewProjectDialog({ onCreated }: { onCreated: (project: ProjectListItem)
           </div>
 
           <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">Status</label>
+            <label className="mb-1 block text-sm font-medium text-foreground">Status</label>
             <Controller
               name="status"
               control={control}
@@ -143,32 +143,32 @@ function NewProjectDialog({ onCreated }: { onCreated: (project: ProjectListItem)
           </div>
 
           <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">
+            <label className="mb-1 block text-sm font-medium text-foreground">
               Tags{' '}
-              <span className="font-normal text-gray-400">(comma-separated)</span>
+              <span className="font-normal text-muted-foreground">(comma-separated)</span>
             </label>
             <input
               {...register('tags')}
               type="text"
               placeholder="e.g. rc, electronics, hobby"
-              className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm placeholder:text-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus:border-ring focus:outline-none focus:ring-1 focus:ring-ring"
             />
           </div>
 
           <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">Notes</label>
+            <label className="mb-1 block text-sm font-medium text-foreground">Notes</label>
             <Textarea {...register('notes')} placeholder="Optional notes…" rows={3} />
           </div>
 
           {submitError && (
-            <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{submitError}</p>
+            <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-900/30 dark:text-red-400">{submitError}</p>
           )}
 
           <DialogFooter>
             <button
               type="button"
               onClick={() => { reset(); setSubmitError(null); setOpen(false); }}
-              className="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1"
+              className="rounded-md border border-border bg-background px-4 py-2 text-sm font-medium text-foreground hover:bg-accent focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1"
             >
               Cancel
             </button>
@@ -214,12 +214,12 @@ function SearchInput({
         value={value}
         onChange={(e: React.ChangeEvent<HTMLInputElement>) => onChange(e.target.value)}
         placeholder="Search projects…"
-        className="w-full rounded-lg border border-gray-300 bg-white py-2 pl-10 pr-8 text-sm shadow-sm placeholder:text-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+        className="w-full rounded-lg border border-border bg-background py-2 pl-10 pr-8 text-sm shadow-sm placeholder:text-muted-foreground focus:border-ring focus:outline-none focus:ring-1 focus:ring-ring"
       />
       {value && (
         <button
           onClick={() => onChange('')}
-          className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+          className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
           aria-label="Clear search"
         >
           ✕
@@ -244,7 +244,7 @@ function FilterSidebar({
   return (
     <aside className="w-56 shrink-0">
       <div className="flex items-center justify-between mb-3">
-        <span className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+        <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
           Filters
         </span>
         {hasActiveFilters && (
@@ -258,7 +258,7 @@ function FilterSidebar({
       </div>
 
       <div className="mb-4">
-        <p className="mb-1.5 text-xs font-medium text-gray-600">Status</p>
+        <p className="mb-1.5 text-xs font-medium text-muted-foreground">Status</p>
         <div className="space-y-1">
           {PROJECT_STATUSES.map((s) => (
             <button
@@ -271,8 +271,8 @@ function FilterSidebar({
               }
               className={`w-full rounded px-2 py-1 text-left text-sm transition-colors ${
                 filters.status === s.value
-                  ? 'bg-blue-100 text-blue-800 font-medium'
-                  : 'text-gray-700 hover:bg-gray-100'
+                  ? 'bg-blue-100 text-blue-800 font-medium dark:bg-blue-900/30 dark:text-blue-400'
+                  : 'text-foreground hover:bg-muted'
               }`}
             >
               {s.label}
@@ -283,7 +283,7 @@ function FilterSidebar({
 
       {availableTags.length > 0 && (
         <div>
-          <p className="mb-1.5 text-xs font-medium text-gray-600">Tags</p>
+          <p className="mb-1.5 text-xs font-medium text-muted-foreground">Tags</p>
           <div className="flex flex-wrap gap-1">
             {availableTags.map((tag) => {
               const isSelected = filters.tags.includes(tag);
@@ -301,7 +301,7 @@ function FilterSidebar({
                   className={`rounded-full px-2 py-0.5 text-xs transition-colors ${
                     isSelected
                       ? 'bg-blue-600 text-white'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                      : 'bg-muted text-muted-foreground hover:bg-muted/80'
                   }`}
                 >
                   {tag}
@@ -401,16 +401,16 @@ export function ProjectsListClient() {
           {loading ? (
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {Array.from({ length: 6 }).map((_, i) => (
-                <div key={i} className="h-28 animate-pulse rounded-lg bg-gray-100" />
+                <div key={i} className="h-28 animate-pulse rounded-lg bg-muted" />
               ))}
             </div>
           ) : error ? (
-            <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+            <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700 dark:border-red-800 dark:bg-red-900/30 dark:text-red-400">
               Error: {error}
             </div>
           ) : projects.length === 0 ? (
-            <div className="rounded-lg border border-dashed border-gray-300 p-8 text-center">
-              <p className="text-gray-500">
+            <div className="rounded-lg border border-dashed border-border p-8 text-center">
+              <p className="text-muted-foreground">
                 {filters.search || filters.status || filters.tags.length > 0
                   ? 'No projects match your filters.'
                   : 'No projects yet.'}
@@ -418,7 +418,7 @@ export function ProjectsListClient() {
             </div>
           ) : (
             <>
-              <p className="mb-3 text-sm text-gray-500">
+              <p className="mb-3 text-sm text-muted-foreground">
                 {total} project{total !== 1 ? 's' : ''}
                 {filters.search || filters.status || filters.tags.length > 0
                   ? ' matching filters'
@@ -436,3 +436,4 @@ export function ProjectsListClient() {
     </div>
   );
 }
+

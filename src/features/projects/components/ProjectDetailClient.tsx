@@ -767,3 +767,4 @@ export function ProjectDetailClient({ id }: ProjectDetailClientProps) {
     </div>
   );
 }
+

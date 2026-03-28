@@ -191,7 +191,7 @@ export function PartsListClient() {
               ))}
             </div>
           ) : error ? (
-            <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+            <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700 dark:border-red-800 dark:bg-red-900/30 dark:text-red-400">
               Error: {error}
             </div>
           ) : parts.length === 0 ? (
@@ -222,3 +222,4 @@ export function PartsListClient() {
     </div>
   );
 }
+

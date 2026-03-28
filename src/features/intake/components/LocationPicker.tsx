@@ -148,17 +148,17 @@ export function LocationPicker({ value, onChange }: LocationPickerProps) {
   return (
     <div ref={containerRef} className="relative">
       {value ? (
-        <div className="flex items-center gap-2 rounded-lg border border-green-200 bg-green-50 px-3 py-2">
+        <div className="flex items-center gap-2 rounded-lg border border-green-200 bg-green-50 px-3 py-2 dark:border-green-800 dark:bg-green-900/30">
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-gray-900 truncate">{value.name}</p>
+            <p className="text-sm font-medium text-foreground truncate">{value.name}</p>
             {value.path !== value.name && (
-              <p className="text-xs text-gray-500 truncate">{value.path}</p>
+              <p className="text-xs text-muted-foreground truncate">{value.path}</p>
             )}
           </div>
           <button
             type="button"
             onClick={handleClear}
-            className="shrink-0 text-gray-400 hover:text-gray-600"
+            className="shrink-0 text-muted-foreground hover:text-foreground"
             aria-label="Clear location"
           >
             ✕
@@ -168,29 +168,29 @@ export function LocationPicker({ value, onChange }: LocationPickerProps) {
         <button
           type="button"
           onClick={handleOpen}
-          className="w-full rounded-lg border border-gray-300 px-3 py-2 text-left text-sm text-gray-500 hover:border-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+          className="w-full rounded-lg border border-border bg-background px-3 py-2 text-left text-sm text-muted-foreground hover:border-ring focus:border-ring focus:outline-none focus:ring-1 focus:ring-ring"
         >
           Pick a location…
         </button>
       )}
 
       {isOpen && (
-        <div className="absolute left-0 right-0 top-full z-10 mt-1 rounded-lg border border-gray-200 bg-white shadow-lg">
-          <div className="border-b border-gray-100 p-2">
+        <div className="absolute left-0 right-0 top-full z-10 mt-1 rounded-lg border border-border bg-popover shadow-lg">
+          <div className="border-b border-border p-2">
             <input
               autoFocus
               type="text"
               value={filter}
               onChange={(e) => setFilter(e.target.value)}
               placeholder="Search locations…"
-              className="w-full rounded-md border border-gray-200 px-2 py-1.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              className="w-full rounded-md border border-border bg-background px-2 py-1.5 text-sm focus:border-ring focus:outline-none focus:ring-1 focus:ring-ring"
             />
           </div>
 
           {/* Recently used chips — filtered to locations still present in the tree */}
           {recentLocations.filter(r => flat.some(l => l.id === r.id)).length > 0 && (
-            <div className="border-b border-gray-100 px-3 py-2">
-              <p className="mb-1.5 text-xs font-medium text-gray-400">Recently used</p>
+            <div className="border-b border-border px-3 py-2">
+              <p className="mb-1.5 text-xs font-medium text-muted-foreground">Recently used</p>
               <div className="flex flex-wrap gap-1.5">
                 {recentLocations
                   .filter(r => flat.some(l => l.id === r.id))
@@ -200,7 +200,7 @@ export function LocationPicker({ value, onChange }: LocationPickerProps) {
                       type="button"
                       title={loc.path}
                       onClick={() => handleSelect({ id: loc.id, name: loc.name, path: loc.path, parentId: null, children: [] })}
-                      className="rounded-full border border-gray-200 bg-gray-50 px-2.5 py-0.5 text-xs text-gray-700 hover:border-blue-400 hover:bg-blue-50 hover:text-blue-700 transition-colors"
+                      className="rounded-full border border-border bg-muted px-2.5 py-0.5 text-xs text-foreground hover:border-blue-400 hover:bg-blue-50 hover:text-blue-700 dark:hover:bg-blue-900/30 dark:hover:text-blue-400 transition-colors"
                     >
                       {loc.name}
                     </button>
@@ -210,9 +210,9 @@ export function LocationPicker({ value, onChange }: LocationPickerProps) {
           )}
 
           {isLoading ? (
-            <div className="px-3 py-3 text-sm text-gray-500">Loading…</div>
+            <div className="px-3 py-3 text-sm text-muted-foreground">Loading…</div>
           ) : filtered.length === 0 ? (
-            <div className="px-3 py-3 text-sm text-gray-500">No locations found</div>
+            <div className="px-3 py-3 text-sm text-muted-foreground">No locations found</div>
           ) : (
             <ul className="max-h-52 overflow-y-auto py-1">
               {filtered.map((loc) => (
@@ -221,14 +221,14 @@ export function LocationPicker({ value, onChange }: LocationPickerProps) {
                     type="button"
                     onClick={() => handleSelect(loc)}
                     className={cn(
-                      'w-full px-3 py-1.5 text-left text-sm hover:bg-gray-50',
-                      value?.id === loc.id && 'bg-blue-50 font-medium text-blue-700',
+                      'w-full px-3 py-1.5 text-left text-sm text-popover-foreground hover:bg-accent',
+                      value?.id === loc.id && 'bg-blue-50 font-medium text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
                     )}
                     style={{ paddingLeft: filter ? undefined : `${12 + loc.depth * 16}px` }}
                   >
                     {loc.name}
                     {filter && loc.path !== loc.name && (
-                      <span className="ml-1 text-xs text-gray-400">{loc.path}</span>
+                      <span className="ml-1 text-xs text-muted-foreground">{loc.path}</span>
                     )}
                   </button>
                 </li>
@@ -236,12 +236,12 @@ export function LocationPicker({ value, onChange }: LocationPickerProps) {
             </ul>
           )}
 
-          <div className="border-t border-gray-100 p-2">
+          <div className="border-t border-border p-2">
             {!showCreate ? (
               <button
                 type="button"
                 onClick={() => setShowCreate(true)}
-                className="w-full rounded-md px-2 py-1.5 text-left text-sm text-blue-600 hover:bg-blue-50"
+                className="w-full rounded-md px-2 py-1.5 text-left text-sm text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30"
               >
                 + Add new location
               </button>
@@ -253,7 +253,7 @@ export function LocationPicker({ value, onChange }: LocationPickerProps) {
                   value={newName}
                   onChange={(e) => setNewName(e.target.value)}
                   placeholder="Location name"
-                  className="w-full rounded-md border border-gray-200 px-2 py-1.5 text-sm focus:border-blue-500 focus:outline-none"
+                  className="w-full rounded-md border border-border bg-background px-2 py-1.5 text-sm focus:border-ring focus:outline-none"
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') handleCreateLocation();
                     if (e.key === 'Escape') setShowCreate(false);
@@ -262,7 +262,7 @@ export function LocationPicker({ value, onChange }: LocationPickerProps) {
                 <select
                   value={newParentId}
                   onChange={(e) => setNewParentId(e.target.value)}
-                  className="w-full rounded-md border border-gray-200 px-2 py-1.5 text-sm focus:border-blue-500 focus:outline-none"
+                  className="w-full rounded-md border border-border bg-background px-2 py-1.5 text-sm focus:border-ring focus:outline-none"
                 >
                   <option value="">No parent (top level)</option>
                   {flat.map((loc) => (
@@ -283,7 +283,7 @@ export function LocationPicker({ value, onChange }: LocationPickerProps) {
                   <button
                     type="button"
                     onClick={() => setShowCreate(false)}
-                    className="rounded-md border border-gray-200 px-2 py-1.5 text-sm text-gray-600 hover:bg-gray-50"
+                    className="rounded-md border border-border bg-background px-2 py-1.5 text-sm text-foreground hover:bg-accent"
                   >
                     Cancel
                   </button>
@@ -296,3 +296,4 @@ export function LocationPicker({ value, onChange }: LocationPickerProps) {
     </div>
   );
 }
+

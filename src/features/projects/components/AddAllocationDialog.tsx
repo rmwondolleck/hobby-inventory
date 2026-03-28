@@ -193,7 +193,7 @@ export function AddAllocationDialog({
               <button
                 type="button"
                 onClick={() => onOpenChange(false)}
-                className="rounded-lg border border-gray-300 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                className="rounded-lg border border-border px-4 py-2 text-sm text-foreground hover:bg-accent"
               >
                 Cancel
               </button>
@@ -211,8 +211,8 @@ export function AddAllocationDialog({
           <div className="space-y-4">
             {/* Selected part summary */}
             <div className="flex items-center gap-2">
-              <span className="text-sm text-gray-500">Part:</span>
-              <span className="text-sm font-medium text-gray-900">{selectedPart?.name}</span>
+              <span className="text-sm text-muted-foreground">Part:</span>
+              <span className="text-sm font-medium text-foreground">{selectedPart?.name}</span>
               <button
                 type="button"
                 onClick={() => { setStep(1); setSelectedLotId(''); setAvailableQty(null); }}
@@ -224,11 +224,11 @@ export function AddAllocationDialog({
 
             {/* Lot list */}
             {lotsLoading ? (
-              <div className="text-sm text-gray-500">Loading lots…</div>
+              <div className="text-sm text-muted-foreground">Loading lots…</div>
             ) : lotsError ? (
               <div className="text-sm text-red-600">{lotsError}</div>
             ) : lots.length === 0 ? (
-              <div className="rounded-lg border border-dashed border-gray-300 p-4 text-center text-sm text-gray-500">
+              <div className="rounded-lg border border-dashed border-border p-4 text-center text-sm text-muted-foreground">
                 No lots found for this part.
               </div>
             ) : (
@@ -245,8 +245,8 @@ export function AddAllocationDialog({
                       key={lot.id}
                       className={`flex cursor-pointer items-start gap-3 rounded-lg border p-3 ${
                         selectedLotId === lot.id
-                          ? 'border-blue-500 bg-blue-50'
-                          : 'border-gray-200 hover:bg-gray-50'
+                          ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/30'
+                          : 'border-border hover:bg-muted'
                       }`}
                     >
                       <input
@@ -258,14 +258,12 @@ export function AddAllocationDialog({
                         className="mt-0.5"
                       />
                       <div className="min-w-0 flex-1">
-                        <div className="text-sm font-medium text-gray-900">
-                          Lot{' '}
-                          <span className="font-mono text-xs text-gray-500">
+                        <div className="text-sm font-medium text-foreground"> Lot{' '}
+                          <span className="font-mono text-xs text-muted-foreground">
                             …{lot.id.slice(-8)}
                           </span>
                         </div>
-                        <div className="text-xs text-gray-500">
-                          Qty: {qtyText}
+                        <div className="text-xs text-muted-foreground"> Qty: {qtyText}
                           {lot.location && ` · ${lot.location.name}`}
                         </div>
                       </div>
@@ -277,8 +275,7 @@ export function AddAllocationDialog({
 
             {/* Available quantity display */}
             {selectedLotId && selectedLot?.quantityMode === 'exact' && (
-              <p className="text-xs text-gray-500">
-                {availableQtyLoading
+              <p className="text-xs text-muted-foreground"> {availableQtyLoading
                   ? 'Computing available quantity…'
                   : availableQty !== null
                   ? `Available: ${availableQty}${selectedLot.unit ? ' ' + selectedLot.unit : ''}`
@@ -289,7 +286,7 @@ export function AddAllocationDialog({
             {/* Quantity input (exact mode only) */}
             {selectedLotId && selectedLot?.quantityMode === 'exact' && (
               <div>
-                <label className="mb-1 block text-xs font-medium text-gray-700">
+                <label className="mb-1 block text-xs font-medium text-foreground">
                   Quantity <span className="text-red-500">*</span>
                 </label>
                 <input
@@ -299,7 +296,7 @@ export function AddAllocationDialog({
                   value={quantity}
                   onChange={(e: ChangeEvent<HTMLInputElement>) => setQuantity(e.target.value)}
                   placeholder="Enter quantity"
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:border-ring focus:outline-none focus:ring-1 focus:ring-blue-500"
                 />
               </div>
             )}
@@ -307,7 +304,7 @@ export function AddAllocationDialog({
             {/* Notes input */}
             {selectedLotId && (
               <div>
-                <label className="mb-1 block text-xs font-medium text-gray-700">
+                <label className="mb-1 block text-xs font-medium text-foreground">
                   Notes (optional)
                 </label>
                 <input
@@ -315,14 +312,14 @@ export function AddAllocationDialog({
                   value={notes}
                   onChange={(e: ChangeEvent<HTMLInputElement>) => setNotes(e.target.value)}
                   placeholder="Optional notes"
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:border-ring focus:outline-none focus:ring-1 focus:ring-blue-500"
                 />
               </div>
             )}
 
             {/* Submit error */}
             {submitError && (
-              <div className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
+              <div className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-900/30 dark:text-red-400">
                 {submitError}
               </div>
             )}
@@ -331,7 +328,7 @@ export function AddAllocationDialog({
               <button
                 type="button"
                 onClick={() => onOpenChange(false)}
-                className="rounded-lg border border-gray-300 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                className="rounded-lg border border-border px-4 py-2 text-sm text-foreground hover:bg-accent"
               >
                 Cancel
               </button>
@@ -354,3 +351,5 @@ export function AddAllocationDialog({
     </Dialog>
   );
 }
+
+

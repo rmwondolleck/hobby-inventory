@@ -25,7 +25,9 @@ const STATUS_OPTIONS: FilterOption[] = [
 ];
 
 const SELECT_CLASS =
-  'w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500';
+  'w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring mt-2';
+
+const SECTION_LABEL = 'block text-xs font-medium uppercase tracking-wide text-muted-foreground';
 
 export function LotFilterForm({ partOptions, locationOptions }: LotFilterFormProps) {
   const router = useRouter();
@@ -77,127 +79,130 @@ export function LotFilterForm({ partOptions, locationOptions }: LotFilterFormPro
     }, 400);
   };
 
+  const hasActiveFilters = !!(currentStatus || currentPartId || currentLocationId || currentSeller);
+
   return (
-    <aside className="w-56 shrink-0 space-y-5">
-      <h2 className="font-semibold text-gray-700">Filters</h2>
+    <aside className="w-56 shrink-0">
+      <div className="rounded-lg border bg-card p-4 shadow-sm">
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <h2 className="font-semibold text-foreground">Filters</h2>
+          {hasActiveFilters && (
+            <button
+              onClick={() => router.push(pathname)}
+              className="text-xs text-primary hover:underline"
+            >
+              Clear all
+            </button>
+          )}
+        </div>
 
-      <div className="space-y-1.5">
-        <label htmlFor="filter-status" className="block text-xs font-medium text-gray-600 uppercase tracking-wide">
-          Status
-        </label>
-        <select
-          id="filter-status"
-          value={currentStatus}
-          onChange={e => updateFilter('status', e.target.value)}
-          className={SELECT_CLASS}
-        >
-          {STATUS_OPTIONS.map(opt => (
-            <option key={opt.value} value={opt.value}>
-              {opt.label}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      {partOptions.length > 0 && (
-        <div className="space-y-1.5">
-          <label htmlFor="filter-part" className="block text-xs font-medium text-gray-600 uppercase tracking-wide">
-            Part
+        {/* Status */}
+        <div className="mt-4">
+          <label htmlFor="filter-status" className={SECTION_LABEL}>
+            Status
           </label>
           <select
-            id="filter-part"
-            value={currentPartId}
-            onChange={e => updateFilter('partId', e.target.value)}
+            id="filter-status"
+            value={currentStatus}
+            onChange={e => updateFilter('status', e.target.value)}
             className={SELECT_CLASS}
           >
-            <option value="">All Parts</option>
-            {partOptions.map(opt => (
+            {STATUS_OPTIONS.map(opt => (
               <option key={opt.value} value={opt.value}>
                 {opt.label}
               </option>
             ))}
           </select>
         </div>
-      )}
 
-      {locationOptions.length > 0 && (
-        <div className="space-y-1.5">
-          <label htmlFor="filter-location" className="block text-xs font-medium text-gray-600 uppercase tracking-wide">
-            Location
+        {/* Part */}
+        {partOptions.length > 0 && (
+          <div className="mt-4">
+            <label htmlFor="filter-part" className={SECTION_LABEL}>
+              Part
+            </label>
+            <select
+              id="filter-part"
+              value={currentPartId}
+              onChange={e => updateFilter('partId', e.target.value)}
+              className={SELECT_CLASS}
+            >
+              <option value="">All Parts</option>
+              {partOptions.map(opt => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+
+        {/* Location */}
+        {locationOptions.length > 0 && (
+          <div className="mt-4">
+            <label htmlFor="filter-location" className={SECTION_LABEL}>
+              Location
+            </label>
+            <select
+              id="filter-location"
+              value={currentLocationId}
+              onChange={e => updateFilter('locationId', e.target.value)}
+              className={SELECT_CLASS}
+            >
+              <option value="">All Locations</option>
+              {locationOptions.map(opt => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+
+        {/* Seller */}
+        <div className="mt-4">
+          <label htmlFor="filter-seller" className={SECTION_LABEL}>
+            Seller
           </label>
-          <select
-            id="filter-location"
-            value={currentLocationId}
-            onChange={e => updateFilter('locationId', e.target.value)}
+          <input
+            id="filter-seller"
+            type="text"
+            value={sellerInput}
+            onChange={e => handleSellerChange(e.target.value)}
+            placeholder="Search seller…"
             className={SELECT_CLASS}
-          >
-            <option value="">All Locations</option>
-            {locationOptions.map(opt => (
-              <option key={opt.value} value={opt.value}>
-                {opt.label}
-              </option>
-            ))}
-          </select>
+          />
         </div>
-      )}
 
-      <div className="space-y-1.5">
-        <label htmlFor="filter-seller" className="block text-xs font-medium text-gray-600 uppercase tracking-wide">
-          Seller
-        </label>
-        <input
-          id="filter-seller"
-          type="text"
-          value={sellerInput}
-          onChange={e => handleSellerChange(e.target.value)}
-          placeholder="Search seller..."
-          className={SELECT_CLASS}
-        />
-      </div>
-
-      <div className="space-y-1.5">
-        <label htmlFor="filter-sort-by" className="block text-xs font-medium text-gray-600 uppercase tracking-wide">
-          Sort By
-        </label>
-        <select
-          id="filter-sort-by"
-          value={currentSortBy}
-          onChange={e => updateFilter('sortBy', e.target.value)}
-          className={SELECT_CLASS}
-        >
-          <option value="">Default (Updated)</option>
-          <option value="updatedAt">Last Updated</option>
-          <option value="createdAt">Date Created</option>
-          <option value="quantity">Quantity</option>
-          <option value="status">Status</option>
-        </select>
-      </div>
-
-      {currentSortBy && (
-        <div className="space-y-1.5">
-          <label htmlFor="filter-sort-dir" className="block text-xs font-medium text-gray-600 uppercase tracking-wide">
-            Sort Direction
-          </label>
+        {/* Sort — visually separated */}
+        <div className="mt-4 border-t border-border pt-4">
+          <h3 className={SECTION_LABEL}>Sort</h3>
+          <select
+            id="filter-sort-by"
+            value={currentSortBy}
+            onChange={e => updateFilter('sortBy', e.target.value)}
+            className={SELECT_CLASS}
+            aria-label="Sort by"
+          >
+            <option value="">Default (Updated)</option>
+            <option value="updatedAt">Last Updated</option>
+            <option value="createdAt">Date Created</option>
+            <option value="quantity">Quantity</option>
+            <option value="status">Status</option>
+          </select>
           <select
             id="filter-sort-dir"
             value={currentSortDir}
             onChange={e => updateFilter('sortDir', e.target.value)}
             className={SELECT_CLASS}
+            aria-label="Sort direction"
           >
             <option value="desc">Descending</option>
             <option value="asc">Ascending</option>
           </select>
         </div>
-      )}
-
-      {(currentStatus || currentPartId || currentLocationId || currentSeller || currentSortBy) && (
-        <button
-          onClick={() => router.push(pathname)}
-          className="text-xs text-blue-600 hover:underline"
-        >
-          Clear filters
-        </button>
-      )}
+      </div>
     </aside>
   );
 }

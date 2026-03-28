@@ -65,11 +65,11 @@ export function PartSearch({ value, onChange, placeholder = 'Search parts…' }:
 
   if (value) {
     return (
-      <div className="flex items-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2">
+      <div className="flex items-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 dark:border-blue-800 dark:bg-blue-900/30">
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium text-gray-900 truncate">{value.name}</p>
+          <p className="text-sm font-medium text-foreground truncate">{value.name}</p>
           {(value.category || value.mpn) && (
-            <p className="text-xs text-gray-500 truncate">
+            <p className="text-xs text-muted-foreground truncate">
               {[value.category, value.mpn].filter(Boolean).join(' · ')}
             </p>
           )}
@@ -77,7 +77,7 @@ export function PartSearch({ value, onChange, placeholder = 'Search parts…' }:
         <button
           type="button"
           onClick={handleClear}
-          className="shrink-0 text-gray-400 hover:text-gray-600"
+          className="shrink-0 text-muted-foreground hover:text-foreground"
           aria-label="Clear selection"
         >
           ✕
@@ -98,14 +98,14 @@ export function PartSearch({ value, onChange, placeholder = 'Search parts…' }:
         }}
         onFocus={() => setIsOpen(true)}
         placeholder={placeholder}
-        className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+        className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:border-ring focus:outline-none focus:ring-1 focus:ring-ring"
       />
       {isOpen && query.trim().length > 0 && (
-        <div className="absolute left-0 right-0 top-full z-10 mt-1 rounded-lg border border-gray-200 bg-white shadow-lg">
+        <div className="absolute left-0 right-0 top-full z-10 mt-1 rounded-lg border border-border bg-popover shadow-lg">
           {isLoading ? (
-            <div className="px-3 py-2 text-sm text-gray-500">Searching…</div>
+            <div className="px-3 py-2 text-sm text-muted-foreground">Searching…</div>
           ) : results.length === 0 ? (
-            <div className="px-3 py-2 text-sm text-gray-500">No parts found</div>
+            <div className="px-3 py-2 text-sm text-muted-foreground">No parts found</div>
           ) : (
             <ul className="max-h-60 overflow-y-auto py-1">
               {results.map((part) => (
@@ -114,12 +114,12 @@ export function PartSearch({ value, onChange, placeholder = 'Search parts…' }:
                     type="button"
                     onClick={() => handleSelect(part)}
                     className={cn(
-                      'w-full px-3 py-2 text-left text-sm hover:bg-gray-50',
+                      'w-full px-3 py-2 text-left text-sm text-popover-foreground hover:bg-accent',
                     )}
                   >
-                    <span className="font-medium text-gray-900">{part.name}</span>
+                    <span className="font-medium text-foreground">{part.name}</span>
                     {(part.category || part.mpn) && (
-                      <span className="ml-2 text-xs text-gray-500">
+                      <span className="ml-2 text-xs text-muted-foreground">
                         {[part.category, part.mpn].filter(Boolean).join(' · ')}
                       </span>
                     )}
@@ -133,3 +133,5 @@ export function PartSearch({ value, onChange, placeholder = 'Search parts…' }:
     </div>
   );
 }
+
+
