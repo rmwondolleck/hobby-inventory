@@ -32,10 +32,26 @@ async function getLotsData(params: Awaited<PageProps['searchParams']>) {
       : 'updatedAt';
   const sortDir: 'asc' | 'desc' = params.sortDir === 'asc' ? 'asc' : 'desc';
 
-  const where: { partId?: string; locationId?: string; status?: string } = {};
+  let staleSinceDate: Date | undefined;
+  if (params.staleSince) {
+    const d = new Date(params.staleSince);
+    if (!isNaN(d.getTime())) staleSinceDate = d;
+  }
+
+  const where: { partId?: string; locationId?: string; status?: string; AND?: unknown[] } = {};
   if (params.partId) where.partId = params.partId;
   if (params.locationId) where.locationId = params.locationId;
   if (params.status) where.status = params.status;
+  if (staleSinceDate) {
+    where.AND = [
+      {
+        OR: [
+          { events: { none: { createdAt: { gt: staleSinceDate } } } },
+          { events: { none: {} } },
+        ],
+      },
+    ];
+  }
 
   // When seller filter is active, fetch all matching rows first (source is a JSON string
   // field and cannot be filtered at the database level), then apply in-memory filtering
@@ -121,6 +137,7 @@ export default async function LotsPage({ searchParams }: PageProps) {
     if (params.seller) p.set('seller', params.seller);
     if (params.sortBy) p.set('sortBy', params.sortBy);
     if (params.sortDir) p.set('sortDir', params.sortDir);
+    if (params.staleSince) p.set('staleSince', params.staleSince);
     p.set('offset', String(newOffset));
     return `/lots?${p.toString()}`;
   };

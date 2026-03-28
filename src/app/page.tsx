@@ -6,12 +6,17 @@ import { PageHeader } from '@/components/PageHeader';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { ProjectCard } from '@/features/projects/components/ProjectCard';
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/components/ui/collapsible';
+import { LotStatusBadge } from '@/features/lots/components/LotStatusBadge';
 import { safeParseJson } from '@/lib/utils';
 import type { ProjectListItem } from '@/features/projects/types';
 import type { LotListItem } from '@/features/lots/types';
 
 // --- Inventory value widget ---
 const INVENTORY_VALUE_COLLAPSED_KEY = 'inventory-value-collapsed';
+
+// --- Stale stock widget ---
+const STALE_STOCK_COLLAPSED_KEY = 'stale-stock-collapsed';
+const STALE_DAYS = 90;
 
 interface InventoryStats {
   totalValue: number;
@@ -54,6 +59,12 @@ export default function Home() {
   const [inventoryStats, setInventoryStats] = useState<InventoryStats | null>(null);
   const [valueWidgetOpen, setValueWidgetOpen] = useState(true);
 
+  // Stale stock state
+  const [staleLots, setStaleLots] = useState<LotListItem[]>([]);
+  const [staleTotal, setStaleTotal] = useState(0);
+  const [staleWidgetOpen, setStaleWidgetOpen] = useState(true);
+  const [staleSinceIso, setStaleSinceIso] = useState('');
+
   useEffect(() => {
     setPinnedIds(loadPinnedIds());
 
@@ -61,6 +72,13 @@ export default function Home() {
     try {
       const stored = localStorage.getItem(INVENTORY_VALUE_COLLAPSED_KEY);
       if (stored !== null) setValueWidgetOpen(stored !== 'true');
+    } catch {
+      // storage disabled — keep default open state
+    }
+
+    try {
+      const stored = localStorage.getItem(STALE_STOCK_COLLAPSED_KEY);
+      if (stored !== null) setStaleWidgetOpen(stored !== 'true');
     } catch {
       // storage disabled — keep default open state
     }
@@ -123,6 +141,22 @@ export default function Home() {
 
     (async () => {
       try {
+        const staleSince = new Date(Date.now() - STALE_DAYS * 24 * 60 * 60 * 1000).toISOString();
+        setStaleSinceIso(staleSince);
+        const res = await fetch(`/api/lots?staleSince=${staleSince}&limit=6&sortDir=asc`, {
+          signal: controller.signal,
+        });
+        if (!res.ok) return;
+        const data: { data: LotListItem[]; total: number } = await res.json();
+        setStaleLots(data.data.slice(0, 5));
+        setStaleTotal(data.total);
+      } catch (err) {
+        if (err instanceof Error && err.name === 'AbortError') return;
+      }
+    })();
+
+    (async () => {
+      try {
         const res = await fetch('/api/parts/stats', { signal: controller.signal });
         if (!res.ok) return;
         const data: InventoryStats = await res.json();
@@ -151,6 +185,15 @@ export default function Home() {
     setValueWidgetOpen(open);
     try {
       localStorage.setItem(INVENTORY_VALUE_COLLAPSED_KEY, String(!open));
+    } catch {
+      // storage disabled — state updated in memory only
+    }
+  }
+
+  function handleStaleWidgetOpenChange(open: boolean) {
+    setStaleWidgetOpen(open);
+    try {
+      localStorage.setItem(STALE_STOCK_COLLAPSED_KEY, String(!open));
     } catch {
       // storage disabled — state updated in memory only
     }
@@ -313,6 +356,68 @@ export default function Home() {
                 </Alert>
               ))}
             </div>
+          </section>
+        )}
+
+        {staleTotal > 0 && (
+          <section className="mt-8">
+            <Collapsible open={staleWidgetOpen} onOpenChange={handleStaleWidgetOpenChange}>
+              <div className="rounded-xl border border-border bg-card shadow-sm">
+                <CollapsibleTrigger className="flex w-full items-center justify-between px-5 py-4 text-left">
+                  <h2 className="flex items-center gap-2 text-lg font-semibold text-foreground">
+                    🕰️ Stale Stock
+                    <span className="ml-2 rounded-full bg-muted px-2.5 py-0.5 text-xs font-medium text-muted-foreground">
+                      {staleTotal} {staleTotal === 1 ? 'lot' : 'lots'}
+                    </span>
+                  </h2>
+                  <span className="text-muted-foreground text-sm select-none">
+                    {staleWidgetOpen ? '▲' : '▼'}
+                  </span>
+                </CollapsibleTrigger>
+                <CollapsibleContent>
+                  <div className="border-t border-border px-5 py-4">
+                    <ul className="space-y-3">
+                      {staleLots.map((lot) => {
+                        const daysAgo = Math.floor(
+                          (Date.now() - new Date(lot.updatedAt).getTime()) / (24 * 60 * 60 * 1000)
+                        );
+                        return (
+                          <li key={lot.id} className="flex flex-col gap-1">
+                            <div className="flex items-center gap-2">
+                              <Link
+                                href={`/parts/${lot.partId}`}
+                                className="font-medium text-foreground hover:underline"
+                              >
+                                {lot.part.name}
+                              </Link>
+                              <LotStatusBadge status={lot.status} />
+                              {lot.quantityMode === 'exact' && lot.quantity !== null && lot.quantity !== undefined && (
+                                <span className="text-sm text-muted-foreground">
+                                  {lot.quantity} {lot.unit ?? ''}
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-xs text-muted-foreground">
+                              Last touched {daysAgo} {daysAgo === 1 ? 'day' : 'days'} ago
+                            </p>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                    {staleSinceIso && (
+                      <div className="mt-4">
+                        <Link
+                          href={`/lots?staleSince=${staleSinceIso}`}
+                          className="text-sm font-medium text-blue-600 hover:underline dark:text-blue-400"
+                        >
+                          View all stale lots →
+                        </Link>
+                      </div>
+                    )}
+                  </div>
+                </CollapsibleContent>
+              </div>
+            </Collapsible>
           </section>
         )}
 

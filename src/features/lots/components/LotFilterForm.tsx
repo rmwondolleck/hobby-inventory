@@ -54,6 +54,7 @@ export function LotFilterForm({ partOptions, locationOptions }: LotFilterFormPro
   const currentSeller = searchParams.get('seller') ?? '';
   const currentSortBy = searchParams.get('sortBy') ?? '';
   const currentSortDir = searchParams.get('sortDir') ?? 'desc';
+  const currentStaleSince = searchParams.get('staleSince') ?? '';
 
   // Local state for seller input to avoid pushing on every keystroke
   const [sellerInput, setSellerInput] = useState(currentSeller);
@@ -79,7 +80,7 @@ export function LotFilterForm({ partOptions, locationOptions }: LotFilterFormPro
     }, 400);
   };
 
-  const hasActiveFilters = !!(currentStatus || currentPartId || currentLocationId || currentSeller || currentSortBy);
+  const hasActiveFilters = !!(currentStatus || currentPartId || currentLocationId || currentSeller || currentSortBy || currentStaleSince);
 
   return (
     <aside className="w-56 shrink-0">
@@ -204,6 +205,16 @@ export function LotFilterForm({ partOptions, locationOptions }: LotFilterFormPro
             </select>
           )}
         </div>
+
+        {/* Stale stock filter chip — read-only, cleared via "Clear filters" */}
+        {currentStaleSince && (
+          <div className="mt-4 border-t border-border pt-4">
+            <h3 className={SECTION_LABEL}>Active filter</h3>
+            <span className="mt-2 inline-flex items-center gap-1 rounded-full bg-muted px-2.5 py-1 text-xs text-muted-foreground">
+              🕰️ Stale stock
+            </span>
+          </div>
+        )}
       </div>
     </aside>
   );

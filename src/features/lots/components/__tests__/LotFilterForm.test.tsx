@@ -115,4 +115,21 @@ describe('LotFilterForm — sort controls', () => {
     render(<LotFilterForm partOptions={[]} locationOptions={[]} />);
     expect(screen.queryByRole('button', { name: /clear filters/i })).not.toBeInTheDocument();
   });
+
+  it('shows Clear filters button when staleSince param is active', () => {
+    mockSearchParams = new URLSearchParams(`staleSince=${new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString()}`);
+    render(<LotFilterForm partOptions={[]} locationOptions={[]} />);
+    expect(screen.getByRole('button', { name: /clear filters/i })).toBeInTheDocument();
+  });
+
+  it('shows stale stock chip when staleSince param is present', () => {
+    mockSearchParams = new URLSearchParams(`staleSince=${new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString()}`);
+    render(<LotFilterForm partOptions={[]} locationOptions={[]} />);
+    expect(screen.getByText(/stale stock/i)).toBeInTheDocument();
+  });
+
+  it('does not show stale stock chip when staleSince param is absent', () => {
+    render(<LotFilterForm partOptions={[]} locationOptions={[]} />);
+    expect(screen.queryByText(/stale stock/i)).not.toBeInTheDocument();
+  });
 });

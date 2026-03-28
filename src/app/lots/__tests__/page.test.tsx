@@ -115,4 +115,32 @@ describe('LotsPage', () => {
     await renderLotsPage();
     expect(screen.getByText('1 lot found')).toBeInTheDocument();
   });
+
+  it('passes staleSince filter to Prisma query when staleSince param is present', async () => {
+    const prisma = require('@/lib/db').default;
+    const staleSince = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString();
+    prisma.lot.findMany.mockClear();
+    prisma.lot.count.mockClear();
+    prisma.lot.findMany.mockResolvedValueOnce([]);
+    prisma.lot.count.mockResolvedValueOnce(0);
+
+    await renderLotsPage({ staleSince });
+
+    const findManyCall = prisma.lot.findMany.mock.calls[0][0];
+    expect(findManyCall.where).toHaveProperty('AND');
+    expect(JSON.stringify(findManyCall.where.AND)).toContain('events');
+  });
+
+  it('does not include AND filter when staleSince param is absent', async () => {
+    const prisma = require('@/lib/db').default;
+    prisma.lot.findMany.mockClear();
+    prisma.lot.count.mockClear();
+    prisma.lot.findMany.mockResolvedValueOnce([]);
+    prisma.lot.count.mockResolvedValueOnce(0);
+
+    await renderLotsPage();
+
+    const findManyCall = prisma.lot.findMany.mock.calls[0][0];
+    expect(findManyCall.where).not.toHaveProperty('AND');
+  });
 });
