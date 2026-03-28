@@ -451,3 +451,75 @@ describe('POST /api/lots', () => {
     expect(mockLocationFindUnique).toHaveBeenCalledWith({ where: { id: 'loc-1' } });
   });
 });
+
+// ─── GET /api/lots?q= ─────────────────────────────────────────────────────────
+
+describe('GET /api/lots — q (free-text) filter', () => {
+  it('passes OR filter to prisma when ?q= is provided', async () => {
+    mockLotCount.mockResolvedValue(1);
+    mockLotFindMany.mockResolvedValue([baseLot]);
+
+    await GET(makeRequest('http://localhost/api/lots?q=resistor'));
+
+    expect(mockLotFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          AND: expect.arrayContaining([
+            {
+              OR: expect.arrayContaining([
+                { part: { name: { contains: 'resistor' } } },
+                { part: { mpn: { contains: 'resistor' } } },
+                { notes: { contains: 'resistor' } },
+                { source: { contains: 'resistor' } },
+                { location: { name: { contains: 'resistor' } } },
+              ]),
+            },
+          ]),
+        }),
+      })
+    );
+  });
+
+  it('does not add OR filter when ?q= is absent', async () => {
+    mockLotCount.mockResolvedValue(0);
+    mockLotFindMany.mockResolvedValue([]);
+
+    await GET(makeRequest('http://localhost/api/lots'));
+
+    const callArgs = mockLotFindMany.mock.calls[0][0];
+    const andClause: unknown[] = callArgs.where.AND;
+    const hasOrClause = andClause.some(
+      (item: unknown) => typeof item === 'object' && item !== null && 'OR' in item
+    );
+    expect(hasOrClause).toBe(false);
+  });
+
+  it('combines q with other filters in the AND clause', async () => {
+    mockLotCount.mockResolvedValue(1);
+    mockLotFindMany.mockResolvedValue([baseLot]);
+
+    await GET(makeRequest('http://localhost/api/lots?q=cap&partId=part-1'));
+
+    expect(mockLotFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          AND: expect.arrayContaining([
+            { partId: 'part-1' },
+            expect.objectContaining({ OR: expect.any(Array) }),
+          ]),
+        }),
+      })
+    );
+  });
+
+  it('returns 200 with matching results when ?q= is provided', async () => {
+    mockLotCount.mockResolvedValue(1);
+    mockLotFindMany.mockResolvedValue([baseLot]);
+
+    const res = await GET(makeRequest('http://localhost/api/lots?q=Resistor'));
+    expect(res.status).toBe(200);
+    const json = await res.json();
+    expect(json.total).toBe(1);
+    expect(json.data).toHaveLength(1);
+  });
+});
